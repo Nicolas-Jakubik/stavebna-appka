@@ -22,7 +22,6 @@ export default function Home() {
 
   useEffect(() => {
     async function nacitajData() {
-      // Načítanie aktívnych zákaziek
       const { data: zakazkyData } = await supabase
         .from('zoznam_zakaziek')
         .select('nazov')
@@ -31,7 +30,6 @@ export default function Home() {
       
       if (zakazkyData) setAktivneZakazky(zakazkyData)
 
-      // Načítanie zamestnancov z tvojej novej tabuľky
       const { data: zamData } = await supabase
         .from('zamestnanci')
         .select('meno')
@@ -64,6 +62,7 @@ export default function Home() {
     }
   }
 
+  // Upravený štýl, ktorý rieši problémy na mobiloch (hlavne iOS)
   const inputStyle = {
     padding: '12px 0',
     border: 'none',
@@ -73,11 +72,28 @@ export default function Home() {
     outline: 'none',
     marginBottom: '20px',
     backgroundColor: 'transparent',
-    color: '#000000'
+    color: '#000000',
+    minHeight: '45px', // Vynútená výška pre mobily
+    display: 'flex', // Pomáha s centrovaním textu v Safari
+    alignItems: 'center'
   }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px' }}>
+      
+      {/* Vynútenie čiernej farby pre date/time ikonky na mobile */}
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          opacity: 0.6;
+        }
+        input[type="date"], input[type="time"] {
+          -webkit-appearance: none;
+          appearance: none;
+        }
+      `}</style>
+
       <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -86,7 +102,6 @@ export default function Home() {
 
         <form onSubmit={odoslat} style={{ display: 'flex', flexDirection: 'column' }}>
           
-          {/* VÝBER MENA CEZ ROLETKU Z DATABÁZY */}
           <select 
             value={meno} 
             onChange={e => setMeno(e.target.value)} 
@@ -99,7 +114,6 @@ export default function Home() {
             ))}
           </select>
           
-          {/* VÝBER ZÁKAZKY */}
           <select 
             value={zakazka} 
             onChange={e => setZakazka(e.target.value)} 
@@ -112,11 +126,20 @@ export default function Home() {
             ))}
           </select>
           
-          <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ ...inputStyle, color: datum ? '#000000' : '#9ca3af' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '12px', color: '#6b7280' }}>Dátum (ak iný ako dnes)</span>
+            <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+          </div>
           
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required style={inputStyle} />
-            <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required style={inputStyle} />
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>Príchod</span>
+              <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>Odchod</span>
+              <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+            </div>
           </div>
 
           <button type="submit" style={{ marginTop: '20px', padding: '12px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer' }}>
