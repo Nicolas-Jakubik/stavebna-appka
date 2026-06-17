@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { adminStore } from '../../lib/store'
 
 export default function DashboardPage() {
-  const [zadaneHeslo, setZadaneHeslo] = useState('')
+  const [email, setEmail] = useState('')
+  const [heslo, setHeslo] = useState('')
   const [jeOdomknute, setJeOdomknute] = useState(adminStore.jeOdomknute)
   const [chybaHesla, setChybaHesla] = useState(false)
-  const SPRAVNE_HESLO = 'sef123'
+  const [errorMessage, setErrorMessage] = useState('')
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
@@ -16,14 +17,26 @@ export default function DashboardPage() {
   const [filterZakazka, setFilterZakazka] = useState('')
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
 
-  function skontrolovatHeslo(e: React.FormEvent) {
+  async function skontrolovatHeslo(e: React.FormEvent) {
     e.preventDefault()
-    if (zadaneHeslo === SPRAVNE_HESLO) {
-      adminStore.jeOdomknute = true
-      setJeOdomknute(true)
-      setChybaHesla(false)
-    } else {
-      setChybaHesla(true)
+    setErrorMessage('')
+    setChybaHesla(false)
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: heslo,
+      })
+
+      if (error) {
+        setChybaHesla(true)
+        setErrorMessage(error.message)
+      } else {
+        adminStore.jeOdomknute = true
+        setJeOdomknute(true)
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Neočakávaná chyba pri prihlasovaní')
     }
   }
 
@@ -76,16 +89,34 @@ export default function DashboardPage() {
   useEffect(() => { if (jeOdomknute) nacitajDostupneZakazky() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, jeOdomknute])
 
+  // --- VÝPOČTY PRE RÝCHLE ŠTATISTIKY ---
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+  const pocetZaznamov = zaznamy.length
+  
+  const zamestnanciHodiny: Record<string, number> = {}
+  zaznamy.forEach(z => {
+    zamestnanciHodiny[z.meno] = (zamestnanciHodiny[z.meno] || 0) + vypocitajHodiny(z.prichod, z.odchod)
+  })
+  let najaktivnejsi = '-'
+  let maxHod = 0
+  Object.entries(zamestnanciHodiny).forEach(([meno, h]) => {
+    if (h > maxHod) { maxHod = h; najaktivnejsi = meno }
+  })
 
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px' }}>
         <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-          <h2 style={{ color: '#000000', marginBottom: '20px', fontSize: '20px' }}>Prístup do administrácie</h2>
+          <h2 style={{ color: '#000000', marginBottom: '20px', fontSize: '20px' }}>Prihlásenie</h2>
           <form onSubmit={skontrolovatHeslo}>
-            <input type="password" placeholder="Zadajte heslo" value={zadaneHeslo} onChange={e => setZadaneHeslo(e.target.value)} style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '20px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
-            {chybaHesla && <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '-10px', marginBottom: '15px' }}>Nesprávne heslo</p>}
+            <input type="email" placeholder="Váš e-mail" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '15px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
+            <input type="password" placeholder="Zadajte heslo" value={heslo} onChange={e => setHeslo(e.target.value)} required style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '20px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
+            {chybaHesla && (
+              <div style={{ backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+                <p style={{ color: '#ef4444', fontSize: '13px', margin: 0, fontWeight: '500' }}>Chyba prihlásenia:</p>
+                <p style={{ color: '#b91c1c', fontSize: '12px', margin: '2px 0 0 0' }}>{errorMessage}</p>
+              </div>
+            )}
             <button type="submit" style={{ padding: '12px', width: '100%', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer' }}>Odomknúť</button>
           </form>
         </div>
@@ -98,9 +129,9 @@ export default function DashboardPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '40px 20px', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: '1000px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+      <div style={{ width: '100%', maxWidth: '1050px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
         
-        {/* NAVIGAČNÉ MENU S PRIDANÝMI ZAMESTNANCAMI */}
+        {/* NAVIGÁCIA */}
         <div style={{ display: 'flex', gap: '20px', paddingBottom: '20px', borderBottom: '1px solid #e5e7eb', marginBottom: '30px', flexWrap: 'wrap' }}>
           <Link href="/dashboard" style={{ textDecoration: 'none', color: '#111827', fontWeight: 'bold' }}>Dochádzka</Link>
           <Link href="/zakazky" style={{ textDecoration: 'none', color: '#6b7280' }}>Stavby</Link>
@@ -109,53 +140,108 @@ export default function DashboardPage() {
           <Link href="/" style={{ textDecoration: 'none', color: '#ef4444', marginLeft: 'auto', fontWeight: '500' }}>← Odhlásiť sa</Link>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+        {/* 3 RÝCHLE ŠTATISTIKY (KARTY) */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '35px', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1', minWidth: '200px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Odpracované hodiny</p>
+            <h3 style={{ margin: 0, fontSize: '28px', color: '#0f172a' }}>{celkoveHodiny.toFixed(2)} h</h3>
+          </div>
+          <div style={{ flex: '1', minWidth: '200px', backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#166534', fontWeight: '600', textTransform: 'uppercase' }}>Počet záznamov</p>
+            <h3 style={{ margin: 0, fontSize: '28px', color: '#15803d' }}>{pocetZaznamov}</h3>
+          </div>
+          <div style={{ flex: '1', minWidth: '200px', backgroundColor: '#eff6ff', padding: '20px', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#1e40af', fontWeight: '600', textTransform: 'uppercase' }}>Najusilovnejší</p>
+            <h3 style={{ margin: 0, fontSize: '28px', color: '#1d4ed8' }}>{najaktivnejsi}</h3>
+          </div>
+        </div>
+
+        {/* NADPIS A FILTRE */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '20px' }}>
           <h2 style={{ color: '#000000', margin: 0, marginTop: '10px' }}>Prehľad dochádzky</h2>
           
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', backgroundColor: '#f9fafb', padding: '10px 15px', borderRadius: '12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ fontSize: '12px', color: '#666' }}>Filter zákazka</span>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' }}>Filter zákazka</span>
               <select value={filterZakazka} onChange={(e) => setFilterZakazka(e.target.value)} style={{ padding: '8px', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#000000', backgroundColor: '#ffffff', outline: 'none', cursor: 'pointer', minWidth: '150px' }}>
                 <option value="">Všetky zákazky</option>
                 {dostupneZakazky.map((z) => <option key={z} value={z}>{z}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ fontSize: '12px', color: '#666' }}>Filter mesiac</span>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' }}>Filter mesiac</span>
               <select value={filterMesiac} disabled={!!filterDen} onChange={(e) => setFilterMesiac(e.target.value)} style={{ padding: '8px', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#000000', backgroundColor: '#ffffff', outline: 'none', cursor: !!filterDen ? 'not-allowed' : 'pointer', minWidth: '150px' }}>
                 {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ fontSize: '12px', color: '#666' }}>Filter konkrétny deň</span>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' }}>Filter konkrétny deň</span>
               <input type="date" value={filterDen} onChange={(e) => setFilterDen(e.target.value)} style={{ padding: '8px', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#000000', outline: 'none' }} />
-              {filterDen && <button onClick={() => setFilterDen('')} style={{ background: 'none', border: 'none', color: '#666', fontSize: '11px', cursor: 'pointer', textAlign: 'left', marginTop: '2px' }}>❌ Zrušiť deň</button>}
+              {filterDen && <button onClick={() => setFilterDen('')} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', textAlign: 'left', marginTop: '4px', fontWeight: '600' }}>❌ Zrušiť deň</button>}
             </div>
           </div>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid #f3f4f6' }}>
-              <th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Dátum</th><th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Zamestnanec</th><th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Zákazka</th><th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Čas</th><th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Hodiny</th><th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Akcia</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zaznamy.length === 0 ? ( <tr><td colSpan={6} style={{ padding: '30px 0', color: '#666', textAlign: 'center' }}>Pre zvolené filtre sa nenašli žiadne záznamy.</td></tr> ) : (
-              zaznamy.map((z) => {
-                const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
-                return (
-                  <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '15px 0', color: '#000000' }}>{z.datum}</td><td style={{ padding: '15px 0', color: '#000000' }}>{z.meno}</td><td style={{ padding: '15px 0', color: '#000000' }}>{z.zakazka}</td><td style={{ padding: '15px 0', color: '#000000' }}>{z.prichod} - {z.odchod}</td><td style={{ padding: '15px 0', color: '#000000', fontWeight: '500' }}>{hodinyRiadku.toFixed(2)} h</td><td style={{ padding: '15px 0' }}><button onClick={() => vymazat(z.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>Zmazať</button></td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-          {zaznamy.length > 0 && (
-            <tfoot><tr style={{ borderTop: '2px solid #e5e7eb' }}><td colSpan={4} style={{ padding: '20px 0', textAlign: 'right', color: '#000000', fontWeight: 'bold', paddingRight: '20px' }}>Spolu odpracované:</td><td colSpan={2} style={{ padding: '20px 0', color: '#000000', fontWeight: 'bold', fontSize: '16px' }}>{celkoveHodiny.toFixed(2)} h</td></tr></tfoot>
-          )}
-        </table>
+        {/* VYLEPŠENÁ TABUĽKA */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Dátum</th>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Zamestnanec</th>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Zákazka</th>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Čas</th>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Hodiny</th>
+                <th style={{ padding: '12px 10px', color: '#6b7280', fontSize: '13px', textTransform: 'uppercase' }}>Akcia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zaznamy.length === 0 ? ( 
+                <tr><td colSpan={6} style={{ padding: '40px 0', color: '#9ca3af', textAlign: 'center', fontStyle: 'italic' }}>Pre zvolené filtre sa nenašli žiadne záznamy.</td></tr> 
+              ) : (
+                zaznamy.map((z) => {
+                  const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
+                  
+                  // Zistenie víkendu (0 = Nedeľa, 6 = Sobota)
+                  const denVTyzni = new Date(z.datum).getDay()
+                  const jeVikend = denVTyzni === 0 || denVTyzni === 6
+
+                  return (
+                    // Víkend má jemné žlté podfarbenie
+                    <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: jeVikend ? '#fffbeb' : 'transparent' }}>
+                      <td style={{ padding: '15px 10px', color: '#374151', fontSize: '14px' }}>
+                        {z.datum} {jeVikend && <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 'bold', marginLeft: '5px' }}>VÍKEND</span>}
+                      </td>
+                      <td style={{ padding: '15px 10px' }}>
+                        {/* Modrý odznak pre zamestnanca */}
+                        <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          {z.meno}
+                        </span>
+                      </td>
+                      <td style={{ padding: '15px 10px' }}>
+                        {/* Oranžový odznak pre zákazku */}
+                        <span style={{ backgroundColor: '#ffedd5', color: '#c2410c', padding: '4px 12px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                          {z.zakazka}
+                        </span>
+                      </td>
+                      <td style={{ padding: '15px 10px', color: '#4b5563', fontSize: '14px' }}>
+                        {z.prichod} - {z.odchod}
+                      </td>
+                      <td style={{ padding: '15px 10px', color: '#111827', fontWeight: '700', fontSize: '15px' }}>
+                        {hodinyRiadku.toFixed(2)} h
+                      </td>
+                      <td style={{ padding: '15px 10px' }}>
+                        <button onClick={() => vymazat(z.id)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                          Zmazať
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
