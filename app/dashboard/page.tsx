@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { adminStore } from '../../lib/store'
 
 export default function DashboardPage() {
-  const [email, setEmail] = useState('')
-  const [heslo, setHeslo] = useState('')
+  // VRÁTENÉ JEDNODUCHÉ PRIHLASOVANIE IBA NA HESLO
+  const [zadaneHeslo, setZadaneHeslo] = useState('')
   const [jeOdomknute, setJeOdomknute] = useState(adminStore.jeOdomknute)
   const [chybaHesla, setChybaHesla] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
+  const SPRAVNE_HESLO = 'sef123'
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
@@ -17,26 +17,15 @@ export default function DashboardPage() {
   const [filterZakazka, setFilterZakazka] = useState('')
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
 
-  async function skontrolovatHeslo(e: React.FormEvent) {
+  // JEDNODUCHÁ KONTROLA HESLA
+  function skontrolovatHeslo(e: React.FormEvent) {
     e.preventDefault()
-    setErrorMessage('')
-    setChybaHesla(false)
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: heslo,
-      })
-
-      if (error) {
-        setChybaHesla(true)
-        setErrorMessage(error.message)
-      } else {
-        adminStore.jeOdomknute = true
-        setJeOdomknute(true)
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Neočakávaná chyba pri prihlasovaní')
+    if (zadaneHeslo === SPRAVNE_HESLO) {
+      adminStore.jeOdomknute = true
+      setJeOdomknute(true)
+      setChybaHesla(false)
+    } else {
+      setChybaHesla(true)
     }
   }
 
@@ -103,19 +92,23 @@ export default function DashboardPage() {
     if (h > maxHod) { maxHod = h; najaktivnejsi = meno }
   })
 
+  // JEDNODUCHÝ PRIHLASOVACÍ FORMULÁR
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px' }}>
         <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center' }}>
           <h2 style={{ color: '#000000', marginBottom: '20px', fontSize: '20px' }}>Prihlásenie</h2>
           <form onSubmit={skontrolovatHeslo}>
-            <input type="email" placeholder="Váš e-mail" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '15px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
-            <input type="password" placeholder="Zadajte heslo" value={heslo} onChange={e => setHeslo(e.target.value)} required style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '20px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
+            <input 
+              type="password" 
+              placeholder="Zadajte heslo" 
+              value={zadaneHeslo} 
+              onChange={e => setZadaneHeslo(e.target.value)} 
+              required 
+              style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '20px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} 
+            />
             {chybaHesla && (
-              <div style={{ backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
-                <p style={{ color: '#ef4444', fontSize: '13px', margin: 0, fontWeight: '500' }}>Chyba prihlásenia:</p>
-                <p style={{ color: '#b91c1c', fontSize: '12px', margin: '2px 0 0 0' }}>{errorMessage}</p>
-              </div>
+              <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '-10px', marginBottom: '15px' }}>Nesprávne heslo</p>
             )}
             <button type="submit" style={{ padding: '12px', width: '100%', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer' }}>Odomknúť</button>
           </form>
@@ -207,19 +200,16 @@ export default function DashboardPage() {
                   const jeVikend = denVTyzni === 0 || denVTyzni === 6
 
                   return (
-                    // Víkend má jemné žlté podfarbenie
                     <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: jeVikend ? '#fffbeb' : 'transparent' }}>
                       <td style={{ padding: '15px 10px', color: '#374151', fontSize: '14px' }}>
                         {z.datum} {jeVikend && <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 'bold', marginLeft: '5px' }}>VÍKEND</span>}
                       </td>
                       <td style={{ padding: '15px 10px' }}>
-                        {/* Modrý odznak pre zamestnanca */}
                         <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
                           {z.meno}
                         </span>
                       </td>
                       <td style={{ padding: '15px 10px' }}>
-                        {/* Oranžový odznak pre zákazku */}
                         <span style={{ backgroundColor: '#ffedd5', color: '#c2410c', padding: '4px 12px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
                           {z.zakazka}
                         </span>
