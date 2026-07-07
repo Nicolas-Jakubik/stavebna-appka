@@ -17,6 +17,12 @@ export default function DashboardPage() {
   const [filterZakazka, setFilterZakazka] = useState('')
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
 
+  // --- NOVÉ STAVY PRE HROMADNÉ PRIDÁVANIE ---
+  const [ukazatFormular, setUkazatFormular] = useState(false)
+  const [noveZaznamy, setNoveZaznamy] = useState([
+    { datum: new Date().toISOString().split('T')[0], meno: '', zakazka: '', prichod: '', odchod: '' }
+  ])
+
   // JEDNODUCHÁ KONTROLA HESLA
   function skontrolovatHeslo(e: React.FormEvent) {
     e.preventDefault()
@@ -75,6 +81,37 @@ export default function DashboardPage() {
     nacitajDostupneZakazky()
   }
 
+  // --- NOVÉ FUNKCIE PRE HROMADNÉ PRIDÁVANIE ---
+  function pridatPrazdnyZaznam() {
+    setNoveZaznamy([...noveZaznamy, { datum: new Date().toISOString().split('T')[0], meno: '', zakazka: '', prichod: '', odchod: '' }])
+  }
+
+  function zmenaNovehoZaznamu(index: number, pole: string, hodnota: string) {
+    const upravene = [...noveZaznamy]
+    upravene[index] = { ...upravene[index], [pole]: hodnota }
+    setNoveZaznamy(upravene)
+  }
+
+  async function ulozitVsetkyNoveZaznamy() {
+    // Vyfiltrujeme len tie záznamy, ktoré sú kompletne vyplnené
+    const platneZaznamy = noveZaznamy.filter(z => z.meno && z.zakazka && z.prichod && z.odchod && z.datum)
+    
+    if (platneZaznamy.length === 0) {
+      alert('Vyplňte aspoň jeden kompletný riadok (Dátum, Meno, Zákazka, Príchod, Odchod).')
+      return
+    }
+
+    const { error } = await supabase.from('dochadzka').insert(platneZaznamy)
+    if (error) {
+      alert('Chyba pri ukladaní do databázy: ' + error.message)
+    } else {
+      setUkazatFormular(false)
+      setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], meno: '', zakazka: '', prichod: '', odchod: '' }])
+      nacitaj()
+      nacitajDostupneZakazky()
+    }
+  }
+
   useEffect(() => { if (jeOdomknute) nacitajDostupneZakazky() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, jeOdomknute])
 
@@ -130,7 +167,7 @@ export default function DashboardPage() {
           <Link href="/zakazky" style={{ textDecoration: 'none', color: '#6b7280' }}>Stavby</Link>
           <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#6b7280' }}>Zamestnanci</Link>
           <Link href="/mzdy" style={{ textDecoration: 'none', color: '#6b7280' }}>Výplaty</Link>
-          <Link href="/" style={{ textDecoration: 'none', color: '#ef4444', marginLeft: 'auto', fontWeight: '500' }}>← Odhlásiť sa</Link>
+          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#ef4444', marginLeft: 'auto', fontWeight: '500', cursor: 'pointer' }}>← Odhlásiť sa</button>
         </div>
 
         {/* 3 RÝCHLE ŠTATISTIKY (KARTY) */}
@@ -148,6 +185,41 @@ export default function DashboardPage() {
             <h3 style={{ margin: 0, fontSize: '28px', color: '#1d4ed8' }}>{najaktivnejsi}</h3>
           </div>
         </div>
+
+        {/* --- NOVÁ SEKCIA: TLAČIDLO A FORMULÁR NA PRIDÁVANIE --- */}
+        <div style={{ marginBottom: '25px' }}>
+          <button 
+            onClick={() => setUkazatFormular(!ukazatFormular)} 
+            style={{ padding: '10px 20px', backgroundColor: ukazatFormular ? '#ef4444' : '#10b981', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+          >
+            {ukazatFormular ? '❌ Zavrieť pridávanie' : '➕ Pridať novú dochádzku'}
+          </button>
+        </div>
+
+        {ukazatFormular && (
+          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '30px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#0f172a', fontSize: '16px' }}>Hromadné zapisovanie hodín</h3>
+            
+            {noveZaznamy.map((z, i) => (
+              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input type="date" value={z.datum} onChange={e => zmenaNovehoZaznamu(i, 'datum', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required />
+                <input type="text" placeholder="Meno zamestnanca" value={z.meno} onChange={e => zmenaNovehoZaznamu(i, 'meno', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', minWidth: '150px' }} required />
+                <input type="text" placeholder="Názov zákazky" value={z.zakazka} onChange={e => zmenaNovehoZaznamu(i, 'zakazka', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', minWidth: '150px' }} required />
+                <input type="time" value={z.prichod} onChange={e => zmenaNovehoZaznamu(i, 'prichod', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required title="Príchod" />
+                <input type="time" value={z.odchod} onChange={e => zmenaNovehoZaznamu(i, 'odchod', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required title="Odchod" />
+                
+                {noveZaznamy.length > 1 && (
+                  <button onClick={() => setNoveZaznamy(noveZaznamy.filter((_, index) => index !== i))} style={{ padding: '8px 12px', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                )}
+              </div>
+            ))}
+            
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={pridatPrazdnyZaznam} style={{ padding: '10px 15px', backgroundColor: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>+ Pridať ďalší riadok</button>
+              <button onClick={ulozitVsetkyNoveZaznamy} style={{ padding: '10px 20px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>💾 Uložiť všetko do databázy</button>
+            </div>
+          </div>
+        )}
 
         {/* NADPIS A FILTRE */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px', flexWrap: 'wrap', gap: '20px' }}>
@@ -235,4 +307,4 @@ export default function DashboardPage() {
       </div>
     </div>
   )
-} 
+}
