@@ -47,12 +47,11 @@ export default function DashboardPage() {
     return hodinySpolu
   }
 
-  // --- NOVÁ FUNKCIA NA KONTROLU CHÝB V ČASE ---
   function jePodozrivyCas(prichod: string, odchod: string, hodiny: number) {
     if (!prichod || !odchod) return true
-    if (prichod < '05:00') return true     // Niekto zadal napr. 00:30
-    if (odchod > '21:00') return true      // Niekto zadal napr. 23:00
-    if (hodiny > 14 || hodiny <= 0) return true // Extrémne dlhá alebo záporná šichta
+    if (prichod < '05:00') return true     
+    if (odchod > '21:00') return true      
+    if (hodiny > 14 || hodiny <= 0) return true 
     return false
   }
 
@@ -301,16 +300,17 @@ export default function DashboardPage() {
                   const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
                   const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                   
-                  // KONTROLA CHYBY
                   const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
 
                   return (
-                    <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                      <td style={{ padding: '15px 10px', color: jeVikend ? '#999' : '#000' }}>{z.datum}</td>
+                    <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5', backgroundColor: jeVikend ? '#fafafa' : 'transparent' }}>
+                      <td style={{ padding: '15px 10px', color: '#000' }}>
+                        {z.datum}
+                        {jeVikend && <span style={{ fontSize: '9px', backgroundColor: '#e5e5e5', color: '#000', padding: '2px 6px', marginLeft: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Víkend</span>}
+                      </td>
                       <td style={{ padding: '15px 10px', fontWeight: '500', color: '#000' }}>{z.meno}</td>
                       <td style={{ padding: '15px 10px', color: '#666' }}>{z.zakazka}</td>
                       
-                      {/* ZAFARBENIE NA ČERVENO AK JE PODOZRIVÝ ČAS */}
                       <td style={{ padding: '15px 10px', color: jePodozrivy ? '#b91c1c' : '#666', fontWeight: jePodozrivy ? '600' : 'normal' }}>
                         {z.prichod} - {z.odchod}
                       </td>
