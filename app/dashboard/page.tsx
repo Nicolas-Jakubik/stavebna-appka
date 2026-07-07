@@ -303,10 +303,10 @@ export default function DashboardPage() {
                   const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
 
                   return (
-                    <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5', backgroundColor: jeVikend ? '#fafafa' : 'transparent' }}>
+                    <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5', backgroundColor: jeVikend ? '#fff7ed' : 'transparent' }}>
                       <td style={{ padding: '15px 10px', color: '#000' }}>
                         {z.datum}
-                        {jeVikend && <span style={{ fontSize: '9px', backgroundColor: '#e5e5e5', color: '#000', padding: '2px 6px', marginLeft: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>Víkend</span>}
+                        {jeVikend && <span style={{ fontSize: '9px', backgroundColor: '#ffedd5', color: '#c2410c', padding: '2px 6px', marginLeft: '8px', letterSpacing: '1px', textTransform: 'uppercase', borderRadius: '3px', fontWeight: '600' }}>Víkend</span>}
                       </td>
                       <td style={{ padding: '15px 10px', fontWeight: '500', color: '#000' }}>{z.meno}</td>
                       <td style={{ padding: '15px 10px', color: '#666' }}>{z.zakazka}</td>
