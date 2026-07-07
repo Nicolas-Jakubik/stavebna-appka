@@ -47,6 +47,15 @@ export default function DashboardPage() {
     return hodinySpolu
   }
 
+  // --- NOVÁ FUNKCIA NA KONTROLU CHÝB V ČASE ---
+  function jePodozrivyCas(prichod: string, odchod: string, hodiny: number) {
+    if (!prichod || !odchod) return true
+    if (prichod < '05:00') return true     // Niekto zadal napr. 00:30
+    if (odchod > '21:00') return true      // Niekto zadal napr. 23:00
+    if (hodiny > 14 || hodiny <= 0) return true // Extrémne dlhá alebo záporná šichta
+    return false
+  }
+
   async function nacitajFiltre() {
     const { data } = await supabase.from('dochadzka').select('zakazka, meno')
     if (data) {
@@ -291,13 +300,24 @@ export default function DashboardPage() {
                 zaznamy.map((z) => {
                   const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
                   const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
+                  
+                  // KONTROLA CHYBY
+                  const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
+
                   return (
                     <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                       <td style={{ padding: '15px 10px', color: jeVikend ? '#999' : '#000' }}>{z.datum}</td>
                       <td style={{ padding: '15px 10px', fontWeight: '500', color: '#000' }}>{z.meno}</td>
                       <td style={{ padding: '15px 10px', color: '#666' }}>{z.zakazka}</td>
-                      <td style={{ padding: '15px 10px', color: '#666' }}>{z.prichod} - {z.odchod}</td>
-                      <td style={{ padding: '15px 10px', color: '#000' }}>{hodinyRiadku.toFixed(2)}</td>
+                      
+                      {/* ZAFARBENIE NA ČERVENO AK JE PODOZRIVÝ ČAS */}
+                      <td style={{ padding: '15px 10px', color: jePodozrivy ? '#b91c1c' : '#666', fontWeight: jePodozrivy ? '600' : 'normal' }}>
+                        {z.prichod} - {z.odchod}
+                      </td>
+                      <td style={{ padding: '15px 10px', color: jePodozrivy ? '#b91c1c' : '#000', fontWeight: jePodozrivy ? '600' : 'normal' }} title={jePodozrivy ? "Tento čas vyzerá podozrivo. Skontrolujte príchod/odchod." : ""}>
+                        {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '10px', marginLeft: '5px', textTransform: 'uppercase' }}>(Chyba?)</span>}
+                      </td>
+
                       <td style={{ padding: '15px 10px', textAlign: 'right' }}><button onClick={() => vymazat(z.id)} style={{ color: '#999', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px' }}>Zmazať</button></td>
                     </tr>
                   )
