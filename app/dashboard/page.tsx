@@ -146,82 +146,171 @@ export default function DashboardPage() {
   let najaktivnejsi = '-'; let maxHod = 0
   Object.entries(zamestnanciHodiny).forEach(([meno, h]) => { if (h > maxHod) { maxHod = h; najaktivnejsi = meno } })
 
-  const inputStyle = { padding: '10px 0', border: 'none', borderBottom: '1px solid #e5e5e5', outline: 'none', fontSize: '14px', width: '100%', backgroundColor: 'transparent', color: '#000' }
-  const labelStyle = { display: 'block', fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase' as const, letterSpacing: '1px' }
+  // ===== APPLE ŠTÝLY =====
+  const inputStyle = { 
+    padding: '12px 16px', 
+    borderRadius: '10px',
+    border: '1px solid #d2d2d7', 
+    outline: 'none', 
+    fontSize: '14px', 
+    width: '100%', 
+    backgroundColor: '#f5f5f7',
+    color: '#000',
+    fontFamily: 'inherit',
+    transition: 'all 0.2s'
+  }
+  
+  const labelStyle = { 
+    display: 'block', 
+    fontSize: '11px', 
+    color: '#86868b', 
+    marginBottom: '8px', 
+    textTransform: 'uppercase' as const, 
+    letterSpacing: '0.8px',
+    fontWeight: '500'
+  }
+
+  const buttonPrimaryStyle = {
+    padding: '10px 24px',
+    backgroundColor: '#0071e3',
+    color: '#fff',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '13px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.8px',
+    fontWeight: '500',
+    borderRadius: '98px',
+    transition: 'all 0.2s',
+  }
+
+  const buttonSecondaryStyle = {
+    padding: '10px 24px',
+    backgroundColor: '#f5f5f7',
+    color: '#000',
+    border: '1px solid #d2d2d7',
+    cursor: 'pointer',
+    fontSize: '13px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.8px',
+    fontWeight: '500',
+    borderRadius: '98px',
+    transition: 'all 0.2s',
+  }
+
+  const cardStyle = {
+    backgroundColor: '#ffffff',
+    borderRadius: '18px',
+    padding: '24px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    border: '1px solid rgba(0,0,0,0.08)'
+  }
 
   if (!jeOdomknute) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: '20px' }}>
-        <div style={{ width: '100%', maxWidth: '300px', textAlign: 'center' }}>
-          <h2 style={{ color: '#000', marginBottom: '40px', fontSize: '20px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>Prihlásenie</h2>
-          <form onSubmit={skontrolovatHeslo}>
-            <input type="password" placeholder="Heslo" value={zadaneHeslo} onChange={e => setZadaneHeslo(e.target.value)} required style={{ padding: '10px 0', border: 'none', borderBottom: '1px solid #000', width: '100%', fontSize: '14px', outline: 'none', marginBottom: '30px', backgroundColor: 'transparent', color: '#000', textAlign: 'center', letterSpacing: '2px' }} />
-            {chybaHesla && <p style={{ color: '#000', fontSize: '12px', marginTop: '-15px', marginBottom: '20px' }}>Nesprávne heslo.</p>}
-            <button type="submit" style={{ padding: '12px', width: '100%', backgroundColor: '#000', color: '#fff', border: 'none', fontWeight: '400', cursor: 'pointer', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>Vstúpiť</button>
-          </form>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: '380px' }}>
+          <div style={{ ...cardStyle, textAlign: 'center' }}>
+            <h2 style={{ color: '#000', marginBottom: '40px', fontSize: '32px', fontWeight: '600', letterSpacing: '-0.003em', margin: '0 0 40px 0' }}>Dochádzka</h2>
+            <form onSubmit={skontrolovatHeslo}>
+              <input 
+                type="password" 
+                placeholder="Heslo" 
+                value={zadaneHeslo} 
+                onChange={e => setZadaneHeslo(e.target.value)} 
+                required 
+                style={{ ...inputStyle, marginBottom: '30px', textAlign: 'center' }}
+              />
+              {chybaHesla && <p style={{ color: '#ff3b30', fontSize: '12px', marginTop: '-20px', marginBottom: '20px' }}>Nesprávne heslo.</p>}
+              <button 
+                type="submit" 
+                style={{ ...buttonPrimaryStyle, width: '100%' } as any}
+                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
+                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
+              >
+                Vstúpiť
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', display: 'flex', justifyContent: 'center', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ width: '100%', maxWidth: '1000px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '40px 20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
+      <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* NAVIGÁCIA */}
-        <div style={{ display: 'flex', gap: '30px', paddingBottom: '30px', marginBottom: '40px', flexWrap: 'wrap' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#000', fontWeight: '500', borderBottom: '1px solid #000', paddingBottom: '4px' }}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#999' }}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#999' }}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#999' }}>Výplaty</Link>
-          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#999', marginLeft: 'auto', cursor: 'pointer', fontSize: '14px' }}>Odhlásiť sa</button>
+        <div style={{ display: 'flex', gap: '32px', paddingBottom: '40px', marginBottom: '50px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#000', fontWeight: '600', fontSize: '14px', borderBottom: '2px solid #0071e3', paddingBottom: '4px' }}>Dochádzka</Link>
+          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '14px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#000'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
+          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '14px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#000'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
+          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', fontSize: '14px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#000'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
+          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '14px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#000'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
-        {/* ŠTATISTIKY */}
-        <div style={{ display: 'flex', gap: '40px', marginBottom: '50px', flexWrap: 'wrap', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: '30px 0' }}>
-          <div style={{ flex: '1', minWidth: '150px' }}>
-            <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Odpracované hodiny</p>
-            <h3 style={{ margin: 0, fontSize: '28px', color: '#000', fontWeight: '400' }}>{celkoveHodiny.toFixed(2)}</h3>
+        {/* ŠTATISTIKY - APPLE CARDS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '50px' }}>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 12px 0'}}>Odpracované hodiny</p>
+            <h3 style={{ margin: 0, fontSize: '36px', color: '#000', fontWeight: '600', lineHeight: '1' }}>{celkoveHodiny.toFixed(2)}</h3>
           </div>
-          <div style={{ flex: '1', minWidth: '150px', borderLeft: '1px solid #f0f0f0', paddingLeft: '40px' }}>
-            <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Záznamy</p>
-            <h3 style={{ margin: 0, fontSize: '28px', color: '#000', fontWeight: '400' }}>{pocetZaznamov}</h3>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 12px 0'}}>Záznamy</p>
+            <h3 style={{ margin: 0, fontSize: '36px', color: '#000', fontWeight: '600', lineHeight: '1' }}>{pocetZaznamov}</h3>
           </div>
-          <div style={{ flex: '1', minWidth: '150px', borderLeft: '1px solid #f0f0f0', paddingLeft: '40px' }}>
-            <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Najaktívnejší</p>
-            <h3 style={{ margin: 0, fontSize: '28px', color: '#000', fontWeight: '400' }}>{najaktivnejsi}</h3>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 12px 0'}}>Najaktívnejší</p>
+            <h3 style={{ margin: 0, fontSize: '36px', color: '#000', fontWeight: '600', lineHeight: '1' }}>{najaktivnejsi}</h3>
           </div>
         </div>
 
         {/* TLAČIDLO PRE FORMULÁR */}
         <div style={{ marginBottom: '40px' }}>
-          <button onClick={() => setUkazatFormular(!ukazatFormular)} style={{ padding: '10px 20px', backgroundColor: ukazatFormular ? '#fff' : '#000', color: ukazatFormular ? '#000' : '#fff', border: '1px solid #000', cursor: 'pointer', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            {ukazatFormular ? 'Zavrieť' : 'Zápis dochádzky'}
+          <button 
+            onClick={() => setUkazatFormular(!ukazatFormular)} 
+            style={{ 
+              ...buttonPrimaryStyle,
+              backgroundColor: ukazatFormular ? '#f5f5f7' : '#0071e3',
+              color: ukazatFormular ? '#000' : '#fff',
+              border: ukazatFormular ? '1px solid #d2d2d7' : 'none'
+            } as any}
+            onMouseEnter={(e) => {
+              if (!ukazatFormular) (e.currentTarget as any).style.backgroundColor = '#0077ed'
+              else (e.currentTarget as any).style.backgroundColor = '#efefef'
+            }}
+            onMouseLeave={(e) => {
+              if (!ukazatFormular) (e.currentTarget as any).style.backgroundColor = '#0071e3'
+              else (e.currentTarget as any).style.backgroundColor = '#f5f5f7'
+            }}
+          >
+            {ukazatFormular ? '✕ Zavrieť' : '+ Zápis dochádzky'}
           </button>
         </div>
 
         {/* FORMULÁR */}
         {ukazatFormular && (
-          <div style={{ border: '1px solid #e5e5e5', padding: '40px', marginBottom: '50px' }}>
+          <div style={{...cardStyle, marginBottom: '50px'}}>
             <datalist id="zoznam-zakaziek">{dostupneZakazky.map(zak => <option key={zak} value={zak} />)}</datalist>
 
             {noveZaznamy.map((z, i) => (
-              <div key={i} style={{ marginBottom: '40px', paddingBottom: '40px', borderBottom: i !== noveZaznamy.length -1 ? '1px solid #f0f0f0' : 'none' }}>
+              <div key={i} style={{ marginBottom: i !== noveZaznamy.length - 1 ? '40px' : '0', paddingBottom: i !== noveZaznamy.length - 1 ? '40px' : '0', borderBottom: i !== noveZaznamy.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
                 
-                <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', marginBottom: '30px' }}>
-                  <div style={{ flex: '1 1 150px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                  <div>
                     <label style={labelStyle}>Dátum</label>
                     <input type="date" value={z.datum} onChange={e => zmenaNovehoZaznamu(i, 'datum', e.target.value)} style={inputStyle} />
                   </div>
-                  <div style={{ flex: '2 1 200px' }}>
+                  <div>
                     <label style={labelStyle}>Zákazka</label>
                     <input list="zoznam-zakaziek" placeholder="Vybrať alebo napísať..." value={z.zakazka} onChange={e => zmenaNovehoZaznamu(i, 'zakazka', e.target.value)} style={inputStyle} />
                   </div>
-                  <div style={{ flex: '1 1 100px' }}>
+                  <div>
                     <label style={labelStyle}>Príchod</label>
                     <input type="time" value={z.prichod} onChange={e => zmenaNovehoZaznamu(i, 'prichod', e.target.value)} style={inputStyle} />
                   </div>
-                  <div style={{ flex: '1 1 100px' }}>
+                  <div>
                     <label style={labelStyle}>Odchod</label>
                     <input type="time" value={z.odchod} onChange={e => zmenaNovehoZaznamu(i, 'odchod', e.target.value)} style={inputStyle} />
                   </div>
@@ -229,102 +318,203 @@ export default function DashboardPage() {
 
                 <div>
                   <label style={labelStyle}>Zamestnanci</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginTop: '15px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '12px', marginBottom: '20px' }}>
                     {dostupneMena.map(meno => (
                       <button
-                        key={meno} type="button" onClick={() => toggleMeno(i, meno)}
-                        style={{ padding: '6px 12px', border: '1px solid #000', cursor: 'pointer', fontSize: '12px', backgroundColor: z.mena.includes(meno) ? '#000' : '#fff', color: z.mena.includes(meno) ? '#fff' : '#000' }}
+                        key={meno} 
+                        type="button" 
+                        onClick={() => toggleMeno(i, meno)}
+                        style={{
+                          padding: '8px 16px',
+                          border: z.mena.includes(meno) ? 'none' : '1px solid #d2d2d7',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          backgroundColor: z.mena.includes(meno) ? '#0071e3' : '#f5f5f7',
+                          color: z.mena.includes(meno) ? '#fff' : '#000',
+                          borderRadius: '20px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!z.mena.includes(meno)) {
+                            (e.currentTarget as any).style.backgroundColor = '#efefef'
+                          } else {
+                            (e.currentTarget as any).style.backgroundColor = '#0077ed'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!z.mena.includes(meno)) {
+                            (e.currentTarget as any).style.backgroundColor = '#f5f5f7'
+                          } else {
+                            (e.currentTarget as any).style.backgroundColor = '#0071e3'
+                          }
+                        }}
                       >
                         {meno}
                       </button>
                     ))}
                     
                     <div style={{ display: 'flex', gap: '0', marginLeft: '20px' }}>
-                      <input id={`noveMeno-${i}`} type="text" placeholder="Nové meno" style={{ padding: '6px 10px', border: '1px solid #e5e5e5', borderRight: 'none', outline: 'none', width: '120px', fontSize: '12px' }} />
-                      <button type="button" onClick={() => {
-                        const input = document.getElementById(`noveMeno-${i}`) as HTMLInputElement;
-                        if(input && input.value.trim()) {
-                          const val = input.value.trim()
-                          if(!dostupneMena.includes(val)) setDostupneMena([...dostupneMena, val])
-                          if(!z.mena.includes(val)) toggleMeno(i, val)
-                          input.value = ''
-                        }
-                      }} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#000', border: '1px solid #e5e5e5', cursor: 'pointer', fontSize: '12px' }}>Pridať</button>
+                      <input 
+                        id={`noveMeno-${i}`} 
+                        type="text" 
+                        placeholder="Nové meno" 
+                        style={{ 
+                          ...inputStyle,
+                          borderRadius: '10px 0 0 10px',
+                          margin: '0'
+                        } as any}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          const input = document.getElementById(`noveMeno-${i}`) as HTMLInputElement;
+                          if(input && input.value.trim()) {
+                            const val = input.value.trim()
+                            if(!dostupneMena.includes(val)) setDostupneMena([...dostupneMena, val])
+                            if(!z.mena.includes(val)) toggleMeno(i, val)
+                            input.value = ''
+                          }
+                        }} 
+                        style={{
+                          ...buttonSecondaryStyle,
+                          borderRadius: '0 10px 10px 0',
+                          borderLeft: 'none',
+                          margin: '0'
+                        } as any}
+                        onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#efefef'}
+                        onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#f5f5f7'}
+                      >
+                        Pridať
+                      </button>
                     </div>
                   </div>
                 </div>
 
                 {noveZaznamy.length > 1 && (
                   <div style={{ marginTop: '20px' }}>
-                    <button onClick={() => setNoveZaznamy(noveZaznamy.filter((_, index) => index !== i))} style={{ padding: '0', backgroundColor: 'transparent', color: '#999', border: 'none', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}>Odstrániť blok</button>
+                    <button 
+                      onClick={() => setNoveZaznamy(noveZaznamy.filter((_, index) => index !== i))} 
+                      style={{ padding: '0', backgroundColor: 'transparent', color: '#ff3b30', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                      Odstrániť blok
+                    </button>
                   </div>
                 )}
               </div>
             ))}
             
-            <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
-              <button onClick={pridatPrazdnyZaznam} style={{ padding: '10px 20px', backgroundColor: '#fff', color: '#000', border: '1px solid #e5e5e5', cursor: 'pointer', fontSize: '13px' }}>Pridať ďalší blok</button>
-              <button onClick={ulozitVsetkyNoveZaznamy} style={{ padding: '10px 20px', backgroundColor: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>Uložiť záznamy</button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '30px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={pridatPrazdnyZaznam} 
+                style={buttonSecondaryStyle as any}
+                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#efefef'}
+                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#f5f5f7'}
+              >
+                Pridať ďalší blok
+              </button>
+              <button 
+                onClick={ulozitVsetkyNoveZaznamy} 
+                style={buttonPrimaryStyle as any}
+                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
+                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
+              >
+                Uložiť záznamy
+              </button>
             </div>
           </div>
         )}
 
         {/* FILTRE */}
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '30px' }}>
-          <select value={filterZakazka} onChange={(e) => setFilterZakazka(e.target.value)} style={{ padding: '8px 0', border: 'none', borderBottom: '1px solid #e5e5e5', outline: 'none', backgroundColor: 'transparent', color: '#000', minWidth: '150px', fontSize: '14px' }}>
+        <div style={{...cardStyle, marginBottom: '40px', display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
+          <select 
+            value={filterZakazka} 
+            onChange={(e) => setFilterZakazka(e.target.value)} 
+            style={{...inputStyle, flex: 1, minWidth: '150px'} as any}
+          >
             <option value="">Všetky zákazky</option>
             {dostupneZakazky.map((z) => <option key={z} value={z}>{z}</option>)}
           </select>
-          <select value={filterMesiac} disabled={!!filterDen} onChange={(e) => setFilterMesiac(e.target.value)} style={{ padding: '8px 0', border: 'none', borderBottom: '1px solid #e5e5e5', outline: 'none', backgroundColor: 'transparent', color: '#000', minWidth: '150px', fontSize: '14px' }}>
+          <select 
+            value={filterMesiac} 
+            disabled={!!filterDen} 
+            onChange={(e) => setFilterMesiac(e.target.value)} 
+            style={{...inputStyle, flex: 1, minWidth: '150px', opacity: filterDen ? 0.5 : 1} as any}
+          >
             {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
           </select>
-          <input type="date" value={filterDen} onChange={(e) => setFilterDen(e.target.value)} style={{ padding: '8px 0', border: 'none', borderBottom: '1px solid #e5e5e5', outline: 'none', backgroundColor: 'transparent', color: '#000', fontSize: '14px' }} />
+          <input 
+            type="date" 
+            value={filterDen} 
+            onChange={(e) => setFilterDen(e.target.value)} 
+            style={{...inputStyle, flex: 1, minWidth: '150px'} as any}
+          />
         </div>
 
         {/* TABUĽKA */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #000' }}>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}>Dátum</th>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}>Zamestnanec</th>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}>Zákazka</th>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}>Čas</th>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}>Hodiny</th>
-                <th style={{ padding: '15px 10px', color: '#999', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '400' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {zaznamy.length === 0 ? ( <tr><td colSpan={6} style={{ padding: '40px 10px', color: '#999', textAlign: 'center' }}>Žiadne dáta.</td></tr> ) : (
-                zaznamy.map((z) => {
-                  const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
-                  const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
-                  
-                  const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
+        <div style={cardStyle}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '14px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Dátum</th>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Zamestnanec</th>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Zákazka</th>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Čas</th>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Hodiny</th>
+                  <th style={{ padding: '16px', color: '#86868b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {zaznamy.length === 0 ? ( 
+                  <tr><td colSpan={6} style={{ padding: '40px 16px', color: '#d2d2d7', textAlign: 'center', fontSize: '14px' }}>Žiadne dáta.</td></tr> 
+                ) : (
+                  zaznamy.map((z) => {
+                    const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
+                    const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
+                    const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
 
-                  return (
-                    <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f5', backgroundColor: jeVikend ? '#fff7ed' : 'transparent' }}>
-                      <td style={{ padding: '15px 10px', color: '#000' }}>
-                        {z.datum}
-                        {jeVikend && <span style={{ fontSize: '9px', backgroundColor: '#ffedd5', color: '#c2410c', padding: '2px 6px', marginLeft: '8px', letterSpacing: '1px', textTransform: 'uppercase', borderRadius: '3px', fontWeight: '600' }}>Víkend</span>}
-                      </td>
-                      <td style={{ padding: '15px 10px', fontWeight: '500', color: '#000' }}>{z.meno}</td>
-                      <td style={{ padding: '15px 10px', color: '#666' }}>{z.zakazka}</td>
-                      
-                      <td style={{ padding: '15px 10px', color: jePodozrivy ? '#b91c1c' : '#666', fontWeight: jePodozrivy ? '600' : 'normal' }}>
-                        {z.prichod} - {z.odchod}
-                      </td>
-                      <td style={{ padding: '15px 10px', color: jePodozrivy ? '#b91c1c' : '#000', fontWeight: jePodozrivy ? '600' : 'normal' }} title={jePodozrivy ? "Tento čas vyzerá podozrivo. Skontrolujte príchod/odchod." : ""}>
-                        {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '10px', marginLeft: '5px', textTransform: 'uppercase' }}>(Chyba?)</span>}
-                      </td>
+                    return (
+                      <tr 
+                        key={z.id} 
+                        style={{ 
+                          borderBottom: '1px solid #f5f5f7',
+                          backgroundColor: jeVikend ? '#f5f5f7' : 'transparent',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f7'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = jeVikend ? '#f5f5f7' : 'transparent'}
+                      >
+                        <td style={{ padding: '16px', color: '#000', fontWeight: '500' }}>
+                          {z.datum}
+                          {jeVikend && <span style={{ fontSize: '9px', backgroundColor: '#ffb347', color: '#6f2c00', padding: '2px 6px', marginLeft: '8px', letterSpacing: '0.5px', textTransform: 'uppercase', borderRadius: '4px', fontWeight: '600' }}>Víkend</span>}
+                        </td>
+                        <td style={{ padding: '16px', fontWeight: '600', color: '#000' }}>{z.meno}</td>
+                        <td style={{ padding: '16px', color: '#666' }}>{z.zakazka}</td>
+                        
+                        <td style={{ padding: '16px', color: jePodozrivy ? '#ff3b30' : '#666', fontWeight: jePodozrivy ? '600' : 'normal' }}>
+                          {z.prichod} - {z.odchod}
+                        </td>
+                        <td style={{ padding: '16px', color: jePodozrivy ? '#ff3b30' : '#000', fontWeight: jePodozrivy ? '700' : '600' }} title={jePodozrivy ? "Tento čas vyzerá podozrivo. Skontrolujte príchod/odchod." : ""}>
+                          {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '10px', marginLeft: '5px', textTransform: 'uppercase' }}>⚠</span>}
+                        </td>
 
-                      <td style={{ padding: '15px 10px', textAlign: 'right' }}><button onClick={() => vymazat(z.id)} style={{ color: '#999', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px' }}>Zmazať</button></td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => vymazat(z.id)} 
+                            style={{ color: '#d2d2d7', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
+                          >
+                            Zmazať
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
