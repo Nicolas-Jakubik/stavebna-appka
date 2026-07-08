@@ -12,15 +12,58 @@ export default function ZamestnanciPage() {
 
   const [zamestnanci, setZamestnanci] = useState<any[]>([])
   
-  // Stavy pre pridanie nového zamestnanca
   const [noveMeno, setNoveMeno] = useState('')
   const [novaSadzba, setNovaSadzba] = useState('')
   const [pridavaSa, setPridavaSa] = useState(false)
 
-  // Stavy pre úpravu existujúceho zamestnanca
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovaneMeno, setUpravovaneMeno] = useState('')
   const [upravovanaSadzba, setUpravovanaSadzba] = useState('')
+
+  // ===== APPLE KOMPAKTNÉ ŠTÝLY =====
+  const cardStyle = {
+    backgroundColor: '#ffffff',
+    borderRadius: '14px',
+    padding: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    border: '1px solid rgba(0,0,0,0.08)'
+  }
+
+  const inputStyle = { 
+    padding: '8px 10px', 
+    borderRadius: '8px',
+    border: '1px solid #d2d2d7', 
+    outline: 'none', 
+    fontSize: '12px', 
+    width: '100%', 
+    backgroundColor: '#f5f5f7',
+    color: '#1d1d1f',
+    fontFamily: 'inherit',
+    transition: 'all 0.2s',
+    boxSizing: 'border-box' as const
+  }
+  
+  const labelStyle = { 
+    display: 'block', 
+    fontSize: '10px', 
+    color: '#86868b', 
+    marginBottom: '4px', 
+    textTransform: 'uppercase' as const, 
+    letterSpacing: '0.5px',
+    fontWeight: '500'
+  }
+
+  const buttonPrimaryStyle = {
+    padding: '8px 16px',
+    backgroundColor: '#0071e3',
+    color: '#fff',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '500',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+  }
 
   function skontrolovatHeslo(e: React.FormEvent) {
     e.preventDefault()
@@ -48,8 +91,6 @@ export default function ZamestnanciPage() {
     if (!noveMeno.trim()) return
 
     setPridavaSa(true)
-    
-    // Zabezpečíme, že ak nezadá sadzbu, uloží sa 0
     const sadzbaCislo = parseFloat(novaSadzba) || 0
 
     const { error } = await supabase
@@ -69,7 +110,7 @@ export default function ZamestnanciPage() {
   }
 
   async function vymazatZamestnanca(id: string, meno: string) {
-    if (!confirm(`Naozaj chcete vymazať zamestnanca "${meno}"? (Jeho doterajšia dochádzka ostane zachovaná)`)) return
+    if (!confirm(`Naozaj vymazať "${meno}"? (Dochádzka ostane zachovaná)`)) return
     
     const { error } = await supabase
       .from('zamestnanci')
@@ -121,100 +162,179 @@ export default function ZamestnanciPage() {
 
   if (!jeOdomknute) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px' }}>
-        <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-          <h2 style={{ color: '#000000', marginBottom: '20px', fontSize: '20px' }}>Správa zamestnancov</h2>
-          <form onSubmit={skontrolovatHeslo}>
-            <input type="password" placeholder="Zadajte heslo" value={zadaneHeslo} onChange={e => setZadaneHeslo(e.target.value)} style={{ padding: '12px 0', border: 'none', borderBottom: '1px solid #e5e7eb', width: '100%', fontSize: '16px', outline: 'none', marginBottom: '20px', backgroundColor: 'transparent', color: '#000000', textAlign: 'center' }} />
-            {chybaHesla && <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '-10px', marginBottom: '15px' }}>Nesprávne heslo</p>}
-            <button type="submit" style={{ padding: '12px', width: '100%', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer' }}>Odomknúť</button>
-          </form>
-        </div>
-        <div style={{ marginTop: '30px' }}>
-          <Link href="/" style={{ color: '#9ca3af', fontSize: '13px', textDecoration: 'none' }}>← Späť na formulár</Link>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: '320px' }}>
+          <div style={{ ...cardStyle, textAlign: 'center' }}>
+            <h2 style={{ color: '#1d1d1f', marginBottom: '20px', fontSize: '26px', fontWeight: '600', letterSpacing: '-0.003em', margin: '0 0 20px 0' }}>Zamestnanci</h2>
+            <form onSubmit={skontrolovatHeslo}>
+              <input 
+                type="password" 
+                placeholder="Heslo" 
+                value={zadaneHeslo} 
+                onChange={e => setZadaneHeslo(e.target.value)} 
+                required 
+                style={{ ...inputStyle, marginBottom: '14px', textAlign: 'center' }}
+              />
+              {chybaHesla && <p style={{ color: '#ff3b30', fontSize: '11px', marginBottom: '12px' }}>Nesprávne heslo.</p>}
+              <button 
+                type="submit" 
+                style={{ ...buttonPrimaryStyle, width: '100%' } as any}
+                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
+                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
+              >
+                Vstúpiť
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fafafa', padding: '40px 20px', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
+      <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* NAVIGAČNÉ MENU */}
-        <div style={{ display: 'flex', gap: '20px', paddingBottom: '20px', borderBottom: '1px solid #e5e7eb', marginBottom: '30px', flexWrap: 'wrap' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#6b7280' }}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#6b7280' }}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#111827', fontWeight: 'bold' }}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#6b7280' }}>Výplaty</Link>
-          <Link href="/" style={{ textDecoration: 'none', color: '#ef4444', marginLeft: 'auto', fontWeight: '500' }}>← Odhlásiť sa</Link>
+        {/* NAVIGÁCIA */}
+        <div style={{ display: 'flex', gap: '16px', paddingBottom: '16px', marginBottom: '20px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center', fontSize: '13px' }}>
+          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
+          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
+          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600' }}>Zamestnanci</Link>
+          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
+          <Link href="/" style={{ textDecoration: 'none', color: '#ff3b30', marginLeft: 'auto', fontWeight: '500', fontSize: '12px' }}>← Odhlásiť sa</Link>
         </div>
 
-        <h2 style={{ color: '#000000', margin: 0, marginBottom: '40px' }}>Zoznam zamestnancov</h2>
+        <h2 style={{ color: '#1d1d1f', margin: '0 0 24px 0', fontSize: '22px', fontWeight: '600' }}>Zoznam zamestnancov</h2>
 
-        {/* Formulár na pridanie nového zamestnanca */}
-        <form onSubmit={pridatZamestnanca} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '40px', backgroundColor: '#f9fafb', padding: '24px', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-          <span style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>Pridať nového zamestnanca</span>
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 2, minWidth: '200px' }}>
-              <input type="text" placeholder="Meno a priezvisko" value={noveMeno} onChange={(e) => setNoveMeno(e.target.value)} required style={{ padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#000000', outline: 'none', width: '100%', fontSize: '15px', backgroundColor: 'white' }} />
+        {/* FORMULÁR NA PRIDANIE */}
+        <div style={{...cardStyle, marginBottom: '24px'}}>
+          <form onSubmit={pridatZamestnanca}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '10px', alignItems: 'flex-end' }}>
+              <div style={{ minWidth: 0 }}>
+                <label style={labelStyle}>Meno</label>
+                <input 
+                  type="text" 
+                  placeholder="Meno a priezvisko" 
+                  value={noveMeno} 
+                  onChange={(e) => setNoveMeno(e.target.value)} 
+                  required 
+                  style={{...inputStyle, fontSize: '13px'}}
+                />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <label style={labelStyle}>Sadzba</label>
+                <input 
+                  type="number" 
+                  placeholder="€/h" 
+                  value={novaSadzba} 
+                  onChange={(e) => setNovaSadzba(e.target.value)} 
+                  required 
+                  step="0.1" 
+                  style={{...inputStyle, fontSize: '13px'}}
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={pridavaSa} 
+                style={{ ...buttonPrimaryStyle, minWidth: '100px' } as any}
+                onMouseEnter={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0077ed')}
+                onMouseLeave={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0071e3')}
+              >
+                {pridavaSa ? 'Pridávam...' : '+ Pridať'}
+              </button>
             </div>
-            <div style={{ flex: 1, minWidth: '120px' }}>
-              <input type="number" placeholder="Sadzba €/h" value={novaSadzba} onChange={(e) => setNovaSadzba(e.target.value)} required step="0.1" style={{ padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#000000', outline: 'none', width: '100%', fontSize: '15px', backgroundColor: 'white' }} />
-            </div>
-            <button type="submit" disabled={pridavaSa} style={{ padding: '12px 24px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: pridavaSa ? 'not-allowed' : 'pointer', minWidth: '140px' }}>
-              {pridavaSa ? 'Pridávam...' : '+ Pridať'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
 
-        {/* Tabuľka zamestnancov */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid #f3f4f6' }}>
-              <th style={{ padding: '12px 0', color: '#666', fontSize: '14px' }}>Meno zamestnanca</th>
-              <th style={{ padding: '12px 0', color: '#666', fontSize: '14px', width: '120px' }}>Sadzba (€/h)</th>
-              <th style={{ padding: '12px 0', color: '#666', fontSize: '14px', textAlign: 'right', width: '150px' }}>Akcia</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zamestnanci.length === 0 ? (
-              <tr><td colSpan={3} style={{ padding: '30px 0', color: '#666', textAlign: 'center' }}>Zatiaľ nemáte pridaných žiadnych zamestnancov.</td></tr>
-            ) : (
-              zamestnanci.map((z) => (
-                <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '15px 0', color: '#000000', fontWeight: '500' }}>
-                    {upravovaneId === z.id ? (
-                      <input type="text" value={upravovaneMeno} onChange={(e) => setUpravovaneMeno(e.target.value)} autoFocus style={{ padding: '6px 10px', border: '1px solid #111827', borderRadius: '6px', color: '#000000', outline: 'none', width: '100%', maxWidth: '250px' }} />
-                    ) : (
-                      z.meno
-                    )}
-                  </td>
-                  <td style={{ padding: '15px 0', color: '#000000' }}>
-                    {upravovaneId === z.id ? (
-                      <input type="number" value={upravovanaSadzba} onChange={(e) => setUpravovanaSadzba(e.target.value)} step="0.1" style={{ padding: '6px 10px', border: '1px solid #111827', borderRadius: '6px', color: '#000000', outline: 'none', width: '80px' }} />
-                    ) : (
-                      `${z.sadzba || 0} €`
-                    )}
-                  </td>
-                  <td style={{ padding: '15px 0', textAlign: 'right' }}>
-                    {upravovaneId === z.id ? (
-                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => zrusitUpravu()} style={{ color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>Zrušiť</button>
-                        <button onClick={() => ulozitUpravu(z.id)} style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>Uložiť</button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => zacatUpravu(z.id, z.meno, z.sadzba)} style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>Upraviť</button>
-                        <button onClick={() => vymazatZamestnanca(z.id, z.meno)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>Zmazať</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {/* TABUĽKA */}
+        <div style={{...cardStyle}}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
+                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Meno</th>
+                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '100px', textAlign: 'center' }}>Sadzba</th>
+                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '140px', textAlign: 'right' }}>Akcia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zamestnanci.length === 0 ? (
+                <tr><td colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadni zamestnanci.</td></tr>
+              ) : (
+                zamestnanci.map((z) => (
+                  <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f7' }}>
+                    <td style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>
+                      {upravovaneId === z.id ? (
+                        <input 
+                          type="text" 
+                          value={upravovaneMeno} 
+                          onChange={(e) => setUpravovaneMeno(e.target.value)} 
+                          autoFocus 
+                          style={{...inputStyle, maxWidth: '200px', fontSize: '12px'}}
+                        />
+                      ) : (
+                        z.meno
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 0', color: '#1d1d1f', textAlign: 'center', fontWeight: '500' }}>
+                      {upravovaneId === z.id ? (
+                        <input 
+                          type="number" 
+                          value={upravovanaSadzba} 
+                          onChange={(e) => setUpravovanaSadzba(e.target.value)} 
+                          step="0.1" 
+                          style={{...inputStyle, width: '80px', fontSize: '12px'}}
+                        />
+                      ) : (
+                        `${z.sadzba || 0} €`
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                      {upravovaneId === z.id ? (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button 
+                            onClick={() => zrusitUpravu()} 
+                            style={{ color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}
+                          >
+                            Zrušiť
+                          </button>
+                          <button 
+                            onClick={() => ulozitUpravu(z.id)} 
+                            style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', transition: 'color 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#10b981'}
+                          >
+                            Uložiť
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                          <button 
+                            onClick={() => zacatUpravu(z.id, z.meno, z.sadzba)} 
+                            style={{ color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#0077ed'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#0071e3'}
+                          >
+                            Upraviť
+                          </button>
+                          <button 
+                            onClick={() => vymazatZamestnanca(z.id, z.meno)} 
+                            style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
+                          >
+                            Zmazať
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
       </div>
     </div>
