@@ -33,25 +33,26 @@ export default function DashboardPage() {
   }
 
   const inputStyle = { 
-    padding: '10px 12px', 
-    borderRadius: '10px',
+    padding: '8px 10px', 
+    borderRadius: '8px',
     border: '1px solid #d2d2d7', 
     outline: 'none', 
-    fontSize: '13px', 
+    fontSize: '12px', 
     width: '100%', 
     backgroundColor: '#f5f5f7',
     color: '#000',
     fontFamily: 'inherit',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
+    boxSizing: 'border-box' as const
   }
   
   const labelStyle = { 
     display: 'block', 
-    fontSize: '11px', 
+    fontSize: '10px', 
     color: '#86868b', 
-    marginBottom: '6px', 
+    marginBottom: '4px', 
     textTransform: 'uppercase' as const, 
-    letterSpacing: '0.6px',
+    letterSpacing: '0.5px',
     fontWeight: '500'
   }
 
@@ -238,8 +239,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
-      <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
+      <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
         
         {/* NAVIGÁCIA */}
         <div style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -253,15 +254,15 @@ export default function DashboardPage() {
         {/* ŠTATISTIKY - APPLE CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 6px 0'}}>Odpracované hodiny</p>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{celkoveHodiny.toFixed(2)}</h3>
           </div>
           <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 6px 0'}}>Záznamy</p>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Záznamy</p>
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{pocetZaznamov}</h3>
           </div>
           <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 6px 0'}}>Najaktívnejší</p>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Najaktívnejší</p>
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{najaktivnejsi}</h3>
           </div>
         </div>
@@ -294,22 +295,22 @@ export default function DashboardPage() {
             {noveZaznamy.map((z, i) => (
               <div key={i} style={{ marginBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', paddingBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', borderBottom: i !== noveZaznamy.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '12px' }}>
-                  <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ minWidth: 0 }}>
                     <label style={labelStyle}>Dátum</label>
-                    <input type="date" value={z.datum} onChange={e => zmenaNovehoZaznamu(i, 'datum', e.target.value)} style={inputStyle} />
+                    <input type="date" value={z.datum} onChange={e => zmenaNovehoZaznamu(i, 'datum', e.target.value)} style={{...inputStyle, fontSize: '12px'}} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <label style={labelStyle}>Zákazka</label>
-                    <input list="zoznam-zakaziek" placeholder="Vybrať..." value={z.zakazka} onChange={e => zmenaNovehoZaznamu(i, 'zakazka', e.target.value)} style={inputStyle} />
+                    <input list="zoznam-zakaziek" placeholder="Vybrať..." value={z.zakazka} onChange={e => zmenaNovehoZaznamu(i, 'zakazka', e.target.value)} style={{...inputStyle, fontSize: '12px'}} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <label style={labelStyle}>Príchod</label>
-                    <input type="time" value={z.prichod} onChange={e => zmenaNovehoZaznamu(i, 'prichod', e.target.value)} style={inputStyle} />
+                    <input type="time" value={z.prichod} onChange={e => zmenaNovehoZaznamu(i, 'prichod', e.target.value)} style={{...inputStyle, fontSize: '12px'}} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <label style={labelStyle}>Odchod</label>
-                    <input type="time" value={z.odchod} onChange={e => zmenaNovehoZaznamu(i, 'odchod', e.target.value)} style={inputStyle} />
+                    <input type="time" value={z.odchod} onChange={e => zmenaNovehoZaznamu(i, 'odchod', e.target.value)} style={{...inputStyle, fontSize: '12px'}} />
                   </div>
                 </div>
 
