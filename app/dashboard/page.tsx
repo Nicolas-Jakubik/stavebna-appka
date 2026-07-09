@@ -23,13 +23,12 @@ export default function DashboardPage() {
     { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
 
-  // States pre úpravu
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovanePrichod, setUpravovanePrichod] = useState('')
   const [upravovaneOdchod, setUpravovaneOdchod] = useState('')
   const [upravovaneHodiny, setUpravovaneHodiny] = useState('')
+  const [chybaUpravaHodiny, setChybaUpravaHodiny] = useState('')
 
-  // ===== APPLE KOMPAKTNÉ ŠTÝLY =====
   const cardStyle = {
     backgroundColor: '#ffffff',
     borderRadius: '14px',
@@ -88,6 +87,28 @@ export default function DashboardPage() {
     fontWeight: '500',
     borderRadius: '98px',
     transition: 'all 0.2s',
+  }
+
+  function arePlacesValidMinutes(time: string): boolean {
+    if (!time) return true
+    const [hours, minutes] = time.split(':').map(Number)
+    const validMinutes = [0, 15, 30, 45]
+    return validMinutes.includes(minutes)
+  }
+
+  function getTimeValidationError(prichod: string, odchod: string): string {
+    if (!prichod || !odchod) return ''
+    if (!arePlacesValidMinutes(prichod)) return 'Príchod: Dovolené sú iba 00, 15, 30, 45 minút'
+    if (!arePlacesValidMinutes(odchod)) return 'Odchod: Dovolené sú iba 00, 15, 30, 45 minút'
+    return ''
+  }
+
+  function getDuplicateCount(datum: string, meno: string, excludeId?: string): number {
+    return zaznamy.filter(z => 
+      z.datum === datum && 
+      z.meno === meno && 
+      (!excludeId || z.id !== excludeId)
+    ).length
   }
 
   function skontrolovatHeslo(e: React.FormEvent) {
@@ -160,6 +181,7 @@ export default function DashboardPage() {
     setUpravovanePrichod(prichod)
     setUpravovaneOdchod(odchod)
     setUpravovaneHodiny(vypocitajHodiny(prichod, odchod).toFixed(2))
+    setChybaUpravaHodiny('')
   }
 
   function zrusitUpravu() {
@@ -167,30 +189,45 @@ export default function DashboardPage() {
     setUpravovanePrichod('')
     setUpravovaneOdchod('')
     setUpravovaneHodiny('')
+    setChybaUpravaHodiny('')
   }
 
   function handleTimeChange(isOdchod: boolean, value: string) {
     if (isOdchod) {
       setUpravovaneOdchod(value)
       if (upravovanePrichod && value) {
-        setUpravovaneHodiny(vypocitajHodiny(upravovanePrichod, value).toFixed(2))
+        const error = getTimeValidationError(upravovanePrichod, value)
+        setChybaUpravaHodiny(error)
+        if (!error) {
+          setUpravovaneHodiny(vypocitajHodiny(upravovanePrichod, value).toFixed(2))
+        }
       }
     } else {
       setUpravovanePrichod(value)
       if (value && upravovaneOdchod) {
-        setUpravovaneHodiny(vypocitajHodiny(value, upravovaneOdchod).toFixed(2))
+        const error = getTimeValidationError(value, upravovaneOdchod)
+        setChybaUpravaHodiny(error)
+        if (!error) {
+          setUpravovaneHodiny(vypocitajHodiny(value, upravovaneOdchod).toFixed(2))
+        }
       }
     }
   }
 
   async function ulozitUpravu(id: string) {
-    const { error } = await supabase
+    const error = getTimeValidationError(upravovanePrichod, upravovaneOdchod)
+    if (error) {
+      setChybaUpravaHodiny(error)
+      return
+    }
+
+    const { error: supabaseError } = await supabase
       .from('dochadzka')
       .update({ prichod: upravovanePrichod, odchod: upravovaneOdchod })
       .eq('id', id)
 
-    if (error) {
-      console.error("Chyba úpravy:", error)
+    if (supabaseError) {
+      console.error("Chyba úpravy:", supabaseError)
     } else {
       zrusitUpravu()
       nacitaj()
@@ -224,6 +261,11 @@ export default function DashboardPage() {
     
     noveZaznamy.forEach(z => {
       if (z.mena.length > 0 && z.zakazka && z.prichod && z.odchod && z.datum) {
+        const error = getTimeValidationError(z.prichod, z.odchod)
+        if (error) {
+          alert(error)
+          return
+        }
         z.mena.forEach(meno => {
           dataNaVlozenie.push({ datum: z.datum, meno: meno, zakazka: z.zakazka, prichod: z.prichod, odchod: z.odchod })
         })
@@ -291,7 +333,6 @@ export default function DashboardPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
       <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* NAVIGÁCIA */}
         <div style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
           <Link href="/dashboard" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Dochádzka</Link>
           <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
@@ -300,7 +341,16 @@ export default function DashboardPage() {
           <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
-        {/* ŠTATISTIKY */}
+        <div style={{...cardStyle, marginBottom: '20px', borderLeft: '4px solid #0071e3', backgroundColor: '#f9fafb'}}>
+          <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#1d1d1f' }}>📋 Legenda:</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px', fontSize: '12px' }}>
+            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Chybné časy:</strong> Minúty musia byť 00, 15, 30 alebo 45</div>
+            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Duplikát:</strong> Rovnaký deň + rovnaká osoba viackrát</div>
+            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#ffb347', border: '1px solid #ff9800', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Víkend:</strong> Sobota alebo nedeľa</div>
+            <div><span style={{ fontSize: '13px', fontWeight: '600', color: '#ff3b30' }}>⚠</span> <strong>Podozrivý čas:</strong> Pred 05:00 alebo po 21:00</div>
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
@@ -316,7 +366,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* TLAČIDLO PRE FORMULÁR */}
         <div style={{ marginBottom: '16px' }}>
           <button 
             onClick={() => setUkazatFormular(!ukazatFormular)} 
@@ -336,7 +385,6 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* FORMULÁR */}
         {ukazatFormular && (
           <div style={{...cardStyle, marginBottom: '20px'}}>
             <datalist id="zoznam-zakaziek">{dostupneZakazky.map(zak => <option key={zak} value={zak} />)}</datalist>
@@ -474,7 +522,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* FILTRE */}
         <div style={{...cardStyle, marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
           <select 
             value={filterZakazka} 
@@ -500,7 +547,6 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* TABUĽKA */}
         <div style={cardStyle}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '12px' }}>
@@ -523,45 +569,50 @@ export default function DashboardPage() {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
+                    const jeDuplicite = getDuplicateCount(z.datum, z.meno, z.id) > 0
+                    const maCiasChybu = !arePlacesValidMinutes(z.prichod) || !arePlacesValidMinutes(z.odchod)
 
                     return (
                       <tr 
                         key={z.id} 
                         style={{ 
                           borderBottom: '1px solid #f5f5f7',
-                          backgroundColor: jeVikend ? '#f5f5f7' : 'transparent',
+                          backgroundColor: maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jeVikend ? '#f5f5f7' : 'transparent',
                           transition: 'background-color 0.2s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f7'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = jeVikend ? '#f5f5f7' : 'transparent'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jeVikend ? '#f5f5f7' : 'transparent'}
                       >
                         <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
                           {z.datum}
                           {jeVikend && <span style={{ fontSize: '8px', backgroundColor: '#ffb347', color: '#6f2c00', padding: '1px 3px', marginLeft: '4px', letterSpacing: '0.3px', textTransform: 'uppercase', borderRadius: '2px', fontWeight: '600' }}>W</span>}
                         </td>
-                        <td style={{ padding: '10px 8px', fontWeight: '600', color: '#1d1d1f' }}>{z.meno}</td>
+                        <td style={{ padding: '10px 8px', fontWeight: '600', color: '#1d1d1f' }}>
+                          {z.meno}
+                          {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>×2</span>}
+                        </td>
                         <td style={{ padding: '10px 8px', color: '#666', fontSize: '11px' }}>{z.zakazka}</td>
                         
-                        <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
+                        <td style={{ padding: '10px 8px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
                               value={upravovanePrichod} 
                               onChange={(e) => handleTimeChange(false, e.target.value)}
-                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px'}}
+                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px', borderColor: chybaUpravaHodiny ? '#ff3b30' : '#d2d2d7'}}
                             />
                           ) : (
                             z.prichod
                           )}
                         </td>
 
-                        <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
+                        <td style={{ padding: '10px 8px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
                               value={upravovaneOdchod} 
                               onChange={(e) => handleTimeChange(true, e.target.value)}
-                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px'}}
+                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px', borderColor: chybaUpravaHodiny ? '#ff3b30' : '#d2d2d7'}}
                             />
                           ) : (
                             z.odchod
@@ -632,6 +683,11 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
+          {chybaUpravaHodiny && (
+            <div style={{ padding: '12px 8px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', color: '#ff3b30', fontSize: '11px', marginTop: '12px', fontWeight: '500' }}>
+              ⚠️ {chybaUpravaHodiny}
+            </div>
+          )}
         </div>
       </div>
     </div>
