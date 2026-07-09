@@ -341,14 +341,11 @@ export default function DashboardPage() {
           <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
-        <div style={{...cardStyle, marginBottom: '20px', borderLeft: '4px solid #0071e3', backgroundColor: '#f9fafb'}}>
-          <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#1d1d1f' }}>📋 Legenda:</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px', fontSize: '12px' }}>
-            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Chybné časy:</strong> Minúty musia byť 00, 15, 30 alebo 45</div>
-            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Duplikát:</strong> Rovnaký deň + rovnaká osoba viackrát</div>
-            <div><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#ffb347', border: '1px solid #ff9800', borderRadius: '3px', marginRight: '6px', verticalAlign: 'middle' }}></span> <strong>Víkend:</strong> Sobota alebo nedeľa</div>
-            <div><span style={{ fontSize: '13px', fontWeight: '600', color: '#ff3b30' }}>⚠</span> <strong>Podozrivý čas:</strong> Pred 05:00 alebo po 21:00</div>
-          </div>
+        <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#f9fafb', borderLeft: '3px solid #0071e3', borderRadius: '6px', fontSize: '11px' }}>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Chybné časy</span>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Duplikát</span>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#ffb347', border: '1px solid #ff9800', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Víkend</span>
+          <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
