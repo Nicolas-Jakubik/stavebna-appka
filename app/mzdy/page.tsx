@@ -17,7 +17,6 @@ export default function MzdyPage() {
   const [databazoviZamestnanci, setDatabazoviZamestnancov] = useState<any[]>([])
   const [stavyStavieb, setStavyStavieb] = useState<Record<string, string>>({})
 
-  // ===== APPLE KOMPAKTNÉ ŠTÝLY =====
   const cardStyle = {
     backgroundColor: '#ffffff',
     borderRadius: '14px',
@@ -51,14 +50,16 @@ export default function MzdyPage() {
   }
 
   const buttonPrimaryStyle = {
-    padding: '8px 16px',
+    padding: '8px 18px',
     backgroundColor: '#0071e3',
     color: '#fff',
     border: 'none',
     cursor: 'pointer',
     fontSize: '12px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.6px',
     fontWeight: '500',
-    borderRadius: '8px',
+    borderRadius: '98px',
     transition: 'all 0.2s',
   }
 
@@ -255,14 +256,14 @@ export default function MzdyPage() {
         .ukazat-iba-pri-tlaci { display: none; }
       `}</style>
 
-      <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '900px', margin: '0 auto', ...cardStyle }}>
+      <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
         
-        <div className="skryt-pri-tlaci" style={{ display: 'flex', gap: '16px', paddingBottom: '16px', marginBottom: '20px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center', fontSize: '13px' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600' }}>Výplaty</Link>
-          <Link href="/" style={{ textDecoration: 'none', color: '#ff3b30', marginLeft: 'auto', fontWeight: '500', fontSize: '12px' }}>← Odhlásiť sa</Link>
+        <div className="skryt-pri-tlaci" style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
+          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
+          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
+          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Výplaty</Link>
+          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
         <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', borderBottom: '2px solid #1d1d1f', paddingBottom: '12px', marginBottom: '20px' }}>
@@ -270,7 +271,6 @@ export default function MzdyPage() {
           <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#86868b' }}>Obdobie: <strong>{aktualnyNazovMesiaca}</strong></p>
         </div>
 
-        {/* FILTRE */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px', backgroundColor: '#f5f5f7', padding: '12px 12px', borderRadius: '10px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', fontSize: '12px' }}>
             <span className="skryt-pri-tlaci" style={{ fontWeight: '600', color: '#1d1d1f' }}>Obdobie:</span>
@@ -298,7 +298,7 @@ export default function MzdyPage() {
           </button>
         </div>
 
-        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle }}>
           <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>1. Výplata</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
