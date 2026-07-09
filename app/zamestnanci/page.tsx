@@ -20,7 +20,6 @@ export default function ZamestnanciPage() {
   const [upravovaneMeno, setUpravovaneMeno] = useState('')
   const [upravovanaSadzba, setUpravovanaSadzba] = useState('')
 
-  // ===== APPLE KOMPAKTNÉ ŠTÝLY =====
   const cardStyle = {
     backgroundColor: '#ffffff',
     borderRadius: '14px',
@@ -54,14 +53,30 @@ export default function ZamestnanciPage() {
   }
 
   const buttonPrimaryStyle = {
-    padding: '8px 16px',
+    padding: '8px 18px',
     backgroundColor: '#0071e3',
     color: '#fff',
     border: 'none',
     cursor: 'pointer',
     fontSize: '12px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.6px',
     fontWeight: '500',
-    borderRadius: '8px',
+    borderRadius: '98px',
+    transition: 'all 0.2s',
+  }
+
+  const buttonSecondaryStyle = {
+    padding: '8px 18px',
+    backgroundColor: '#f5f5f7',
+    color: '#1d1d1f',
+    border: '1px solid #d2d2d7',
+    cursor: 'pointer',
+    fontSize: '12px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.6px',
+    fontWeight: '500',
+    borderRadius: '98px',
     transition: 'all 0.2s',
   }
 
@@ -195,18 +210,14 @@ export default function ZamestnanciPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
       <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* NAVIGÁCIA */}
-        <div style={{ display: 'flex', gap: '16px', paddingBottom: '16px', marginBottom: '20px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center', fontSize: '13px' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600' }}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
-          <Link href="/" style={{ textDecoration: 'none', color: '#ff3b30', marginLeft: 'auto', fontWeight: '500', fontSize: '12px' }}>← Odhlásiť sa</Link>
+        <div style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
+          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
+          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Zamestnanci</Link>
+          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
+          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
-        <h2 style={{ color: '#1d1d1f', margin: '0 0 24px 0', fontSize: '22px', fontWeight: '600' }}>Zoznam zamestnancov</h2>
-
-        {/* FORMULÁR NA PRIDANIE */}
         <div style={{...cardStyle, marginBottom: '24px'}}>
           <form onSubmit={pridatZamestnanca}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '10px', alignItems: 'flex-end' }}>
@@ -246,7 +257,6 @@ export default function ZamestnanciPage() {
           </form>
         </div>
 
-        {/* TABUĽKA */}
         <div style={{...cardStyle}}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
@@ -290,7 +300,7 @@ export default function ZamestnanciPage() {
                     </td>
                     <td style={{ padding: '10px 0', textAlign: 'right' }}>
                       {upravovaneId === z.id ? (
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                           <button 
                             onClick={() => zrusitUpravu()} 
                             style={{ color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
