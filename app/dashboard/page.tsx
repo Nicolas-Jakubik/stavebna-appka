@@ -23,6 +23,12 @@ export default function DashboardPage() {
     { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
 
+  // States pre úpravu
+  const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
+  const [upravovanePrichod, setUpravovanePrichod] = useState('')
+  const [upravovaneOdchod, setUpravovaneOdchod] = useState('')
+  const [upravovaneHodiny, setUpravovaneHodiny] = useState('')
+
   // ===== APPLE KOMPAKTNÉ ŠTÝLY =====
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -149,6 +155,49 @@ export default function DashboardPage() {
     nacitajFiltre()
   }
 
+  function zacatUpravu(id: string, prichod: string, odchod: string) {
+    setUpravovaneId(id)
+    setUpravovanePrichod(prichod)
+    setUpravovaneOdchod(odchod)
+    setUpravovaneHodiny(vypocitajHodiny(prichod, odchod).toFixed(2))
+  }
+
+  function zrusitUpravu() {
+    setUpravovaneId(null)
+    setUpravovanePrichod('')
+    setUpravovaneOdchod('')
+    setUpravovaneHodiny('')
+  }
+
+  function handleTimeChange(isOdchod: boolean, value: string) {
+    if (isOdchod) {
+      setUpravovaneOdchod(value)
+      if (upravovanePrichod && value) {
+        setUpravovaneHodiny(vypocitajHodiny(upravovanePrichod, value).toFixed(2))
+      }
+    } else {
+      setUpravovanePrichod(value)
+      if (value && upravovaneOdchod) {
+        setUpravovaneHodiny(vypocitajHodiny(value, upravovaneOdchod).toFixed(2))
+      }
+    }
+  }
+
+  async function ulozitUpravu(id: string) {
+    const { error } = await supabase
+      .from('dochadzka')
+      .update({ prichod: upravovanePrichod, odchod: upravovaneOdchod })
+      .eq('id', id)
+
+    if (error) {
+      console.error("Chyba úpravy:", error)
+    } else {
+      zrusitUpravu()
+      nacitaj()
+      nacitajFiltre()
+    }
+  }
+
   function pridatPrazdnyZaznam() {
     setNoveZaznamy([...noveZaznamy, { datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
   }
@@ -251,7 +300,7 @@ export default function DashboardPage() {
           <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
         </div>
 
-        {/* ŠTATISTIKY - APPLE CARDS */}
+        {/* ŠTATISTIKY */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
@@ -454,25 +503,26 @@ export default function DashboardPage() {
         {/* TABUĽKA */}
         <div style={cardStyle}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px', fontSize: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '12px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Osoba</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Zákazka</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Čas</th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Príchod</th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Odchod</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Hodiny</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {zaznamy.length === 0 ? ( 
-                  <tr><td colSpan={6} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dáta.</td></tr> 
+                  <tr><td colSpan={7} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dáta.</td></tr> 
                 ) : (
                   zaznamy.map((z) => {
-                    const hodinyRiadku = vypocitajHodiny(z.prichod, z.odchod)
+                    const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
-                    const jePodozrivy = jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
+                    const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
 
                     return (
                       <tr 
@@ -492,22 +542,88 @@ export default function DashboardPage() {
                         <td style={{ padding: '10px 8px', fontWeight: '600', color: '#1d1d1f' }}>{z.meno}</td>
                         <td style={{ padding: '10px 8px', color: '#666', fontSize: '11px' }}>{z.zakazka}</td>
                         
-                        <td style={{ padding: '10px 8px', color: jePodozrivy ? '#ff3b30' : '#666', fontWeight: jePodozrivy ? '600' : 'normal', fontSize: '11px' }}>
-                          {z.prichod} - {z.odchod}
+                        <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
+                          {upravovaneId === z.id ? (
+                            <input 
+                              type="time" 
+                              value={upravovanePrichod} 
+                              onChange={(e) => handleTimeChange(false, e.target.value)}
+                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px'}}
+                            />
+                          ) : (
+                            z.prichod
+                          )}
                         </td>
+
+                        <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
+                          {upravovaneId === z.id ? (
+                            <input 
+                              type="time" 
+                              value={upravovaneOdchod} 
+                              onChange={(e) => handleTimeChange(true, e.target.value)}
+                              style={{...inputStyle, width: '80px', fontSize: '11px', padding: '4px 6px'}}
+                            />
+                          ) : (
+                            z.odchod
+                          )}
+                        </td>
+
                         <td style={{ padding: '10px 8px', color: jePodozrivy ? '#ff3b30' : '#1d1d1f', fontWeight: jePodozrivy ? '700' : '600', textAlign: 'right' }} title={jePodozrivy ? "Podozrivý čas" : ""}>
-                          {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '9px', marginLeft: '3px', textTransform: 'uppercase' }}>⚠</span>}
+                          {upravovaneId === z.id ? (
+                            <input 
+                              type="number" 
+                              value={upravovaneHodiny} 
+                              onChange={(e) => setUpravovaneHodiny(e.target.value)}
+                              step="0.1"
+                              style={{...inputStyle, width: '60px', fontSize: '11px', padding: '4px 6px', textAlign: 'right'}}
+                            />
+                          ) : (
+                            <>
+                              {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '9px', marginLeft: '3px', textTransform: 'uppercase' }}>⚠</span>}
+                            </>
+                          )}
                         </td>
 
                         <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-                          <button 
-                            onClick={() => vymazat(z.id)} 
-                            style={{ color: '#d2d2d7', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
-                          >
-                            Zmazať
-                          </button>
+                          {upravovaneId === z.id ? (
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button 
+                                onClick={() => zrusitUpravu()}
+                                style={{ color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}
+                              >
+                                Zrušiť
+                              </button>
+                              <button 
+                                onClick={() => ulozitUpravu(z.id)}
+                                style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '600', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#10b981'}
+                              >
+                                Uložiť
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              <button 
+                                onClick={() => zacatUpravu(z.id, z.prichod, z.odchod)}
+                                style={{ color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#0077ed'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#0071e3'}
+                              >
+                                Upraviť
+                              </button>
+                              <button 
+                                onClick={() => vymazat(z.id)}
+                                style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
+                              >
+                                Zmazať
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )
