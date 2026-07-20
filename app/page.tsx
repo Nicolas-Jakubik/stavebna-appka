@@ -12,6 +12,9 @@ export default function Home() {
   const [odchod, setOdchod] = useState('')
   const [datum, setDatum] = useState('')
   const [status, setStatus] = useState('')
+  
+  // Nový state pre zobrazenie potvrdzovacieho okna
+  const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
 
   const [aktivneZakazky, setAktivneZakazky] = useState<any[]>([])
   const [zoznamZamestnancov, setZoznamZamestnancov] = useState<any[]>([])
@@ -40,9 +43,16 @@ export default function Home() {
     nacitajData()
   }, [])
 
-  async function odoslat(e: React.FormEvent) {
+  // Namiesto odoslania len otvoríme okno na kontrolu
+  function otvoritKontrolu(e: React.FormEvent) {
     e.preventDefault()
+    setZobrazitPotvrdenie(true)
+  }
+
+  // Skutočné uloženie do databázy až po odsúhlasení
+  async function potvrditAOdoslat() {
     setStatus('Odosielam...')
+    setZobrazitPotvrdenie(false) // Zavrieť okno
     
     const datumNaUlozenie = datum || new Date().toISOString().split('T')[0]
 
@@ -59,10 +69,37 @@ export default function Home() {
     } else {
       setStatus('✅ Záznam uložený')
       setMeno(''); setZakazka(''); setPrichod(''); setOdchod(''); setDatum('')
+      
+      // Vymaže hlášku o úspechu po 4 sekundách pre čistý dojem
+      setTimeout(() => {
+        setStatus('')
+      }, 4000)
     }
   }
 
-  // Upravený štýl, ktorý rieši problémy na mobiloch (hlavne iOS)
+  // Pomocná funkcia na výpočet odpracovaných hodín pre kontrolné okno
+  function vypocitajTrvanie(odCasu: string, doCasu: string) {
+    if (!odCasu || !doCasu) return '0 h'
+    const [h1, m1] = odCasu.split(':').map(Number)
+    const [h2, m2] = doCasu.split(':').map(Number)
+    
+    let rozdielMinut = (h2 * 60 + m2) - (h1 * 60 + m1)
+    if (rozdielMinut < 0) rozdielMinut += 24 * 60 // Ak by robil cez polnoc
+    
+    const hodiny = Math.floor(rozdielMinut / 60)
+    const minuty = rozdielMinut % 60
+    
+    if (minuty === 0) return `${hodiny} h`
+    return `${hodiny} h ${minuty} m`
+  }
+
+  // Pekné zobrazenie dátumu (DD.MM.YYYY)
+  function formatujDatum(d: string) {
+    const datumPreFormat = d || new Date().toISOString().split('T')[0]
+    const [rok, mesiac, den] = datumPreFormat.split('-')
+    return `${den}. ${mesiac}. ${rok}`
+  }
+
   const inputStyle = {
     padding: '12px 0',
     border: 'none',
@@ -73,15 +110,14 @@ export default function Home() {
     marginBottom: '20px',
     backgroundColor: 'transparent',
     color: '#000000',
-    minHeight: '45px', // Vynútená výška pre mobily
-    display: 'flex', // Pomáha s centrovaním textu v Safari
+    minHeight: '45px',
+    display: 'flex',
     alignItems: 'center'
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px', fontFamily: '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
-      {/* Vynútenie čiernej farby pre date/time ikonky na mobile */}
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
@@ -94,13 +130,82 @@ export default function Home() {
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+      {/* --- MODAL (Vyskakovacie okno na kontrolu) --- */}
+      {zobrazitPotvrdenie && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            padding: '30px 24px',
+            width: '100%',
+            maxWidth: '340px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', color: '#1d1d1f' }}>Skontrolujte si údaje</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', backgroundColor: '#f5f5f7', padding: '16px', borderRadius: '14px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: '#86868b' }}>Meno:</span>
+                <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{meno}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: '#86868b' }}>Zákazka:</span>
+                <span style={{ fontWeight: '500', color: '#1d1d1f', textAlign: 'right', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{zakazka}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: '#86868b' }}>Dátum:</span>
+                <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{formatujDatum(datum)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span style={{ color: '#86868b' }}>Čas:</span>
+                <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{prichod} - {odchod}</span>
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#d2d2d7', margin: '4px 0' }}></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
+                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Spolu:</span>
+                <span style={{ fontWeight: '600', color: '#0071e3' }}>{vypocitajTrvanie(prichod, odchod)}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+              <button 
+                onClick={potvrditAOdoslat}
+                style={{ width: '100%', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Potvrdiť a odoslať
+              </button>
+              <button 
+                onClick={() => setZobrazitPotvrdenie(false)}
+                style={{ width: '100%', padding: '14px', backgroundColor: 'transparent', color: '#86868b', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+              >
+                Späť na úpravu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- KONIEC MODALU --- */}
+
+      <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <Image src="/logo.png" alt="Logo" width={150} height={60} style={{ objectFit: 'contain' }} />
         </div>
 
-        <form onSubmit={odoslat} style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Zmena onSubmmit z odoslat na otvoritKontrolu */}
+        <form onSubmit={otvoritKontrolu} style={{ display: 'flex', flexDirection: 'column' }}>
           
           <select 
             value={meno} 
@@ -127,31 +232,35 @@ export default function Home() {
           </select>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>Dátum (ak iný ako dnes)</span>
+            <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dátum (ak iný ako dnes)</span>
             <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
           </div>
           
           <div style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>Príchod</span>
+              <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Príchod</span>
               <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>Odchod</span>
+              <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odchod</span>
               <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
           </div>
 
-          <button type="submit" style={{ marginTop: '20px', padding: '12px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer' }}>
-            Odoslať
+          <button type="submit" style={{ marginTop: '20px', padding: '14px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+            Odoslať záznam
           </button>
         </form>
 
-        {status && <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>{status}</p>}
+        {status && (
+          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', fontWeight: '500', color: status.includes('✅') ? '#34c759' : '#ff3b30' }}>
+            {status}
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: '30px' }}>
-        <Link href="/dashboard" style={{ color: '#d1d5db', fontSize: '13px', textDecoration: 'none' }}>Administrácia</Link>
+        <Link href="/dashboard" style={{ color: '#d1d5db', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s' }}>Administrácia</Link>
       </div>
     </div>
   )
