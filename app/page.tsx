@@ -6,14 +6,14 @@ import Link from 'next/link'
 import { adminStore } from '../lib/store'
 
 export default function Home() {
-  const [meno, setMeno] = useState('')
+  // Zmena: Namiesto jedného mena ukladáme pole vybraných mien
+  const [vybraneMena, setVybraneMena] = useState<string[]>([])
   const [zakazka, setZakazka] = useState('')
   const [prichod, setPrichod] = useState('')
   const [odchod, setOdchod] = useState('')
   const [datum, setDatum] = useState('')
   const [status, setStatus] = useState('')
   
-  // Nový state pre zobrazenie potvrdzovacieho okna
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
 
   const [aktivneZakazky, setAktivneZakazky] = useState<any[]>([])
@@ -43,48 +43,69 @@ export default function Home() {
     nacitajData()
   }, [])
 
-  // Namiesto odoslania len otvoríme okno na kontrolu
+  // Pridaná kontrola, či je vybraný aspoň jeden zamestnanec
   function otvoritKontrolu(e: React.FormEvent) {
     e.preventDefault()
+    if (vybraneMena.length === 0) {
+      setStatus('⚠️ Vyberte aspoň jedného zamestnanca')
+      setTimeout(() => setStatus(''), 3000)
+      return
+    }
     setZobrazitPotvrdenie(true)
   }
 
-  // Skutočné uloženie do databázy až po odsúhlasení
+  // Uloženie pre všetkých vybraných zamestnancov
   async function potvrditAOdoslat() {
     setStatus('Odosielam...')
-    setZobrazitPotvrdenie(false) // Zavrieť okno
+    setZobrazitPotvrdenie(false)
     
     const datumNaUlozenie = datum || new Date().toISOString().split('T')[0]
 
-    const { error } = await supabase.from('dochadzka').insert([{ 
+    // Vytvoríme pole záznamov (pre každého označeného zamestnanca jeden)
+    const zaznamyNaUlozenie = vybraneMena.map(meno => ({
       meno, 
       zakazka, 
       prichod, 
       odchod, 
       datum: datumNaUlozenie
-    }])
+    }))
+
+    // Supabase dokáže vložiť celé pole naraz (Bulk insert)
+    const { error } = await supabase.from('dochadzka').insert(zaznamyNaUlozenie)
 
     if (error) {
       setStatus('Chyba: ' + error.message)
     } else {
-      setStatus('✅ Záznam uložený')
-      setMeno(''); setZakazka(''); setPrichod(''); setOdchod(''); setDatum('')
+      setStatus(`✅ Záznam uložený pre ${vybraneMena.length} zamestnancov`)
+      // Zresetujeme formulár
+      setVybraneMena([])
+      setZakazka('')
+      setPrichod('')
+      setOdchod('')
+      setDatum('')
       
-      // Vymaže hlášku o úspechu po 4 sekundách pre čistý dojem
       setTimeout(() => {
         setStatus('')
       }, 4000)
     }
   }
 
-  // Pomocná funkcia na výpočet odpracovaných hodín pre kontrolné okno
+  // Funkcia na prepínanie výberu zamestnanca (pridá/odoberie z poľa)
+  function toggleZamestnanec(meno: string) {
+    setVybraneMena(prev => 
+      prev.includes(meno) 
+        ? prev.filter(m => m !== meno) 
+        : [...prev, meno]
+    )
+  }
+
   function vypocitajTrvanie(odCasu: string, doCasu: string) {
     if (!odCasu || !doCasu) return '0 h'
     const [h1, m1] = odCasu.split(':').map(Number)
     const [h2, m2] = doCasu.split(':').map(Number)
     
     let rozdielMinut = (h2 * 60 + m2) - (h1 * 60 + m1)
-    if (rozdielMinut < 0) rozdielMinut += 24 * 60 // Ak by robil cez polnoc
+    if (rozdielMinut < 0) rozdielMinut += 24 * 60 
     
     const hodiny = Math.floor(rozdielMinut / 60)
     const minuty = rozdielMinut % 60
@@ -93,7 +114,6 @@ export default function Home() {
     return `${hodiny} h ${minuty} m`
   }
 
-  // Pekné zobrazenie dátumu (DD.MM.YYYY)
   function formatujDatum(d: string) {
     const datumPreFormat = d || new Date().toISOString().split('T')[0]
     const [rok, mesiac, den] = datumPreFormat.split('-')
@@ -130,7 +150,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* --- MODAL (Vyskakovacie okno na kontrolu) --- */}
+      {/* --- MODAL --- */}
       {zobrazitPotvrdenie && (
         <div style={{
           position: 'fixed',
@@ -156,10 +176,13 @@ export default function Home() {
             <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600', color: '#1d1d1f' }}>Skontrolujte si údaje</h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', backgroundColor: '#f5f5f7', padding: '16px', borderRadius: '14px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span style={{ color: '#86868b' }}>Meno:</span>
-                <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{meno}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '14px' }}>
+                <span style={{ color: '#86868b' }}>Zamestnanci ({vybraneMena.length}):</span>
+                <span style={{ fontWeight: '500', color: '#0071e3', lineHeight: '1.4' }}>
+                  {vybraneMena.join(', ')}
+                </span>
               </div>
+              <div style={{ height: '1px', backgroundColor: '#d2d2d7', margin: '4px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                 <span style={{ color: '#86868b' }}>Zákazka:</span>
                 <span style={{ fontWeight: '500', color: '#1d1d1f', textAlign: 'right', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{zakazka}</span>
@@ -174,8 +197,8 @@ export default function Home() {
               </div>
               <div style={{ height: '1px', backgroundColor: '#d2d2d7', margin: '4px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
-                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Spolu:</span>
-                <span style={{ fontWeight: '600', color: '#0071e3' }}>{vypocitajTrvanie(prichod, odchod)}</span>
+                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Spolu (na osobu):</span>
+                <span style={{ fontWeight: '600', color: '#1d1d1f' }}>{vypocitajTrvanie(prichod, odchod)}</span>
               </div>
             </div>
 
@@ -198,26 +221,45 @@ export default function Home() {
       )}
       {/* --- KONIEC MODALU --- */}
 
-      <div style={{ width: '100%', maxWidth: '350px', backgroundColor: 'white', padding: '40px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      <div style={{ width: '100%', maxWidth: '380px', backgroundColor: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
         
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <Image src="/logo.png" alt="Logo" width={150} height={60} style={{ objectFit: 'contain' }} />
         </div>
 
-        {/* Zmena onSubmmit z odoslat na otvoritKontrolu */}
         <form onSubmit={otvoritKontrolu} style={{ display: 'flex', flexDirection: 'column' }}>
           
-          <select 
-            value={meno} 
-            onChange={e => setMeno(e.target.value)} 
-            required 
-            style={{ ...inputStyle, color: meno ? '#000000' : '#9ca3af' }}
-          >
-            <option value="" disabled>Vyberte svoje meno</option>
-            {zoznamZamestnancov.map((z, i) => (
-              <option key={i} value={z.meno} style={{ color: '#000000' }}>{z.meno}</option>
-            ))}
-          </select>
+          {/* Výber zamestnancov pomocou "bublín" (Chips) */}
+          <div style={{ marginBottom: '24px' }}>
+            <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'block' }}>
+              Zamestnanci (vyberte viacerých)
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {zoznamZamestnancov.map((z, i) => {
+                const isSelected = vybraneMena.includes(z.meno)
+                return (
+                  <div 
+                    key={i}
+                    onClick={() => toggleZamestnanec(z.meno)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: isSelected ? '#0071e3' : '#f5f5f7',
+                      color: isSelected ? '#ffffff' : '#1d1d1f',
+                      borderRadius: '20px',
+                      fontSize: '14px',
+                      fontWeight: isSelected ? '600' : '400',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      userSelect: 'none',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    {z.meno}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
           
           <select 
             value={zakazka} 
@@ -247,7 +289,7 @@ export default function Home() {
             </div>
           </div>
 
-          <button type="submit" style={{ marginTop: '20px', padding: '14px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+          <button type="submit" style={{ marginTop: '10px', padding: '14px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
             Odoslať záznam
           </button>
         </form>
