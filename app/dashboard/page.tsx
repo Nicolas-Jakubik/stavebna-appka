@@ -522,58 +522,25 @@ export default function DashboardPage() {
         )}
 
         <div style={{...cardStyle, marginBottom: '16px'}}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{...labelStyle, marginBottom: '2px'}}>Pracovníci</div>
-              <div style={{ fontSize: '12px', color: '#86868b' }}>Kliknite na pracovníka a zobrazí sa iba jeho dochádzka a hodiny.</div>
-            </div>
-            {filterMeno && (
-              <button
-                type="button"
-                onClick={() => setFilterMeno('')}
-                style={{...buttonSecondaryStyle, padding: '6px 12px'} as any}
-              >
-                Zobraziť všetkých
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setFilterMeno('')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '18px',
-                border: filterMeno === '' ? 'none' : '1px solid #d2d2d7',
-                backgroundColor: filterMeno === '' ? '#1d1d1f' : '#f5f5f7',
-                color: filterMeno === '' ? '#fff' : '#1d1d1f',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}
-            >
-              Všetci
-            </button>
-            {dostupneMena.map(meno => (
-              <button
-                key={meno}
-                type="button"
-                onClick={() => setFilterMeno(meno)}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '18px',
-                  border: filterMeno === meno ? 'none' : '1px solid #d2d2d7',
-                  backgroundColor: filterMeno === meno ? '#0071e3' : '#f5f5f7',
-                  color: filterMeno === meno ? '#fff' : '#1d1d1f',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                {meno}
-              </button>
+          <label style={{...labelStyle, marginBottom: '6px'}}>Pracovník</label>
+          <select
+            value={filterMeno}
+            onChange={(e) => setFilterMeno(e.target.value)}
+            style={{
+              ...inputStyle,
+              fontSize: '13px',
+              padding: '10px 12px',
+              backgroundColor: '#ffffff',
+              cursor: 'pointer'
+            } as any}
+          >
+            <option value="">Všetci pracovníci</option>
+            {dostupneMena.map((meno) => (
+              <option key={meno} value={meno}>{meno}</option>
             ))}
+          </select>
+          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '7px' }}>
+            Vyber pracovníka zo zoznamu. Dashboard potom zobrazí iba jeho dochádzku a hodiny.
           </div>
         </div>
 
