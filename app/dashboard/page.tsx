@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
+  const [filterMeno, setFilterMeno] = useState('')
   
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
   const [dostupneMena, setDostupneMena] = useState<string[]>([])
@@ -164,6 +165,7 @@ export default function DashboardPage() {
       }
     }
     if (filterZakazka) query = query.eq('zakazka', filterZakazka)
+    if (filterMeno) query = query.eq('meno', filterMeno)
     const { data, error } = await query
     if (error) console.error("Chyba Supabase:", error.message)
     else setZaznamy(data || [])
@@ -288,7 +290,7 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { if (jeOdomknute) nacitajFiltre() }, [jeOdomknute])
-  useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, jeOdomknute])
+  useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
 
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
   const pocetZaznamov = zaznamy.length
@@ -358,8 +360,8 @@ export default function DashboardPage() {
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{pocetZaznamov}</h3>
           </div>
           <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Najaktívnejší</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{najaktivnejsi}</h3>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>{filterMeno ? 'Pracovník' : 'Najaktívnejší'}</p>
+            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{filterMeno || najaktivnejsi}</h3>
           </div>
         </div>
 
@@ -519,6 +521,62 @@ export default function DashboardPage() {
           </div>
         )}
 
+        <div style={{...cardStyle, marginBottom: '16px'}}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{...labelStyle, marginBottom: '2px'}}>Pracovníci</div>
+              <div style={{ fontSize: '12px', color: '#86868b' }}>Kliknite na pracovníka a zobrazí sa iba jeho dochádzka a hodiny.</div>
+            </div>
+            {filterMeno && (
+              <button
+                type="button"
+                onClick={() => setFilterMeno('')}
+                style={{...buttonSecondaryStyle, padding: '6px 12px'} as any}
+              >
+                Zobraziť všetkých
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setFilterMeno('')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '18px',
+                border: filterMeno === '' ? 'none' : '1px solid #d2d2d7',
+                backgroundColor: filterMeno === '' ? '#1d1d1f' : '#f5f5f7',
+                color: filterMeno === '' ? '#fff' : '#1d1d1f',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600'
+              }}
+            >
+              Všetci
+            </button>
+            {dostupneMena.map(meno => (
+              <button
+                key={meno}
+                type="button"
+                onClick={() => setFilterMeno(meno)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '18px',
+                  border: filterMeno === meno ? 'none' : '1px solid #d2d2d7',
+                  backgroundColor: filterMeno === meno ? '#0071e3' : '#f5f5f7',
+                  color: filterMeno === meno ? '#fff' : '#1d1d1f',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                {meno}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div style={{...cardStyle, marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
           <select 
             value={filterZakazka} 
@@ -545,6 +603,15 @@ export default function DashboardPage() {
         </div>
 
         <div style={cardStyle}>
+          {filterMeno && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0 8px 12px 8px', marginBottom: '4px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#1d1d1f' }}>{filterMeno}</div>
+                <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Zobrazené sú iba záznamy tohto pracovníka.</div>
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
+            </div>
+          )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '12px' }}>
               <thead>
