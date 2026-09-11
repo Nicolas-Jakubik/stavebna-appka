@@ -19,6 +19,12 @@ export default function DashboardPage() {
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
   const [dostupneMena, setDostupneMena] = useState<string[]>([])
 
+  // Kontrola chýbajúcej dochádzky za predchádzajúci kalendárny deň
+  const [nezapisaniVcera, setNezapisaniVcera] = useState<string[]>([])
+  const [datumKontroly, setDatumKontroly] = useState('')
+  const [chybaKontroly, setChybaKontroly] = useState('')
+  const [nacitavaKontrola, setNacitavaKontrola] = useState(false)
+
   const [ukazatFormular, setUkazatFormular] = useState(false)
   const [noveZaznamy, setNoveZaznamy] = useState([
     { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
@@ -144,6 +150,53 @@ export default function DashboardPage() {
     return false
   }
 
+  function datumDoLocalString(d: Date) {
+    const rok = d.getFullYear()
+    const mesiac = String(d.getMonth() + 1).padStart(2, '0')
+    const den = String(d.getDate()).padStart(2, '0')
+    return `${rok}-${mesiac}-${den}`
+  }
+
+  function formatujDatumSK(datum: string) {
+    if (!datum) return ''
+    const [rok, mesiac, den] = datum.split('-')
+    return `${den}.${mesiac}.${rok}`
+  }
+
+  async function nacitajNezapisanychVcera() {
+    setNacitavaKontrola(true)
+    setChybaKontroly('')
+
+    const vcera = new Date()
+    vcera.setDate(vcera.getDate() - 1)
+    const datum = datumDoLocalString(vcera)
+    setDatumKontroly(datum)
+
+    const [zamestnanciResult, dochadzkaResult] = await Promise.all([
+      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      supabase.from('dochadzka').select('meno').eq('datum', datum)
+    ])
+
+    if (zamestnanciResult.error || dochadzkaResult.error) {
+      const sprava = zamestnanciResult.error?.message || dochadzkaResult.error?.message || 'Nepodarilo sa načítať kontrolu dochádzky.'
+      setChybaKontroly(sprava)
+      setNezapisaniVcera([])
+      setNacitavaKontrola(false)
+      return
+    }
+
+    const vsetci = Array.from(
+      new Set((zamestnanciResult.data || []).map(z => z.meno).filter(Boolean))
+    ) as string[]
+
+    const zapisani = new Set(
+      (dochadzkaResult.data || []).map(z => z.meno).filter(Boolean)
+    )
+
+    setNezapisaniVcera(vsetci.filter(meno => !zapisani.has(meno)))
+    setNacitavaKontrola(false)
+  }
+
   async function nacitajFiltre() {
     const { data } = await supabase.from('dochadzka').select('zakazka, meno')
     if (data) {
@@ -176,6 +229,7 @@ export default function DashboardPage() {
     await supabase.from('dochadzka').delete().eq('id', id)
     nacitaj()
     nacitajFiltre()
+    nacitajNezapisanychVcera()
   }
 
   function zacatUpravu(id: string, prichod: string, odchod: string) {
@@ -286,10 +340,12 @@ export default function DashboardPage() {
       setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
       nacitaj()
       nacitajFiltre()
+      nacitajNezapisanychVcera()
     }
   }
 
   useEffect(() => { if (jeOdomknute) nacitajFiltre() }, [jeOdomknute])
+  useEffect(() => { if (jeOdomknute) nacitajNezapisanychVcera() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
 
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
@@ -341,6 +397,69 @@ export default function DashboardPage() {
           <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
           <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
           <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
+        </div>
+
+        <div style={{
+          ...cardStyle,
+          marginBottom: '16px',
+          border: nezapisaniVcera.length > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0',
+          backgroundColor: nezapisaniVcera.length > 0 ? '#fff7f7' : '#f7fff9'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#1d1d1f', marginBottom: '4px' }}>
+                Dochádzka za včerajší deň {datumKontroly ? `– ${formatujDatumSK(datumKontroly)}` : ''}
+              </div>
+
+              {nacitavaKontrola ? (
+                <div style={{ fontSize: '12px', color: '#86868b' }}>Kontrolujem zápisy...</div>
+              ) : chybaKontroly ? (
+                <div style={{ fontSize: '12px', color: '#ff3b30' }}>⚠️ {chybaKontroly}</div>
+              ) : nezapisaniVcera.length > 0 ? (
+                <>
+                  <div style={{ fontSize: '12px', color: '#b42318', marginBottom: '10px' }}>
+                    ⚠️ Nemajú žiadny zápis: {nezapisaniVcera.length}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {nezapisaniVcera.map(meno => (
+                      <span
+                        key={meno}
+                        style={{
+                          display: 'inline-block',
+                          padding: '5px 9px',
+                          borderRadius: '14px',
+                          backgroundColor: '#fee2e2',
+                          color: '#991b1b',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {meno}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>
+                  ✓ Všetci zamestnanci majú za tento deň aspoň jeden zápis.
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={nacitajNezapisanychVcera}
+              disabled={nacitavaKontrola}
+              style={{
+                ...buttonSecondaryStyle,
+                padding: '6px 12px',
+                fontSize: '10px',
+                opacity: nacitavaKontrola ? 0.6 : 1
+              } as any}
+            >
+              Obnoviť
+            </button>
+          </div>
         </div>
 
         <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#f9fafb', borderLeft: '3px solid #0071e3', borderRadius: '6px', fontSize: '11px' }}>
