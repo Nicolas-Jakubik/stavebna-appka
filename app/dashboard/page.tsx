@@ -140,6 +140,14 @@ export default function DashboardPage() {
     )
   }
 
+  function maViacPracovnychUsekovVDen(zaznam: any, excludeId?: string) {
+    return kontrolneZaznamy.some(z =>
+      z.datum === zaznam.datum &&
+      z.meno === zaznam.meno &&
+      (!excludeId || z.id !== excludeId)
+    )
+  }
+
   function maPrekryvajuciSaCas(zaznam: any, excludeId?: string) {
     if (!zaznam.prichod || !zaznam.odchod) return false
 
@@ -546,6 +554,7 @@ export default function DashboardPage() {
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Chybné časy</span>
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Presný duplikát</span>
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fff7ed', border: '1px solid #fdba74', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Prekrývajúci sa čas</span>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Viac pracovných úsekov v deň</span>
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#ffb347', border: '1px solid #ff9800', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Víkend</span>
           <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
@@ -803,18 +812,30 @@ export default function DashboardPage() {
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
                     const jeDuplicite = jePresnyDuplikat(z, z.id)
                     const jePrekryv = maPrekryvajuciSaCas(z, z.id)
+                    const maViacUsekov = maViacPracovnychUsekovVDen(z, z.id)
                     const maCiasChybu = !arePlacesValidMinutes(z.prichod) || !arePlacesValidMinutes(z.odchod)
+                    const farbaRiadku = maCiasChybu
+                      ? '#fef2f2'
+                      : jeDuplicite
+                        ? '#fef3c7'
+                        : jePrekryv
+                          ? '#fff7ed'
+                          : maViacUsekov
+                            ? '#eff6ff'
+                            : jeVikend
+                              ? '#f5f5f7'
+                              : 'transparent'
 
                     return (
                       <tr 
                         key={z.id} 
                         style={{ 
                           borderBottom: '1px solid #f5f5f7',
-                          backgroundColor: maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jePrekryv ? '#fff7ed' : jeVikend ? '#f5f5f7' : 'transparent',
-                          transition: 'background-color 0.2s'
+                          backgroundColor: farbaRiadku,
+                          transition: 'filter 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f7'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jePrekryv ? '#fff7ed' : jeVikend ? '#f5f5f7' : 'transparent'}
+                        onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(0.98)'}
+                        onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                       >
                         <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
                           {z.datum}
@@ -824,6 +845,7 @@ export default function DashboardPage() {
                           {z.meno}
                           {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>DUP</span>}
                           {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>PREKRYV</span>}
+                          {maViacUsekov && !jeDuplicite && !jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>VIAC</span>}
                         </td>
                         <td style={{ padding: '10px 8px', color: '#666', fontSize: '11px' }}>{z.zakazka}</td>
                         
