@@ -666,7 +666,7 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '68vh', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
@@ -920,7 +920,7 @@ export default function DashboardPage() {
           )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px', fontSize: '12px' }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: '58px', zIndex: 5, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Osoba</th>
