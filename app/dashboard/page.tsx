@@ -18,6 +18,8 @@ export default function DashboardPage() {
   const [filterMeno, setFilterMeno] = useState('')
   const [filterPolovica, setFilterPolovica] = useState<'cely' | 'prva' | 'druha'>('cely')
   const [filterProblem, setFilterProblem] = useState('vsetko')
+  const [triedenie, setTriedenie] = useState<'datum' | 'meno' | 'zakazka' | 'hodiny'>('datum')
+  const [smerTriedenia, setSmerTriedenia] = useState<'asc' | 'desc'>('desc')
   
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
   const [dostupneMena, setDostupneMena] = useState<string[]>([])
@@ -540,6 +542,36 @@ export default function DashboardPage() {
     if (filterProblem === 'podozrivy') return jePodozrivyZaznam(z)
     return true
   })
+
+  function zmenTriedenie(noveTriedenie: 'datum' | 'meno' | 'zakazka' | 'hodiny') {
+    if (triedenie === noveTriedenie) {
+      setSmerTriedenia(smerTriedenia === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setTriedenie(noveTriedenie)
+    setSmerTriedenia(noveTriedenie === 'datum' ? 'desc' : 'asc')
+  }
+
+  const zoradeneZaznamy = [...zaznamyNaZobrazenie].sort((a, b) => {
+    let hodnotaA: string | number = ''
+    let hodnotaB: string | number = ''
+
+    if (triedenie === 'hodiny') {
+      hodnotaA = vypocitajHodiny(a.prichod, a.odchod)
+      hodnotaB = vypocitajHodiny(b.prichod, b.odchod)
+    } else {
+      hodnotaA = String(a[triedenie] || '').toLocaleLowerCase('sk')
+      hodnotaB = String(b[triedenie] || '').toLocaleLowerCase('sk')
+    }
+
+    if (hodnotaA < hodnotaB) return smerTriedenia === 'asc' ? -1 : 1
+    if (hodnotaA > hodnotaB) return smerTriedenia === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const indikatorTriedenia = (stlpec: 'datum' | 'meno' | 'zakazka' | 'hodiny') =>
+    triedenie === stlpec ? (smerTriedenia === 'asc' ? ' ↑' : ' ↓') : ''
 
   const nazovProblemFiltra =
     filterProblem === 'duplikat' ? 'Presné duplikáty' :
@@ -1092,6 +1124,13 @@ export default function DashboardPage() {
         </div>
 
         <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0 8px 12px 8px', marginBottom: '4px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Záznamy dochádzky</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kliknutím na Dátum, Osobu, Zákazku alebo Hodiny zmeníš zoradenie.</div>
+            </div>
+            <div style={{ fontSize: '11px', color: '#86868b' }}>{zoradeneZaznamy.length} záznamov</div>
+          </div>
           {filterMeno && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0 8px 12px 8px', marginBottom: '4px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
               <div>
@@ -1101,24 +1140,32 @@ export default function DashboardPage() {
               <div style={{ fontSize: '18px', fontWeight: '700', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
             </div>
           )}
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '68vh' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px', fontSize: '12px' }}>
-              <thead style={{ position: 'sticky', top: '58px', zIndex: 5, backgroundColor: '#ffffff' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Osoba</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Zákazka</th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+                    <button type="button" onClick={() => zmenTriedenie('datum')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Dátum{indikatorTriedenia('datum')}</button>
+                  </th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+                    <button type="button" onClick={() => zmenTriedenie('meno')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Osoba{indikatorTriedenia('meno')}</button>
+                  </th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+                    <button type="button" onClick={() => zmenTriedenie('zakazka')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Zákazka{indikatorTriedenia('zakazka')}</button>
+                  </th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Príchod</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Odchod</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Hodiny</th>
+                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>
+                    <button type="button" onClick={() => zmenTriedenie('hodiny')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Hodiny{indikatorTriedenia('hodiny')}</button>
+                  </th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {zaznamyNaZobrazenie.length === 0 ? ( 
+                {zoradeneZaznamy.length === 0 ? ( 
                   <tr><td colSpan={7} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
                 ) : (
-                  zaznamyNaZobrazenie.map((z) => {
+                  zoradeneZaznamy.map((z) => {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
