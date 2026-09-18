@@ -211,6 +211,25 @@ export default function DashboardPage() {
     return `${den}.${mesiac}.${rok}`
   }
 
+  function vypocitajFondMesiaca(mesiac: string) {
+    const [rokText, mesiacText] = mesiac.split('-')
+    const rok = Number(rokText)
+    const mesiacIndex = Number(mesiacText) - 1
+
+    if (!Number.isInteger(rok) || mesiacIndex < 0 || mesiacIndex > 11) return 0
+
+    const pocetDni = new Date(Date.UTC(rok, mesiacIndex + 1, 0)).getUTCDate()
+    let fond = 0
+
+    for (let den = 1; den <= pocetDni; den++) {
+      const denVTyzdni = new Date(Date.UTC(rok, mesiacIndex, den)).getUTCDay()
+      if (denVTyzdni === 0) continue
+      fond += denVTyzdni === 6 ? 10.5 : 11.5
+    }
+
+    return fond
+  }
+
   async function nacitajNezapisanychVcera() {
     setNacitavaKontrola(true)
     setChybaKontroly('')
@@ -438,6 +457,9 @@ export default function DashboardPage() {
 
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
   const pocetZaznamov = zaznamy.length
+  const fondMesiaca = vypocitajFondMesiaca(filterMesiac)
+  const zobrazitRozdielOprotiFondu = !!filterMeno && !filterDen && !filterZakazka
+  const rozdielOprotiFondu = celkoveHodiny - fondMesiaca
   
   const zamestnanciHodiny: Record<string, number> = {}
   zaznamy.forEach(z => { zamestnanciHodiny[z.meno] = (zamestnanciHodiny[z.meno] || 0) + vypocitajHodiny(z.prichod, z.odchod) })
@@ -563,6 +585,16 @@ export default function DashboardPage() {
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{celkoveHodiny.toFixed(2)}</h3>
+          </div>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Fond mesiaca / 1 pracovník</p>
+            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{fondMesiaca.toFixed(1)} h</h3>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Po–Pi 11,5 h · So 10,5 h · Ne 0 h</div>
+            {zobrazitRozdielOprotiFondu && (
+              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielOprotiFondu >= 0 ? '#15803d' : '#b42318' }}>
+                Rozdiel: {rozdielOprotiFondu >= 0 ? '+' : ''}{rozdielOprotiFondu.toFixed(1)} h
+              </div>
+            )}
           </div>
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Záznamy</p>
