@@ -254,7 +254,7 @@ export default function ZamestnanciPage() {
           </form>
         </div>
 
-        <div style={{...cardStyle}}>
+        <div style={{...cardStyle, overflowX: 'auto'}}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
