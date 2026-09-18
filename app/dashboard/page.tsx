@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
   const [filterMeno, setFilterMeno] = useState('')
+  const [filterProblem, setFilterProblem] = useState('vsetko')
   
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
   const [dostupneMena, setDostupneMena] = useState<string[]>([])
@@ -496,6 +497,24 @@ export default function DashboardPage() {
     return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
   })
 
+  const jePodozrivyZaznam = (z: any) => jePodozrivyCas(z.prichod, z.odchod, vypocitajHodiny(z.prichod, z.odchod))
+  const pocetDuplikatov = zaznamy.filter(z => jePresnyDuplikat(z, z.id)).length
+  const pocetPrekryvov = zaznamy.filter(z => maPrekryvajuciSaCas(z, z.id)).length
+  const pocetPodozrivych = zaznamy.filter(jePodozrivyZaznam).length
+
+  const zaznamyNaZobrazenie = zaznamy.filter(z => {
+    if (filterProblem === 'duplikat') return jePresnyDuplikat(z, z.id)
+    if (filterProblem === 'prekryv') return maPrekryvajuciSaCas(z, z.id)
+    if (filterProblem === 'podozrivy') return jePodozrivyZaznam(z)
+    return true
+  })
+
+  const nazovProblemFiltra =
+    filterProblem === 'duplikat' ? 'Presné duplikáty' :
+    filterProblem === 'prekryv' ? 'Prekrývajúce sa časy' :
+    filterProblem === 'podozrivy' ? 'Podozrivé časy' :
+    ''
+
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -597,6 +616,92 @@ export default function DashboardPage() {
               Obnoviť
             </button>
           </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#1d1d1f' }}>Vyžaduje kontrolu</div>
+              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Problémy v aktuálne zobrazenej dochádzke.</div>
+            </div>
+            {filterProblem !== 'vsetko' && (
+              <button
+                type="button"
+                onClick={() => setFilterProblem('vsetko')}
+                style={{ ...buttonSecondaryStyle, padding: '6px 12px', fontSize: '10px' } as any}
+              >
+                Zrušiť filter
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: nezapisaniVcera.length > 0 ? '#fff7f7' : '#f7fff9', border: nezapisaniVcera.length > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Chýbajúce včera</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: nezapisaniVcera.length > 0 ? '#b42318' : '#15803d' }}>{nezapisaniVcera.length}</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>{datumKontroly ? formatujDatumSK(datumKontroly) : 'predchádzajúci deň'}</div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setFilterProblem(filterProblem === 'duplikat' ? 'vsetko' : 'duplikat')}
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                backgroundColor: filterProblem === 'duplikat' ? '#fef3c7' : '#ffffff',
+                border: filterProblem === 'duplikat' ? '1px solid #f59e0b' : '1px solid #e5e5e5',
+                color: '#1d1d1f'
+              }}
+            >
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Presné duplikáty</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetDuplikatov > 0 ? '#92400e' : '#1d1d1f' }}>{pocetDuplikatov}</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilterProblem(filterProblem === 'prekryv' ? 'vsetko' : 'prekryv')}
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                backgroundColor: filterProblem === 'prekryv' ? '#fff7ed' : '#ffffff',
+                border: filterProblem === 'prekryv' ? '1px solid #fb923c' : '1px solid #e5e5e5',
+                color: '#1d1d1f'
+              }}
+            >
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Prekryvy času</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetPrekryvov > 0 ? '#9a3412' : '#1d1d1f' }}>{pocetPrekryvov}</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilterProblem(filterProblem === 'podozrivy' ? 'vsetko' : 'podozrivy')}
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                backgroundColor: filterProblem === 'podozrivy' ? '#fef2f2' : '#ffffff',
+                border: filterProblem === 'podozrivy' ? '1px solid #f87171' : '1px solid #e5e5e5',
+                color: '#1d1d1f'
+              }}
+            >
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Podozrivé časy</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetPodozrivych > 0 ? '#b42318' : '#1d1d1f' }}>{pocetPodozrivych}</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+            </button>
+          </div>
+
+          {filterProblem !== 'vsetko' && (
+            <div style={{ marginTop: '10px', fontSize: '11px', color: '#0071e3', fontWeight: '600' }}>
+              Zobrazený filter: {nazovProblemFiltra} · {zaznamyNaZobrazenie.length} záznamov
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#f9fafb', borderLeft: '3px solid #0071e3', borderRadius: '6px', fontSize: '11px' }}>
@@ -932,10 +1037,10 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {zaznamy.length === 0 ? ( 
-                  <tr><td colSpan={7} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dáta.</td></tr> 
+                {zaznamyNaZobrazenie.length === 0 ? ( 
+                  <tr><td colSpan={7} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
                 ) : (
-                  zaznamy.map((z) => {
+                  zaznamyNaZobrazenie.map((z) => {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
