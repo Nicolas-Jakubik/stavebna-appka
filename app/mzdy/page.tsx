@@ -243,7 +243,7 @@ export default function MzdyPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
       
       <style>{`
         @media print {
@@ -256,9 +256,9 @@ export default function MzdyPage() {
         .ukazat-iba-pri-tlaci { display: none; }
       `}</style>
 
-      <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
+      <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
         
-        <div className="skryt-pri-tlaci" style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="skryt-pri-tlaci" style={{ display: 'flex', gap: '28px', paddingBottom: '16px', marginBottom: '28px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
           <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
           <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
           <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
