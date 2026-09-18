@@ -13,6 +13,8 @@ export default function Home() {
   const [odchod, setOdchod] = useState('')
   const [datum, setDatum] = useState('')
   const [status, setStatus] = useState('')
+  const [odosiela, setOdosiela] = useState(false)
+  const [posledneZapisy, setPosledneZapisy] = useState<any[]>([])
   
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
 
@@ -21,6 +23,14 @@ export default function Home() {
 
   useEffect(() => {
     adminStore.jeOdomknute = false
+    setDatum(datumDoLocalString(new Date()))
+
+    try {
+      const ulozene = sessionStorage.getItem('posledne-zapisy-dochadzky')
+      if (ulozene) setPosledneZapisy(JSON.parse(ulozene))
+    } catch {
+      setPosledneZapisy([])
+    }
   }, [])
 
   useEffect(() => {
@@ -43,25 +53,94 @@ export default function Home() {
     nacitajData()
   }, [])
 
-  // Pridaná kontrola, či je vybraný aspoň jeden zamestnanec
-  function otvoritKontrolu(e: React.FormEvent) {
+  async function najdiKonflikt(datumKontroly: string) {
+    if (vybraneMena.length === 0) return ''
+
+    const { data, error } = await supabase
+      .from('dochadzka')
+      .select('meno, zakazka, datum, prichod, odchod')
+      .eq('datum', datumKontroly)
+      .in('meno', vybraneMena)
+
+    if (error) return 'Nepodarilo sa overiť existujúce zápisy. Skúste to znova.'
+
+    for (const meno of vybraneMena) {
+      const zaznamyPracovnika = (data || []).filter(z => z.meno === meno)
+
+      const duplikat = zaznamyPracovnika.find(z =>
+        z.zakazka === zakazka &&
+        z.prichod === prichod &&
+        z.odchod === odchod
+      )
+      if (duplikat) {
+        return `${meno} už má presne tento zápis (${prichod}–${odchod}, ${zakazka}).`
+      }
+
+      const prekryv = zaznamyPracovnika.find(z =>
+        z.prichod && z.odchod &&
+        intervalySaPrekryvaju(prichod, odchod, z.prichod, z.odchod)
+      )
+      if (prekryv) {
+        return `${meno} už má v tomto čase zápis ${prekryv.prichod}–${prekryv.odchod} na stavbe ${prekryv.zakazka}.`
+      }
+    }
+
+    return ''
+  }
+
+  async function otvoritKontrolu(e: React.FormEvent) {
     e.preventDefault()
+    setStatus('')
+
     if (vybraneMena.length === 0) {
       setStatus('⚠️ Vyberte aspoň jedného zamestnanca')
-      setTimeout(() => setStatus(''), 3000)
       return
     }
+
+    if (!zakazka || !prichod || !odchod || !datum) {
+      setStatus('⚠️ Vyplňte zákazku, dátum, príchod aj odchod')
+      return
+    }
+
+    if (!arePlacesValidMinutes(prichod) || !arePlacesValidMinutes(odchod)) {
+      setStatus('⚠️ Čas zapisujte iba po 15 minútach (00, 15, 30, 45)')
+      return
+    }
+
+    if (prichod === odchod) {
+      setStatus('⚠️ Príchod a odchod nemôžu byť rovnaké')
+      return
+    }
+
+    setStatus('Kontrolujem zápis...')
+    const konflikt = await najdiKonflikt(datum)
+
+    if (konflikt) {
+      setStatus('⚠️ ' + konflikt)
+      return
+    }
+
+    setStatus('')
     setZobrazitPotvrdenie(true)
   }
 
   // Uloženie pre všetkých vybraných zamestnancov
   async function potvrditAOdoslat() {
-    setStatus('Odosielam...')
-    setZobrazitPotvrdenie(false)
+    if (odosiela) return
+    setOdosiela(true)
+    setStatus('Kontrolujem a odosielam...')
     
-    const datumNaUlozenie = datum || new Date().toISOString().split('T')[0]
+    const datumNaUlozenie = datum || datumDoLocalString(new Date())
 
-    // Vytvoríme pole záznamov (pre každého označeného zamestnanca jeden)
+    // Konflikt overíme znova tesne pred uložením, aby sme znížili riziko duplikátu.
+    const konflikt = await najdiKonflikt(datumNaUlozenie)
+    if (konflikt) {
+      setZobrazitPotvrdenie(false)
+      setStatus('⚠️ ' + konflikt)
+      setOdosiela(false)
+      return
+    }
+
     const zaznamyNaUlozenie = vybraneMena.map(meno => ({
       meno, 
       zakazka, 
@@ -70,24 +149,43 @@ export default function Home() {
       datum: datumNaUlozenie
     }))
 
-    // Supabase dokáže vložiť celé pole naraz (Bulk insert)
     const { error } = await supabase.from('dochadzka').insert(zaznamyNaUlozenie)
 
     if (error) {
       setStatus('Chyba: ' + error.message)
-    } else {
-      setStatus(`✅ Záznam uložený pre ${vybraneMena.length} zamestnancov`)
-      // Zresetujeme formulár
-      setVybraneMena([])
-      setZakazka('')
-      setPrichod('')
-      setOdchod('')
-      setDatum('')
-      
-      setTimeout(() => {
-        setStatus('')
-      }, 4000)
+      setOdosiela(false)
+      return
     }
+
+    const novyZapis = {
+      id: Date.now(),
+      mena: [...vybraneMena],
+      zakazka,
+      datum: datumNaUlozenie,
+      prichod,
+      odchod,
+      trvanie: vypocitajTrvanie(prichod, odchod),
+      casZapisu: new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
+    }
+
+    const aktualizovane = [novyZapis, ...posledneZapisy].slice(0, 5)
+    setPosledneZapisy(aktualizovane)
+    try {
+      sessionStorage.setItem('posledne-zapisy-dochadzky', JSON.stringify(aktualizovane))
+    } catch {}
+
+    setStatus(`✅ Záznam uložený pre ${vybraneMena.length} zamestnancov`)
+    setZobrazitPotvrdenie(false)
+    setVybraneMena([])
+    setZakazka('')
+    setPrichod('')
+    setOdchod('')
+    setDatum(datumDoLocalString(new Date()))
+    setOdosiela(false)
+    
+    setTimeout(() => {
+      setStatus('')
+    }, 4000)
   }
 
   // Funkcia na prepínanie výberu zamestnanca (pridá/odoberie z poľa)
@@ -99,13 +197,44 @@ export default function Home() {
     )
   }
 
+  function arePlacesValidMinutes(cas: string) {
+    if (!cas) return false
+    const minuty = Number(cas.split(':')[1])
+    return [0, 15, 30, 45].includes(minuty)
+  }
+
+  function casNaMinuty(cas: string) {
+    const [hodiny, minuty] = cas.split(':').map(Number)
+    return hodiny * 60 + minuty
+  }
+
+  function intervalySaPrekryvaju(prichodA: string, odchodA: string, prichodB: string, odchodB: string) {
+    let startA = casNaMinuty(prichodA)
+    let endA = casNaMinuty(odchodA)
+    let startB = casNaMinuty(prichodB)
+    let endB = casNaMinuty(odchodB)
+
+    if (endA <= startA) endA += 24 * 60
+    if (endB <= startB) endB += 24 * 60
+
+    return startA < endB && startB < endA
+  }
+
+  function datumDoLocalString(d: Date) {
+    const rok = d.getFullYear()
+    const mesiac = String(d.getMonth() + 1).padStart(2, '0')
+    const den = String(d.getDate()).padStart(2, '0')
+    return `${rok}-${mesiac}-${den}`
+  }
+
   function vypocitajTrvanie(odCasu: string, doCasu: string) {
     if (!odCasu || !doCasu) return '0 h'
     const [h1, m1] = odCasu.split(':').map(Number)
     const [h2, m2] = doCasu.split(':').map(Number)
     
     let rozdielMinut = (h2 * 60 + m2) - (h1 * 60 + m1)
-    if (rozdielMinut < 0) rozdielMinut += 24 * 60 
+    if (rozdielMinut < 0) rozdielMinut += 24 * 60
+    if (rozdielMinut > 5.5 * 60) rozdielMinut -= 30
     
     const hodiny = Math.floor(rozdielMinut / 60)
     const minuty = rozdielMinut % 60
@@ -197,17 +326,21 @@ export default function Home() {
               </div>
               <div style={{ height: '1px', backgroundColor: '#d2d2d7', margin: '4px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
-                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Spolu (na osobu):</span>
+                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Platený čas (na osobu):</span>
                 <span style={{ fontWeight: '600', color: '#1d1d1f' }}>{vypocitajTrvanie(prichod, odchod)}</span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#86868b', lineHeight: '1.4' }}>
+                Pri pracovnom čase nad 5,5 h je odpočítaná 30-minútová prestávka.
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
               <button 
                 onClick={potvrditAOdoslat}
-                style={{ width: '100%', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                disabled={odosiela}
+                style={{ width: '100%', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: odosiela ? 'default' : 'pointer', opacity: odosiela ? 0.65 : 1 }}
               >
-                Potvrdiť a odoslať
+                {odosiela ? 'Odosielam...' : 'Potvrdiť a odoslať'}
               </button>
               <button 
                 onClick={() => setZobrazitPotvrdenie(false)}
@@ -274,7 +407,7 @@ export default function Home() {
           </select>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dátum (ak iný ako dnes)</span>
+            <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dátum</span>
             <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
           </div>
           
@@ -289,8 +422,8 @@ export default function Home() {
             </div>
           </div>
 
-          <button type="submit" style={{ marginTop: '10px', padding: '14px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
-            Odoslať záznam
+          <button type="submit" style={{ marginTop: '10px', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+            Skontrolovať záznam
           </button>
         </form>
 
@@ -300,6 +433,45 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {posledneZapisy.length > 0 && (
+        <div style={{ width: '100%', maxWidth: '720px', marginTop: '18px', backgroundColor: '#ffffff', padding: '22px 24px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: '#1d1d1f' }}>Posledné zápisy</div>
+              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Zápisy odoslané z tohto zariadenia počas tejto relácie.</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPosledneZapisy([])
+                try { sessionStorage.removeItem('posledne-zapisy-dochadzky') } catch {}
+              }}
+              style={{ border: 'none', background: 'none', color: '#86868b', fontSize: '11px', cursor: 'pointer', padding: 0 }}
+            >
+              Vymazať
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {posledneZapisy.map(zapis => (
+              <div key={zapis.id} style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#f5f5f7', border: '1px solid #e5e5e5' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#1d1d1f', lineHeight: '1.4' }}>{zapis.mena.join(', ')}</div>
+                    <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{zapis.zakazka} · {formatujDatum(zapis.datum)}</div>
+                  </div>
+                  <span style={{ fontSize: '10px', fontWeight: '600', color: '#15803d', whiteSpace: 'nowrap' }}>✓ Zapísané {zapis.casZapisu}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '9px', fontSize: '12px' }}>
+                  <span style={{ color: '#1d1d1f' }}>{zapis.prichod} – {zapis.odchod}</span>
+                  <span style={{ color: '#1d1d1f', fontWeight: '600' }}>{zapis.trvanie}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: '30px' }}>
         <Link href="/dashboard" style={{ color: '#d1d5db', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s' }}>Administrácia</Link>
