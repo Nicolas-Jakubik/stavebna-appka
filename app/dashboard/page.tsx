@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const SPRAVNE_HESLO = 'sef123'
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
+  const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
@@ -104,18 +105,52 @@ export default function DashboardPage() {
   }
 
   function getTimeValidationError(prichod: string, odchod: string): string {
-    if (!prichod || !odchod) return ''
+    if (!prichod || !odchod) return 'Príchod aj odchod sú povinné.'
     if (!arePlacesValidMinutes(prichod)) return 'Príchod: Dovolené sú iba 00, 15, 30, 45 minút'
     if (!arePlacesValidMinutes(odchod)) return 'Odchod: Dovolené sú iba 00, 15, 30, 45 minút'
+    if (prichod === odchod) return 'Príchod a odchod nemôžu byť rovnaké.'
     return ''
   }
 
-  function getDuplicateCount(datum: string, meno: string, excludeId?: string): number {
-    return zaznamy.filter(z => 
-      z.datum === datum && 
-      z.meno === meno && 
+  function casNaMinuty(cas: string) {
+    const [hodiny, minuty] = cas.split(':').map(Number)
+    return hodiny * 60 + minuty
+  }
+
+  function intervalySaPrekryvaju(prichodA: string, odchodA: string, prichodB: string, odchodB: string) {
+    let startA = casNaMinuty(prichodA)
+    let endA = casNaMinuty(odchodA)
+    let startB = casNaMinuty(prichodB)
+    let endB = casNaMinuty(odchodB)
+
+    if (endA <= startA) endA += 24 * 60
+    if (endB <= startB) endB += 24 * 60
+
+    return startA < endB && startB < endA
+  }
+
+  function jePresnyDuplikat(zaznam: any, excludeId?: string) {
+    return kontrolneZaznamy.some(z =>
+      z.datum === zaznam.datum &&
+      z.meno === zaznam.meno &&
+      z.zakazka === zaznam.zakazka &&
+      z.prichod === zaznam.prichod &&
+      z.odchod === zaznam.odchod &&
       (!excludeId || z.id !== excludeId)
-    ).length
+    )
+  }
+
+  function maPrekryvajuciSaCas(zaznam: any, excludeId?: string) {
+    if (!zaznam.prichod || !zaznam.odchod) return false
+
+    return kontrolneZaznamy.some(z =>
+      z.datum === zaznam.datum &&
+      z.meno === zaznam.meno &&
+      (!excludeId || z.id !== excludeId) &&
+      z.prichod && z.odchod &&
+      intervalySaPrekryvaju(zaznam.prichod, zaznam.odchod, z.prichod, z.odchod) &&
+      !(z.zakazka === zaznam.zakazka && z.prichod === zaznam.prichod && z.odchod === zaznam.odchod)
+    )
   }
 
   function skontrolovatHeslo(e: React.FormEvent) {
@@ -127,9 +162,14 @@ export default function DashboardPage() {
     } else setChybaHesla(true)
   }
 
-  const zoznamMesiacov = [
-    { hodnota: '2026-01', nazov: 'Január 2026' }, { hodnota: '2026-02', nazov: 'Február 2026' }, { hodnota: '2026-03', nazov: 'Marec 2026' }, { hodnota: '2026-04', nazov: 'Apríl 2026' }, { hodnota: '2026-05', nazov: 'Máj 2026' }, { hodnota: '2026-06', nazov: 'Jún 2026' }, { hodnota: '2026-07', nazov: 'Júl 2026' }, { hodnota: '2026-08', nazov: 'August 2026' }, { hodnota: '2026-09', nazov: 'September 2026' }, { hodnota: '2026-10', nazov: 'Október 2026' }, { hodnota: '2026-11', nazov: 'November 2026' }, { hodnota: '2026-12', nazov: 'December 2026' },
-  ]
+  const nazvyMesiacov = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
+  const aktualnyRok = new Date().getFullYear()
+  const zoznamMesiacov = [aktualnyRok - 1, aktualnyRok, aktualnyRok + 1].flatMap(rok =>
+    nazvyMesiacov.map((nazov, index) => ({
+      hodnota: `${rok}-${String(index + 1).padStart(2, '0')}`,
+      nazov: `${nazov} ${rok}`
+    }))
+  )
 
   function vypocitajHodiny(prichod: string, odchod: string) {
     if (!prichod || !odchod) return 0
@@ -198,13 +238,31 @@ export default function DashboardPage() {
   }
 
   async function nacitajFiltre() {
-    const { data } = await supabase.from('dochadzka').select('zakazka, meno')
-    if (data) {
-      const unikatneZakazky = Array.from(new Set(data.map(z => z.zakazka))).filter(Boolean)
-      const unikatneMena = Array.from(new Set(data.map(z => z.meno))).filter(Boolean)
-      setDostupneZakazky(unikatneZakazky.sort() as string[])
-      setDostupneMena(unikatneMena.sort() as string[])
+    const [zamestnanciResult, dochadzkaResult] = await Promise.all([
+      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      supabase.from('dochadzka').select('zakazka, meno')
+    ])
+
+    const dochadzkaData = dochadzkaResult.data || []
+    const unikatneZakazky = Array.from(new Set(dochadzkaData.map(z => z.zakazka))).filter(Boolean)
+    setDostupneZakazky(unikatneZakazky.sort() as string[])
+
+    if (!zamestnanciResult.error && zamestnanciResult.data) {
+      const mena = Array.from(new Set(zamestnanciResult.data.map(z => z.meno).filter(Boolean))) as string[]
+      setDostupneMena(mena.sort())
+    } else {
+      const mena = Array.from(new Set(dochadzkaData.map(z => z.meno))).filter(Boolean) as string[]
+      setDostupneMena(mena.sort())
     }
+  }
+
+  async function nacitajKontrolneZaznamy() {
+    const { data, error } = await supabase
+      .from('dochadzka')
+      .select('id, datum, meno, zakazka, prichod, odchod')
+
+    if (error) console.error('Chyba kontroly duplicít a prekryvov:', error.message)
+    else setKontrolneZaznamy(data || [])
   }
 
   async function nacitaj() {
@@ -230,6 +288,7 @@ export default function DashboardPage() {
     nacitaj()
     nacitajFiltre()
     nacitajNezapisanychVcera()
+    nacitajKontrolneZaznamy()
   }
 
   function zacatUpravu(id: string, prichod: string, odchod: string) {
@@ -277,6 +336,18 @@ export default function DashboardPage() {
       return
     }
 
+    const povodny = kontrolneZaznamy.find(z => z.id === id) || zaznamy.find(z => z.id === id)
+    if (!povodny) {
+      setChybaUpravaHodiny('Záznam sa nepodarilo nájsť.')
+      return
+    }
+
+    const upraveny = { ...povodny, prichod: upravovanePrichod, odchod: upravovaneOdchod }
+    if (jePresnyDuplikat(upraveny, id)) {
+      setChybaUpravaHodiny('Tento zápis už existuje: rovnaký pracovník, deň, stavba, príchod aj odchod.')
+      return
+    }
+
     const { error: supabaseError } = await supabase
       .from('dochadzka')
       .update({ prichod: upravovanePrichod, odchod: upravovaneOdchod })
@@ -284,10 +355,10 @@ export default function DashboardPage() {
 
     if (supabaseError) {
       console.error("Chyba úpravy:", supabaseError)
+      setChybaUpravaHodiny('Úpravu sa nepodarilo uložiť: ' + supabaseError.message)
     } else {
       zrusitUpravu()
-      nacitaj()
-      nacitajFiltre()
+      await Promise.all([nacitaj(), nacitajFiltre(), nacitajKontrolneZaznamy()])
     }
   }
 
@@ -314,23 +385,34 @@ export default function DashboardPage() {
 
   async function ulozitVsetkyNoveZaznamy() {
     const dataNaVlozenie: any[] = []
-    
-    noveZaznamy.forEach(z => {
-      if (z.mena.length > 0 && z.zakazka && z.prichod && z.odchod && z.datum) {
-        const error = getTimeValidationError(z.prichod, z.odchod)
-        if (error) {
-          alert(error)
-          return
-        }
-        z.mena.forEach(meno => {
-          dataNaVlozenie.push({ datum: z.datum, meno: meno, zakazka: z.zakazka, prichod: z.prichod, odchod: z.odchod })
-        })
+
+    for (let i = 0; i < noveZaznamy.length; i++) {
+      const z = noveZaznamy[i]
+
+      if (!z.datum || !z.zakazka || !z.prichod || !z.odchod || z.mena.length === 0) {
+        alert(`Blok ${i + 1}: Vyplňte dátum, stavbu, príchod, odchod a vyberte aspoň jedného zamestnanca.`)
+        return
       }
-    })
-    
-    if (dataNaVlozenie.length === 0) {
-      alert('Chyba: Vyplňte všetky polia a vyberte zamestnanca.')
-      return
+
+      const error = getTimeValidationError(z.prichod, z.odchod)
+      if (error) {
+        alert(`Blok ${i + 1}: ${error}`)
+        return
+      }
+
+      for (const meno of z.mena) {
+        dataNaVlozenie.push({ datum: z.datum, meno, zakazka: z.zakazka.trim(), prichod: z.prichod, odchod: z.odchod })
+      }
+    }
+
+    const kluce = new Set<string>()
+    for (const zaznam of dataNaVlozenie) {
+      const kluc = `${zaznam.datum}|${zaznam.meno}|${zaznam.zakazka}|${zaznam.prichod}|${zaznam.odchod}`.toLowerCase()
+      if (kluce.has(kluc) || jePresnyDuplikat(zaznam)) {
+        alert(`Duplikát: ${zaznam.meno} už má rovnaký zápis ${zaznam.datum} na stavbe ${zaznam.zakazka} (${zaznam.prichod}–${zaznam.odchod}).`)
+        return
+      }
+      kluce.add(kluc)
     }
 
     const { error } = await supabase.from('dochadzka').insert(dataNaVlozenie)
@@ -338,13 +420,11 @@ export default function DashboardPage() {
     else {
       setUkazatFormular(false)
       setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
-      nacitaj()
-      nacitajFiltre()
-      nacitajNezapisanychVcera()
+      await Promise.all([nacitaj(), nacitajFiltre(), nacitajNezapisanychVcera(), nacitajKontrolneZaznamy()])
     }
   }
 
-  useEffect(() => { if (jeOdomknute) nacitajFiltre() }, [jeOdomknute])
+  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy() } }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitajNezapisanychVcera() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
 
@@ -464,7 +544,8 @@ export default function DashboardPage() {
 
         <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#f9fafb', borderLeft: '3px solid #0071e3', borderRadius: '6px', fontSize: '11px' }}>
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Chybné časy</span>
-          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Duplikát</span>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Presný duplikát</span>
+          <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#fff7ed', border: '1px solid #fdba74', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Prekrývajúci sa čas</span>
           <span style={{ display: 'inline-block', marginRight: '12px' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#ffb347', border: '1px solid #ff9800', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Víkend</span>
           <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
@@ -506,6 +587,7 @@ export default function DashboardPage() {
         {ukazatFormular && (
           <div style={{...cardStyle, marginBottom: '20px'}}>
             <datalist id="zoznam-zakaziek">{dostupneZakazky.map(zak => <option key={zak} value={zak} />)}</datalist>
+            <div style={{ fontSize: '11px', color: '#86868b', marginBottom: '14px' }}>Každý blok predstavuje jeden pracovný úsek na jednej stavbe. Ak pracovník počas dňa prejde na inú stavbu alebo má iný pracovný čas, pridajte ďalší blok.</div>
 
             {noveZaznamy.map((z, i) => (
               <div key={i} style={{ marginBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', paddingBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', borderBottom: i !== noveZaznamy.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
@@ -719,7 +801,8 @@ export default function DashboardPage() {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
-                    const jeDuplicite = getDuplicateCount(z.datum, z.meno, z.id) > 0
+                    const jeDuplicite = jePresnyDuplikat(z, z.id)
+                    const jePrekryv = maPrekryvajuciSaCas(z, z.id)
                     const maCiasChybu = !arePlacesValidMinutes(z.prichod) || !arePlacesValidMinutes(z.odchod)
 
                     return (
@@ -727,11 +810,11 @@ export default function DashboardPage() {
                         key={z.id} 
                         style={{ 
                           borderBottom: '1px solid #f5f5f7',
-                          backgroundColor: maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jeVikend ? '#f5f5f7' : 'transparent',
+                          backgroundColor: maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jePrekryv ? '#fff7ed' : jeVikend ? '#f5f5f7' : 'transparent',
                           transition: 'background-color 0.2s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f7'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jeVikend ? '#f5f5f7' : 'transparent'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = maCiasChybu ? '#fef2f2' : jeDuplicite ? '#fef3c7' : jePrekryv ? '#fff7ed' : jeVikend ? '#f5f5f7' : 'transparent'}
                       >
                         <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
                           {z.datum}
@@ -739,7 +822,8 @@ export default function DashboardPage() {
                         </td>
                         <td style={{ padding: '10px 8px', fontWeight: '600', color: '#1d1d1f' }}>
                           {z.meno}
-                          {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>×2</span>}
+                          {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>DUP</span>}
+                          {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>PREKRYV</span>}
                         </td>
                         <td style={{ padding: '10px 8px', color: '#666', fontSize: '11px' }}>{z.zakazka}</td>
                         
@@ -774,9 +858,9 @@ export default function DashboardPage() {
                             <input 
                               type="number" 
                               value={upravovaneHodiny} 
-                              onChange={(e) => setUpravovaneHodiny(e.target.value)}
-                              step="0.1"
-                              style={{...inputStyle, width: '60px', fontSize: '11px', padding: '4px 6px', textAlign: 'right'}}
+                              readOnly
+                              title="Hodiny sa počítajú automaticky z príchodu a odchodu"
+                              style={{...inputStyle, width: '60px', fontSize: '11px', padding: '4px 6px', textAlign: 'right', opacity: 0.75}}
                             />
                           ) : (
                             <>
