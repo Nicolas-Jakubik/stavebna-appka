@@ -211,7 +211,7 @@ export default function DashboardPage() {
     return `${den}.${mesiac}.${rok}`
   }
 
-  function vypocitajFondMesiaca(mesiac: string) {
+  function vypocitajFondObdobia(mesiac: string, odDna = 1, doDna?: number) {
     const [rokText, mesiacText] = mesiac.split('-')
     const rok = Number(rokText)
     const mesiacIndex = Number(mesiacText) - 1
@@ -219,15 +219,20 @@ export default function DashboardPage() {
     if (!Number.isInteger(rok) || mesiacIndex < 0 || mesiacIndex > 11) return 0
 
     const pocetDni = new Date(Date.UTC(rok, mesiacIndex + 1, 0)).getUTCDate()
+    const poslednyDen = Math.min(doDna ?? pocetDni, pocetDni)
     let fond = 0
 
-    for (let den = 1; den <= pocetDni; den++) {
+    for (let den = Math.max(1, odDna); den <= poslednyDen; den++) {
       const denVTyzdni = new Date(Date.UTC(rok, mesiacIndex, den)).getUTCDay()
       if (denVTyzdni === 0) continue
       fond += denVTyzdni === 6 ? 10.5 : 11.5
     }
 
     return fond
+  }
+
+  function vypocitajFondMesiaca(mesiac: string) {
+    return vypocitajFondObdobia(mesiac)
   }
 
   async function nacitajNezapisanychVcera() {
@@ -457,9 +462,19 @@ export default function DashboardPage() {
 
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
   const pocetZaznamov = zaznamy.length
-  const fondMesiaca = vypocitajFondMesiaca(filterMesiac)
+  const prvaPolovicaHodiny = zaznamy
+    .filter(z => Number(String(z.datum).split('-')[2]) <= 15)
+    .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+  const druhaPolovicaHodiny = zaznamy
+    .filter(z => Number(String(z.datum).split('-')[2]) >= 16)
+    .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+  const fondPrvaPolovica = vypocitajFondObdobia(filterMesiac, 1, 15)
+  const fondDruhaPolovica = vypocitajFondObdobia(filterMesiac, 16)
+  const fondMesiaca = fondPrvaPolovica + fondDruhaPolovica
   const zobrazitRozdielOprotiFondu = !!filterMeno && !filterDen && !filterZakazka
   const rozdielOprotiFondu = celkoveHodiny - fondMesiaca
+  const rozdielPrvaPolovica = prvaPolovicaHodiny - fondPrvaPolovica
+  const rozdielDruhaPolovica = druhaPolovicaHodiny - fondDruhaPolovica
   
   const zamestnanciHodiny: Record<string, number> = {}
   zaznamy.forEach(z => { zamestnanciHodiny[z.meno] = (zamestnanciHodiny[z.meno] || 0) + vypocitajHodiny(z.prichod, z.odchod) })
@@ -498,10 +513,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
-      <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
+      <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
         
-        <div style={{ display: 'flex', gap: '20px', paddingBottom: '14px', marginBottom: '24px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '28px', paddingBottom: '16px', marginBottom: '28px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
           <Link href="/dashboard" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Dochádzka</Link>
           <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
           <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
@@ -581,10 +596,30 @@ export default function DashboardPage() {
           <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{celkoveHodiny.toFixed(2)}</h3>
+            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{celkoveHodiny.toFixed(2)} h</h3>
+          </div>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>1. polovica · 1.–15.</p>
+            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{prvaPolovicaHodiny.toFixed(2)} h</h3>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Fond / 1 pracovník: {fondPrvaPolovica.toFixed(1)} h</div>
+            {zobrazitRozdielOprotiFondu && (
+              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielPrvaPolovica >= 0 ? '#15803d' : '#b42318' }}>
+                Rozdiel: {rozdielPrvaPolovica >= 0 ? '+' : ''}{rozdielPrvaPolovica.toFixed(1)} h
+              </div>
+            )}
+          </div>
+          <div style={cardStyle}>
+            <p style={{...labelStyle, margin: '0 0 4px 0'}}>2. polovica · 16.–koniec</p>
+            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{druhaPolovicaHodiny.toFixed(2)} h</h3>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Fond / 1 pracovník: {fondDruhaPolovica.toFixed(1)} h</div>
+            {zobrazitRozdielOprotiFondu && (
+              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielDruhaPolovica >= 0 ? '#15803d' : '#b42318' }}>
+                Rozdiel: {rozdielDruhaPolovica >= 0 ? '+' : ''}{rozdielDruhaPolovica.toFixed(1)} h
+              </div>
+            )}
           </div>
           <div style={cardStyle}>
             <p style={{...labelStyle, margin: '0 0 4px 0'}}>Fond mesiaca / 1 pracovník</p>
@@ -822,7 +857,7 @@ export default function DashboardPage() {
             </div>
           )}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', fontSize: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px', fontSize: '12px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
