@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
   const [filterMeno, setFilterMeno] = useState('')
+  const [filterPolovica, setFilterPolovica] = useState<'cely' | 'prva' | 'druha'>('cely')
   const [filterProblem, setFilterProblem] = useState('vsetko')
   
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
@@ -210,6 +211,24 @@ export default function DashboardPage() {
     if (!datum) return ''
     const [rok, mesiac, den] = datum.split('-')
     return `${den}.${mesiac}.${rok}`
+  }
+
+  function nastavRychlyFilter(typ: 'cely' | 'prva' | 'druha' | 'dnes' | 'vcera') {
+    setFilterProblem('vsetko')
+
+    if (typ === 'cely' || typ === 'prva' || typ === 'druha') {
+      setFilterDen('')
+      setFilterPolovica(typ)
+      return
+    }
+
+    const datum = new Date()
+    if (typ === 'vcera') datum.setDate(datum.getDate() - 1)
+    const datumText = datumDoLocalString(datum)
+
+    setFilterMesiac(datumText.slice(0, 7))
+    setFilterDen(datumText)
+    setFilterPolovica('cely')
   }
 
   function vypocitajFondObdobia(mesiac: string, odDna = 1, doDna?: number) {
@@ -497,12 +516,25 @@ export default function DashboardPage() {
     return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
   })
 
-  const jePodozrivyZaznam = (z: any) => jePodozrivyCas(z.prichod, z.odchod, vypocitajHodiny(z.prichod, z.odchod))
-  const pocetDuplikatov = zaznamy.filter(z => jePresnyDuplikat(z, z.id)).length
-  const pocetPrekryvov = zaznamy.filter(z => maPrekryvajuciSaCas(z, z.id)).length
-  const pocetPodozrivych = zaznamy.filter(jePodozrivyZaznam).length
+  const dnesText = datumDoLocalString(new Date())
+  const vceraDatum = new Date()
+  vceraDatum.setDate(vceraDatum.getDate() - 1)
+  const vceraText = datumDoLocalString(vceraDatum)
 
-  const zaznamyNaZobrazenie = zaznamy.filter(z => {
+  const zaznamyObdobia = zaznamy.filter(z => {
+    if (filterDen) return z.datum === filterDen
+    const den = Number(String(z.datum).split('-')[2])
+    if (filterPolovica === 'prva') return den <= 15
+    if (filterPolovica === 'druha') return den >= 16
+    return true
+  })
+
+  const jePodozrivyZaznam = (z: any) => jePodozrivyCas(z.prichod, z.odchod, vypocitajHodiny(z.prichod, z.odchod))
+  const pocetDuplikatov = zaznamyObdobia.filter(z => jePresnyDuplikat(z, z.id)).length
+  const pocetPrekryvov = zaznamyObdobia.filter(z => maPrekryvajuciSaCas(z, z.id)).length
+  const pocetPodozrivych = zaznamyObdobia.filter(jePodozrivyZaznam).length
+
+  const zaznamyNaZobrazenie = zaznamyObdobia.filter(z => {
     if (filterProblem === 'duplikat') return jePresnyDuplikat(z, z.id)
     if (filterProblem === 'prekryv') return maPrekryvajuciSaCas(z, z.id)
     if (filterProblem === 'podozrivy') return jePodozrivyZaznam(z)
@@ -965,6 +997,43 @@ export default function DashboardPage() {
           </div>
         )}
 
+        <div style={{ ...cardStyle, marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Rýchle zobrazenie tabuľky</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Jedným klikom vyber obdobie dochádzky.</div>
+            </div>
+            {filterDen && filterDen !== dnesText && filterDen !== vceraText && (
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#0071e3' }}>
+                Vybraný deň: {formatujDatumSK(filterDen)}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { key: 'cely', label: 'Celý mesiac', active: !filterDen && filterPolovica === 'cely' },
+              { key: 'prva', label: '1.–15.', active: !filterDen && filterPolovica === 'prva' },
+              { key: 'druha', label: '16.–koniec', active: !filterDen && filterPolovica === 'druha' },
+              { key: 'dnes', label: 'Dnes', active: filterDen === dnesText },
+              { key: 'vcera', label: 'Včera', active: filterDen === vceraText },
+            ].map(item => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => nastavRychlyFilter(item.key as 'cely' | 'prva' | 'druha' | 'dnes' | 'vcera')}
+                style={{
+                  ...(item.active ? buttonPrimaryStyle : buttonSecondaryStyle),
+                  padding: '7px 14px',
+                  fontSize: '10px'
+                } as any}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div style={{...cardStyle, marginBottom: '16px'}}>
           <label style={{...labelStyle, marginBottom: '6px'}}>Pracovník</label>
           <select
@@ -1000,7 +1069,10 @@ export default function DashboardPage() {
           <select 
             value={filterMesiac} 
             disabled={!!filterDen} 
-            onChange={(e) => setFilterMesiac(e.target.value)} 
+            onChange={(e) => {
+              setFilterMesiac(e.target.value)
+              setFilterProblem('vsetko')
+            }} 
             style={{...inputStyle, flex: 1, minWidth: '110px', opacity: filterDen ? 0.5 : 1} as any}
           >
             {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
@@ -1008,7 +1080,13 @@ export default function DashboardPage() {
           <input 
             type="date" 
             value={filterDen} 
-            onChange={(e) => setFilterDen(e.target.value)} 
+            onChange={(e) => {
+              const hodnota = e.target.value
+              setFilterDen(hodnota)
+              setFilterPolovica('cely')
+              setFilterProblem('vsetko')
+              if (hodnota) setFilterMesiac(hodnota.slice(0, 7))
+            }} 
             style={{...inputStyle, flex: 1, minWidth: '110px'} as any}
           />
         </div>
