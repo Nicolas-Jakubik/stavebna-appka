@@ -169,7 +169,7 @@ export default function Home() {
             borderRadius: '20px',
             padding: '30px 24px',
             width: '100%',
-            maxWidth: '340px',
+            maxWidth: '480px',
             boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
             textAlign: 'center'
           }}>
@@ -221,7 +221,7 @@ export default function Home() {
       )}
       {/* --- KONIEC MODALU --- */}
 
-      <div style={{ width: '100%', maxWidth: '380px', backgroundColor: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      <div style={{ width: '100%', maxWidth: '720px', backgroundColor: 'white', padding: '36px 44px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <Image src="/logo.png" alt="Logo" width={150} height={60} style={{ objectFit: 'contain' }} />
