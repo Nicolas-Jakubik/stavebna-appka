@@ -297,7 +297,7 @@ export default function MzdyPage() {
           </button>
         </div>
 
-        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle }}>
+        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, overflowX: 'auto' }}>
           <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>1. Výplata</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
