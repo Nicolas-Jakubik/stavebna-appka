@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import Link from 'next/link'
+import AdminNav from '../../components/AdminNav'
 import { adminStore } from '../../lib/store'
 
 export default function MzdyPage() {
@@ -258,12 +258,11 @@ export default function MzdyPage() {
 
       <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
         
-        <div className="skryt-pri-tlaci" style={{ display: 'flex', gap: '28px', paddingBottom: '16px', marginBottom: '28px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Výplaty</Link>
-          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
+        <div className="skryt-pri-tlaci">
+          <AdminNav
+            active="mzdy"
+            onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
+          />
         </div>
 
         <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', borderBottom: '2px solid #1d1d1f', paddingBottom: '12px', marginBottom: '20px' }}>
@@ -298,7 +297,7 @@ export default function MzdyPage() {
           </button>
         </div>
 
-        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle }}>
+        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, overflowX: 'auto' }}>
           <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>1. Výplata</h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import Link from 'next/link'
+import AdminNav from '../../components/AdminNav'
 import { adminStore } from '../../lib/store'
 
 export default function DashboardPage() {
@@ -481,6 +481,21 @@ export default function DashboardPage() {
   let najaktivnejsi = '-'; let maxHod = 0
   Object.entries(zamestnanciHodiny).forEach(([meno, h]) => { if (h > maxHod) { maxHod = h; najaktivnejsi = meno } })
 
+  const nazovVybranehoMesiaca = zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac
+  const zobrazitMesacnyPrehlad = !filterDen && !filterZakazka
+  const menaPrehladu = filterMeno ? [filterMeno] : dostupneMena
+  const mesacnyPrehlad = menaPrehladu.map(meno => {
+    const zaznamyPracovnika = zaznamy.filter(z => z.meno === meno)
+    const prva = zaznamyPracovnika
+      .filter(z => Number(String(z.datum).split('-')[2]) <= 15)
+      .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+    const druha = zaznamyPracovnika
+      .filter(z => Number(String(z.datum).split('-')[2]) >= 16)
+      .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+    const spolu = prva + druha
+    return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
+  })
+
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -516,13 +531,10 @@ export default function DashboardPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
       <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
         
-        <div style={{ display: 'flex', gap: '28px', paddingBottom: '16px', marginBottom: '28px', borderBottom: '1px solid #e5e5e5', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Link href="/dashboard" style={{ textDecoration: 'none', color: '#1d1d1f', fontWeight: '600', fontSize: '13px', borderBottom: '2px solid #0071e3', paddingBottom: '2px' }}>Dochádzka</Link>
-          <Link href="/zakazky" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Stavby</Link>
-          <Link href="/zamestnanci" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Zamestnanci</Link>
-          <Link href="/mzdy" style={{ textDecoration: 'none', color: '#86868b', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Výplaty</Link>
-          <button onClick={() => { adminStore.jeOdomknute = false; setJeOdomknute(false); }} style={{ border: 'none', background: 'none', color: '#86868b', marginLeft: 'auto', cursor: 'pointer', fontSize: '13px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'} onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}>Odhlásiť sa</button>
-        </div>
+        <AdminNav
+          active="dashboard"
+          onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
+        />
 
         <div style={{
           ...cardStyle,
@@ -640,6 +652,56 @@ export default function DashboardPage() {
             <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{filterMeno || najaktivnejsi}</h3>
           </div>
         </div>
+
+        {zobrazitMesacnyPrehlad && mesacnyPrehlad.length > 0 && (
+          <div style={{ ...cardStyle, marginBottom: '24px', padding: '0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '16px 18px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Mesačný prehľad pracovníkov</div>
+                <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{nazovVybranehoMesiaca} · fond {fondMesiaca.toFixed(1)} h / pracovník</div>
+              </div>
+              {filterMeno && (
+                <button type="button" onClick={() => setFilterMeno('')} style={{ ...buttonSecondaryStyle, padding: '6px 12px', fontSize: '10px' } as any}>
+                  Zobraziť všetkých
+                </button>
+              )}
+            </div>
+            <div style={{ overflowX: 'auto', maxHeight: '68vh', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
+                    <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Pracovník</th>
+                    <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>1.–15.</th>
+                    <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>16.–koniec</th>
+                    <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Spolu</th>
+                    <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Fond</th>
+                    <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Rozdiel</th>
+                    <th style={{ padding: '10px 18px', width: '80px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mesacnyPrehlad.map(r => (
+                    <tr key={r.meno} style={{ borderBottom: '1px solid #f5f5f7' }}>
+                      <td style={{ padding: '11px 18px', fontWeight: '600', color: '#1d1d1f' }}>{r.meno}</td>
+                      <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{r.prva.toFixed(2)} h</td>
+                      <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{r.druha.toFixed(2)} h</td>
+                      <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f', fontWeight: '700' }}>{r.spolu.toFixed(2)} h</td>
+                      <td style={{ padding: '11px 12px', textAlign: 'right', color: '#86868b' }}>{fondMesiaca.toFixed(1)} h</td>
+                      <td style={{ padding: '11px 12px', textAlign: 'right', fontWeight: '700', color: r.rozdiel >= 0 ? '#15803d' : '#b42318' }}>
+                        {r.rozdiel >= 0 ? '+' : ''}{r.rozdiel.toFixed(1)} h
+                      </td>
+                      <td style={{ padding: '11px 18px', textAlign: 'right' }}>
+                        <button type="button" onClick={() => setFilterMeno(r.meno)} style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '11px', fontWeight: '600', padding: 0 }}>
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginBottom: '16px' }}>
           <button 
@@ -858,7 +920,7 @@ export default function DashboardPage() {
           )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px', fontSize: '12px' }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: '58px', zIndex: 5, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
                   <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Osoba</th>
