@@ -29,7 +29,7 @@ export default function AdminSidebar({
           display: none;
         }
 
-        @media (max-width: 760px) {
+        @media (max-width: 1024px) {
           .admin-sidebar {
             position: fixed !important;
             top: 0 !important;
@@ -39,7 +39,7 @@ export default function AdminSidebar({
             min-width: 0 !important;
             height: 100dvh !important;
             border-radius: 0 18px 18px 0 !important;
-            padding: 20px 14px !important;
+            padding: max(20px, env(safe-area-inset-top)) 14px max(20px, env(safe-area-inset-bottom)) !important;
             transform: translateX(-105%);
             transition: transform 180ms ease;
             box-shadow: 12px 0 36px rgba(0,0,0,0.16) !important;
@@ -52,7 +52,7 @@ export default function AdminSidebar({
           .admin-mobile-menu-button {
             position: fixed;
             top: max(12px, env(safe-area-inset-top));
-            left: 12px;
+            left: max(12px, env(safe-area-inset-left));
             z-index: 1001;
             width: 42px;
             height: 42px;
