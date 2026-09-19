@@ -175,6 +175,15 @@ export default function ZamestnanciPage() {
     }
   }, [jeOdomknute])
 
+  const priemernaSadzba = zamestnanci.length > 0
+    ? zamestnanci.reduce((sucet, zamestnanec) => sucet + (Number(zamestnanec.sadzba) || 0), 0) / zamestnanci.length
+    : 0
+
+  const najvyssiaSadzba = zamestnanci.reduce(
+    (maximum, zamestnanec) => Math.max(maximum, Number(zamestnanec.sadzba) || 0),
+    0
+  )
+
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -232,7 +241,8 @@ export default function ZamestnanciPage() {
             max-width: 100% !important;
           }
 
-          .simple-admin-form-grid {
+          .simple-admin-form-grid,
+          .zamestnanci-summary-grid {
             grid-template-columns: 1fr !important;
           }
 
@@ -343,40 +353,66 @@ export default function ZamestnanciPage() {
           </div>
         </div>
 
-        <div style={{...cardStyle, marginBottom: '24px'}}>
-          <form onSubmit={pridatZamestnanca}>
-            <div className="simple-admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '10px', alignItems: 'flex-end' }}>
+        <div className="zamestnanci-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovníci</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{zamestnanci.length}</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Počet pracovníkov v evidencii</div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Priemerná sadzba</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#1d1d1f', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{priemernaSadzba.toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Priemer hodinových sadzieb</div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)', backgroundColor: '#f7fbff' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Najvyššia sadzba</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#1d1d1f', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{najvyssiaSadzba.toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: '#0071e3', marginTop: '8px', fontWeight: '650' }}>Najvyššia hodinová sadzba v tíme</div>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+          <div style={{ padding: '15px 18px', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Pridať pracovníka</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Zadaj meno a základnú hodinovú sadzbu pracovníka.</div>
+          </div>
+
+          <form onSubmit={pridatZamestnanca} style={{ padding: '16px 18px 18px' }}>
+            <div className="simple-admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 140px auto', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ minWidth: 0 }}>
-                <label style={labelStyle}>Meno</label>
+                <label style={labelStyle}>Meno pracovníka</label>
                 <input 
                   type="text" 
                   placeholder="Meno a priezvisko" 
                   value={noveMeno} 
                   onChange={(e) => setNoveMeno(e.target.value)} 
                   required 
-                  style={{...inputStyle, fontSize: '13px'}}
+                  style={{ ...inputStyle, fontSize: '13px', backgroundColor: '#ffffff' }}
                 />
               </div>
               <div style={{ minWidth: 0 }}>
-                <label style={labelStyle}>Sadzba</label>
+                <label style={labelStyle}>Hodinová sadzba</label>
                 <input 
                   type="number" 
                   placeholder="€/h" 
                   value={novaSadzba} 
                   onChange={(e) => setNovaSadzba(e.target.value)} 
                   required 
-                  step="0.1" 
-                  style={{...inputStyle, fontSize: '13px'}}
+                  step="0.1"
+                  min="0"
+                  style={{ ...inputStyle, fontSize: '13px', backgroundColor: '#ffffff' }}
                 />
               </div>
               <button 
                 type="submit" 
                 disabled={pridavaSa} 
-                style={{ ...buttonPrimaryStyle, minWidth: '100px' } as any}
+                style={{ ...buttonPrimaryStyle, minWidth: '130px', minHeight: '38px', opacity: pridavaSa ? 0.65 : 1 } as any}
                 onMouseEnter={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0077ed')}
                 onMouseLeave={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0071e3')}
               >
-                {pridavaSa ? 'Pridávam...' : '+ Pridať'}
+                {pridavaSa ? 'Pridávam...' : '+ Pridať pracovníka'}
               </button>
             </div>
           </form>
