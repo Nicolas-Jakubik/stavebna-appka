@@ -24,6 +24,7 @@ export default function ZamestnanciPage() {
   const [pocetDochadzkyPodlaMena, setPocetDochadzkyPodlaMena] = useState<Record<string, number>>({})
   const [hodinyPodlaMena, setHodinyPodlaMena] = useState<Record<string, number>>({})
   const [poslednaAktivitaPodlaMena, setPoslednaAktivitaPodlaMena] = useState<Record<string, string>>({})
+  const [pocetNepritomnostiPodlaMena, setPocetNepritomnostiPodlaMena] = useState<Record<string, number>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -121,14 +122,21 @@ export default function ZamestnanciPage() {
   }
 
   async function nacitajZamestnancov() {
-    const [{ data: dataZamestnanci, error: chybaZamestnancov }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
+    const [
+      { data: dataZamestnanci, error: chybaZamestnancov },
+      { data: dataDochadzka, error: chybaDochadzky },
+      { data: dataNepritomnosti, error: chybaNepritomnosti }
+    ] = await Promise.all([
       supabase
         .from('zamestnanci')
         .select('*')
         .order('meno', { ascending: true }),
       supabase
         .from('dochadzka')
-        .select('meno, datum, prichod, odchod')
+        .select('meno, datum, prichod, odchod'),
+      supabase
+        .from('nepritomnosti')
+        .select('meno')
     ])
 
     if (chybaZamestnancov) {
@@ -166,6 +174,21 @@ export default function ZamestnanciPage() {
       setPocetDochadzkyPodlaMena(pocty)
       setHodinyPodlaMena(hodiny)
       setPoslednaAktivitaPodlaMena(poslednaAktivita)
+    }
+
+    if (chybaNepritomnosti) {
+      console.error("Chyba načítania neprítomností pracovníkov:", chybaNepritomnosti)
+      setPocetNepritomnostiPodlaMena({})
+    } else {
+      const poctyNepritomnosti: Record<string, number> = {}
+
+      ;(dataNepritomnosti || []).forEach(zaznam => {
+        const meno = String(zaznam.meno || '').trim()
+        if (!meno) return
+        poctyNepritomnosti[meno] = (poctyNepritomnosti[meno] || 0) + 1
+      })
+
+      setPocetNepritomnostiPodlaMena(poctyNepritomnosti)
     }
   }
 
@@ -276,6 +299,7 @@ export default function ZamestnanciPage() {
         alert('Meno sa nepodarilo zmeniť vo všetkých záznamoch. Pôvodné údaje boli obnovené.')
         return
       }
+
     }
 
     zrusitUpravu()
@@ -613,13 +637,14 @@ export default function ZamestnanciPage() {
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Dochádzka</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Hodiny</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Posledná práca</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Neprítomnosť</th>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
                 </tr>
               </thead>
               <tbody>
                 {zamestnanciNaZobrazenie.length === 0 ? (
                   <tr className="simple-empty-row">
-                    <td className="simple-empty-cell" colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
+                    <td className="simple-empty-cell" colSpan={7} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
                       {hladat ? 'Žiadny pracovník nezodpovedá vyhľadávaniu.' : 'Zatiaľ nie je pridaný žiadny pracovník.'}
                     </td>
                   </tr>
@@ -676,6 +701,22 @@ export default function ZamestnanciPage() {
                       </td>
                       <td className="simple-mobile-cell" data-label="Posledná práca" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '600' }}>
                         {formatujDatumAktivity(poslednaAktivitaPodlaMena[String(z.meno || '').trim()] || '')}
+                      </td>
+                      <td className="simple-mobile-cell" data-label="Neprítomnosť" style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '30px',
+                          padding: '4px 8px',
+                          borderRadius: '999px',
+                          backgroundColor: (pocetNepritomnostiPodlaMena[String(z.meno || '').trim()] || 0) > 0 ? '#fff7ed' : '#f5f5f7',
+                          color: (pocetNepritomnostiPodlaMena[String(z.meno || '').trim()] || 0) > 0 ? '#c2410c' : '#86868b',
+                          fontSize: '10px',
+                          fontWeight: '750'
+                        }}>
+                          {pocetNepritomnostiPodlaMena[String(z.meno || '').trim()] || 0}
+                        </span>
                       </td>
                       <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
                         {upravovaneId === z.id ? (
