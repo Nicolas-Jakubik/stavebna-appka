@@ -23,6 +23,7 @@ export default function ZamestnanciPage() {
   const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc'>('az')
   const [pocetDochadzkyPodlaMena, setPocetDochadzkyPodlaMena] = useState<Record<string, number>>({})
   const [hodinyPodlaMena, setHodinyPodlaMena] = useState<Record<string, number>>({})
+  const [poslednaAktivitaPodlaMena, setPoslednaAktivitaPodlaMena] = useState<Record<string, string>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -113,6 +114,12 @@ export default function ZamestnanciPage() {
     return Number.isInteger(hodiny) ? String(hodiny) : hodiny.toFixed(1)
   }
 
+  function formatujDatumAktivity(datum: string) {
+    if (!datum) return 'Bez záznamu'
+    const [rok, mesiac, den] = datum.split('-')
+    return den && mesiac && rok ? `${den}.${mesiac}.${rok}` : datum
+  }
+
   async function nacitajZamestnancov() {
     const [{ data: dataZamestnanci, error: chybaZamestnancov }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
       supabase
@@ -121,7 +128,7 @@ export default function ZamestnanciPage() {
         .order('meno', { ascending: true }),
       supabase
         .from('dochadzka')
-        .select('meno, prichod, odchod')
+        .select('meno, datum, prichod, odchod')
     ])
 
     if (chybaZamestnancov) {
@@ -134,9 +141,11 @@ export default function ZamestnanciPage() {
       console.error("Chyba načítania dochádzky pracovníkov:", chybaDochadzky)
       setPocetDochadzkyPodlaMena({})
       setHodinyPodlaMena({})
+      setPoslednaAktivitaPodlaMena({})
     } else {
       const pocty: Record<string, number> = {}
       const hodiny: Record<string, number> = {}
+      const poslednaAktivita: Record<string, string> = {}
 
       ;(dataDochadzka || []).forEach(zaznam => {
         const meno = String(zaznam.meno || '').trim()
@@ -147,10 +156,16 @@ export default function ZamestnanciPage() {
           String(zaznam.prichod || ''),
           String(zaznam.odchod || '')
         )
+
+        const datum = String(zaznam.datum || '')
+        if (datum && (!poslednaAktivita[meno] || datum > poslednaAktivita[meno])) {
+          poslednaAktivita[meno] = datum
+        }
       })
 
       setPocetDochadzkyPodlaMena(pocty)
       setHodinyPodlaMena(hodiny)
+      setPoslednaAktivitaPodlaMena(poslednaAktivita)
     }
   }
 
@@ -597,13 +612,14 @@ export default function ZamestnanciPage() {
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '140px' }}>Hodinová sadzba</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Dochádzka</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Hodiny</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Posledná práca</th>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
                 </tr>
               </thead>
               <tbody>
                 {zamestnanciNaZobrazenie.length === 0 ? (
                   <tr className="simple-empty-row">
-                    <td className="simple-empty-cell" colSpan={5} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
+                    <td className="simple-empty-cell" colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
                       {hladat ? 'Žiadny pracovník nezodpovedá vyhľadávaniu.' : 'Zatiaľ nie je pridaný žiadny pracovník.'}
                     </td>
                   </tr>
@@ -657,6 +673,9 @@ export default function ZamestnanciPage() {
                       </td>
                       <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
                         {formatujHodiny(hodinyPodlaMena[String(z.meno || '').trim()] || 0)} h
+                      </td>
+                      <td className="simple-mobile-cell" data-label="Posledná práca" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '600' }}>
+                        {formatujDatumAktivity(poslednaAktivitaPodlaMena[String(z.meno || '').trim()] || '')}
                       </td>
                       <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
                         {upravovaneId === z.id ? (
