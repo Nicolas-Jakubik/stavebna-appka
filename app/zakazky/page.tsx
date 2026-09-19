@@ -20,6 +20,7 @@ export default function ZakazkyPage() {
   const [upravovanyNazov, setUpravovanyNazov] = useState('')
   const [pocetDochadzkyPodlaZakazky, setPocetDochadzkyPodlaZakazky] = useState<Record<string, number>>({})
   const [hodinyPodlaZakazky, setHodinyPodlaZakazky] = useState<Record<string, number>>({})
+  const [poslednaAktivitaPodlaZakazky, setPoslednaAktivitaPodlaZakazky] = useState<Record<string, string>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -115,7 +116,7 @@ export default function ZakazkyPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('zakazka, prichod, odchod')
+        .select('zakazka, datum, prichod, odchod')
     ])
 
     if (chybaZakazky) {
@@ -128,9 +129,11 @@ export default function ZakazkyPage() {
       console.error("Chyba načítania prepojenia dochádzky:", chybaDochadzky)
       setPocetDochadzkyPodlaZakazky({})
       setHodinyPodlaZakazky({})
+      setPoslednaAktivitaPodlaZakazky({})
     } else {
       const pocty: Record<string, number> = {}
       const hodiny: Record<string, number> = {}
+      const poslednaAktivita: Record<string, string> = {}
 
       ;(dataDochadzka || []).forEach(zaznam => {
         const nazov = String(zaznam.zakazka || '').trim()
@@ -141,10 +144,16 @@ export default function ZakazkyPage() {
           String(zaznam.prichod || ''),
           String(zaznam.odchod || '')
         )
+
+        const datum = String(zaznam.datum || '')
+        if (datum && (!poslednaAktivita[nazov] || datum > poslednaAktivita[nazov])) {
+          poslednaAktivita[nazov] = datum
+        }
       })
 
       setPocetDochadzkyPodlaZakazky(pocty)
       setHodinyPodlaZakazky(hodiny)
+      setPoslednaAktivitaPodlaZakazky(poslednaAktivita)
     }
   }
 
@@ -286,6 +295,13 @@ export default function ZakazkyPage() {
     if (!hodnota) return '—'
     const datum = new Date(hodnota)
     return Number.isNaN(datum.getTime()) ? hodnota : datum.toLocaleDateString('sk-SK')
+  }
+
+  const formatujDatumAktivity = (datum: string) => {
+    if (!datum) return 'Bez záznamu'
+    const [rok, mesiac, den] = datum.split('-')
+    if (!rok || !mesiac || !den) return datum
+    return `${den}.${mesiac}.${rok}`
   }
 
   const aktivneZakazkyNaZobrazenie = zoradZakazky(filtrujPodlaNazvu(aktivneZakazky))
@@ -596,13 +612,14 @@ export default function ZakazkyPage() {
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Hodiny</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Posledná práca</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {aktivneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={6} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
@@ -627,6 +644,9 @@ export default function ZakazkyPage() {
                     </td>
                     <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
                       {formatujHodiny(hodinyPodlaZakazky[zak.nazov] || 0)} h
+                    </td>
+                    <td className="simple-mobile-cell" data-label="Posledná práca" style={{ padding: '10px 12px', color: poslednaAktivitaPodlaZakazky[zak.nazov] ? '#1d1d1f' : '#a1a1a6', fontSize: '11px', fontWeight: poslednaAktivitaPodlaZakazky[zak.nazov] ? '650' : '500' }}>
+                      {formatujDatumAktivity(poslednaAktivitaPodlaZakazky[zak.nazov] || '')}
                     </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
@@ -707,13 +727,14 @@ export default function ZakazkyPage() {
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Hodiny</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Posledná práca</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {dokonceneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={6} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
@@ -738,6 +759,9 @@ export default function ZakazkyPage() {
                     </td>
                     <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
                       {formatujHodiny(hodinyPodlaZakazky[zak.nazov] || 0)} h
+                    </td>
+                    <td className="simple-mobile-cell" data-label="Posledná práca" style={{ padding: '10px 12px', color: poslednaAktivitaPodlaZakazky[zak.nazov] ? '#1d1d1f' : '#a1a1a6', fontSize: '11px', fontWeight: poslednaAktivitaPodlaZakazky[zak.nazov] ? '650' : '500' }}>
+                      {formatujDatumAktivity(poslednaAktivitaPodlaZakazky[zak.nazov] || '')}
                     </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
