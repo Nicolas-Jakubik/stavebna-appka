@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [filterZakazka, setFilterZakazka] = useState('')
   const [filterMeno, setFilterMeno] = useState('')
   const [filterPolovica, setFilterPolovica] = useState<'cely' | 'prva' | 'druha'>('cely')
+  const [filterDennehoPrehladu, setFilterDennehoPrehladu] = useState<'cely' | 'prva' | 'druha'>('cely')
   const [filterProblem, setFilterProblem] = useState('vsetko')
   const [triedenie, setTriedenie] = useState<'datum' | 'meno' | 'zakazka' | 'hodiny'>('datum')
   const [smerTriedenia, setSmerTriedenia] = useState<'asc' | 'desc'>('desc')
@@ -538,10 +539,17 @@ export default function DashboardPage() {
     const denVTyzdni = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     return {
       datum,
+      den,
       denVTyzdni: nazvyDni[denVTyzdni],
       pocet: mena.length,
       mena
     }
+  })
+
+  const dennyPrehladNaZobrazenie = dennyPrehladPracovnikov.filter(den => {
+    if (filterDennehoPrehladu === 'prva') return den.den <= 15
+    if (filterDennehoPrehladu === 'druha') return den.den >= 16
+    return true
   })
 
   const dnesText = datumDoLocalString(new Date())
@@ -904,6 +912,30 @@ export default function DashboardPage() {
               <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Pracovníci v práci podľa dní</div>
               <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{nazovVybranehoMesiaca} · každý pracovník sa za deň počíta iba raz</div>
             </div>
+
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                { key: 'cely', label: 'Celý mesiac' },
+                { key: 'prva', label: '1.–15.' },
+                { key: 'druha', label: '16.–koniec' },
+              ].map(volba => {
+                const aktivna = filterDennehoPrehladu === volba.key
+                return (
+                  <button
+                    key={volba.key}
+                    type="button"
+                    onClick={() => setFilterDennehoPrehladu(volba.key as 'cely' | 'prva' | 'druha')}
+                    style={{
+                      ...(aktivna ? buttonPrimaryStyle : buttonSecondaryStyle),
+                      padding: '6px 12px',
+                      fontSize: '9px'
+                    } as any}
+                  >
+                    {volba.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div style={{ maxHeight: '390px', overflowY: 'auto', overflowX: 'auto' }}>
@@ -918,7 +950,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {dennyPrehladPracovnikov.map(den => (
+                {dennyPrehladNaZobrazenie.map(den => (
                   <tr key={den.datum} style={{ borderBottom: '1px solid #f5f5f7', backgroundColor: den.datum === dnesText ? '#eff6ff' : 'transparent' }}>
                     <td style={{ padding: '10px 18px', fontWeight: '600', color: '#1d1d1f' }}>{formatujDatumSK(den.datum)}</td>
                     <td style={{ padding: '10px 12px', color: den.denVTyzdni === 'Ne' ? '#86868b' : '#1d1d1f' }}>{den.denVTyzdni}</td>
