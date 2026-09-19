@@ -180,24 +180,64 @@ export default function ZamestnanciPage() {
   }
 
   async function ulozitUpravu(id: string) {
-    if (!upravovaneMeno.trim()) {
+    const noveMeno = upravovaneMeno.trim()
+    if (!noveMeno) {
       zrusitUpravu()
       return
     }
 
+    const upravovanyZamestnanec = zamestnanci.find(z => String(z.id) === String(id))
+    if (!upravovanyZamestnanec) {
+      alert('Pracovníka sa nepodarilo nájsť.')
+      return
+    }
+
+    const povodneMeno = String(upravovanyZamestnanec.meno || '')
+    const povodnaSadzba = Number(upravovanyZamestnanec.sadzba) || 0
     const sadzbaCislo = parseFloat(upravovanaSadzba) || 0
 
-    const { error } = await supabase
+    const existujeRovnakeMeno = zamestnanci.some(z =>
+      String(z.id) !== String(id) &&
+      String(z.meno || '').trim().toLocaleLowerCase('sk') === noveMeno.toLocaleLowerCase('sk')
+    )
+
+    if (existujeRovnakeMeno) {
+      alert('Pracovník s týmto menom už existuje.')
+      return
+    }
+
+    const { error: chybaZamestnanca } = await supabase
       .from('zamestnanci')
-      .update({ meno: upravovaneMeno.trim(), sadzba: sadzbaCislo })
+      .update({ meno: noveMeno, sadzba: sadzbaCislo })
       .eq('id', id)
 
-    if (error) {
-      console.error("Chyba úpravy:", error)
-    } else {
-      zrusitUpravu()
-      nacitajZamestnancov()
+    if (chybaZamestnanca) {
+      console.error("Chyba úpravy pracovníka:", chybaZamestnanca)
+      alert('Úpravu pracovníka sa nepodarilo uložiť.')
+      return
     }
+
+    if (noveMeno !== povodneMeno) {
+      const { error: chybaDochadzky } = await supabase
+        .from('dochadzka')
+        .update({ meno: noveMeno })
+        .eq('meno', povodneMeno)
+
+      if (chybaDochadzky) {
+        console.error('Chyba premenovania pracovníka v dochádzke:', chybaDochadzky)
+
+        await supabase
+          .from('zamestnanci')
+          .update({ meno: povodneMeno, sadzba: povodnaSadzba })
+          .eq('id', id)
+
+        alert('Meno sa nepodarilo zmeniť vo všetkých záznamoch. Pôvodné údaje boli obnovené.')
+        return
+      }
+    }
+
+    zrusitUpravu()
+    nacitajZamestnancov()
   }
 
   useEffect(() => {
