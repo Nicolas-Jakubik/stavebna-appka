@@ -488,7 +488,39 @@ export default function MzdyPage() {
         </div>
 
         <div style={{ marginTop: '20px' }}>
-          <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>2. Súhrn stavby</h3>
+          <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px', pageBreakInside: 'avoid' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef' }}>
+              <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Fakturácia stavieb</div>
+              <div style={{ color: '#86868b', fontSize: '10px', marginTop: '3px' }}>
+                Stav fakturácie pre {nazovVyplatnehoObdobia.toLowerCase()}.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))' }}>
+              <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef', backgroundColor: '#fffafa' }}>
+                <div style={{ fontSize: '9px', color: '#b42318', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Nezaplatené</div>
+                <div style={{ fontSize: '22px', color: '#1d1d1f', fontWeight: '750', marginTop: '5px' }}>{nezaplateneStavby.length}</div>
+                <div style={{ fontSize: '9px', color: '#86868b', marginTop: '4px' }}>
+                  {nezaplateneStavby.reduce((sucet, [, hodiny]) => sucet + hodiny, 0).toFixed(2)} h
+                </div>
+              </div>
+              <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef', backgroundColor: '#fffdf7' }}>
+                <div style={{ fontSize: '9px', color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Poslaná FA</div>
+                <div style={{ fontSize: '22px', color: '#1d1d1f', fontWeight: '750', marginTop: '5px' }}>{poslaneFaStavby.length}</div>
+                <div style={{ fontSize: '9px', color: '#86868b', marginTop: '4px' }}>
+                  {poslaneFaStavby.reduce((sucet, [, hodiny]) => sucet + hodiny, 0).toFixed(2)} h
+                </div>
+              </div>
+              <div style={{ padding: '14px 18px', backgroundColor: '#f8fdfb' }}>
+                <div style={{ fontSize: '9px', color: '#047857', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Vyplatené</div>
+                <div style={{ fontSize: '22px', color: '#1d1d1f', fontWeight: '750', marginTop: '5px' }}>{vyplateneStavby.length}</div>
+                <div style={{ fontSize: '9px', color: '#86868b', marginTop: '4px' }}>
+                  {vyplateneStavby.reduce((sucet, [, hodiny]) => sucet + hodiny, 0).toFixed(2)} h
+                </div>
+              </div>
+            </div>
+          </div>
+
           <RenderujTabulkuStavieb zoznam={nezaplateneStavby} nadpis="Nezaplatené" predvolenyStav="Nezaplatená" />
           <RenderujTabulkuStavieb zoznam={poslaneFaStavby} nadpis="Poslaná FA" predvolenyStav="Poslaná FA" />
           <RenderujTabulkuStavieb zoznam={vyplateneStavby} nadpis="Vyplatené" predvolenyStav="Vyplatená" />
