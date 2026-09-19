@@ -1100,136 +1100,184 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '16px 18px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Pracovníci v práci podľa dní</div>
-              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{nazovVybranehoMesiaca} · každý pracovník sa za deň počíta iba raz</div>
+        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.015em' }}>Pracovníci v práci podľa dní</div>
+                <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>{nazovVybranehoMesiaca} · každý pracovník sa za deň počíta iba raz</div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'cely', label: 'Celý mesiac' },
+                  { key: 'prva', label: '1.–15.' },
+                  { key: 'druha', label: '16.–koniec' },
+                ].map(volba => {
+                  const aktivna = filterDennehoPrehladu === volba.key
+                  return (
+                    <button
+                      key={volba.key}
+                      type="button"
+                      onClick={() => setFilterDennehoPrehladu(volba.key as 'cely' | 'prva' | 'druha')}
+                      style={{
+                        ...(aktivna ? buttonPrimaryStyle : buttonSecondaryStyle),
+                        padding: '6px 12px',
+                        fontSize: '9px'
+                      } as any}
+                    >
+                      {volba.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {[
-                { key: 'cely', label: 'Celý mesiac' },
-                { key: 'prva', label: '1.–15.' },
-                { key: 'druha', label: '16.–koniec' },
-              ].map(volba => {
-                const aktivna = filterDennehoPrehladu === volba.key
-                return (
-                  <button
-                    key={volba.key}
-                    type="button"
-                    onClick={() => setFilterDennehoPrehladu(volba.key as 'cely' | 'prva' | 'druha')}
-                    style={{
-                      ...(aktivna ? buttonPrimaryStyle : buttonSecondaryStyle),
-                      padding: '6px 12px',
-                      fontSize: '9px'
-                    } as any}
-                  >
-                    {volba.label}
-                  </button>
-                )
-              })}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '12px', fontSize: '10px', color: '#86868b' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa' }}></span>
+                Sobota
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}></span>
+                Nedeľa
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: '#f3e8ff', border: '1px solid #ddd6fe' }}></span>
+                Neprítomnosť
+              </span>
             </div>
           </div>
 
-          <div style={{ maxHeight: '390px', overflowY: 'auto', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px', fontSize: '12px' }}>
+          <div style={{ maxHeight: '440px', overflowY: 'auto', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
-                  <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
-                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Deň</th>
-                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Pracovníci</th>
-                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Mená</th>
-                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Neprítomní</th>
-                  <th style={{ padding: '10px 18px', width: '80px' }}></th>
+                  <th style={{ padding: '10px 20px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Deň</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650', textAlign: 'center', width: '110px' }}>V práci</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Pracovníci</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Neprítomní</th>
+                  <th style={{ padding: '10px 20px', width: '80px' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {dennyPrehladNaZobrazenie.map(den => (
-                  <tr
-                    key={den.datum}
-                    style={{
-                      borderBottom: '1px solid #f5f5f7',
-                      backgroundColor:
-                        den.denVTyzdni === 'Ne'
-                          ? '#fef2f2'
-                          : den.denVTyzdni === 'So'
-                            ? '#fff7ed'
-                            : den.datum === dnesText
-                              ? '#eff6ff'
-                              : 'transparent'
-                    }}
-                  >
-                    <td style={{ padding: '10px 18px', fontWeight: '600', color: '#1d1d1f' }}>{formatujDatumSK(den.datum)}</td>
-                    <td style={{
-                      padding: '10px 12px',
-                      color: den.denVTyzdni === 'Ne' ? '#b42318' : den.denVTyzdni === 'So' ? '#9a3412' : '#1d1d1f',
-                      fontWeight: den.denVTyzdni === 'Ne' || den.denVTyzdni === 'So' ? '700' : '400'
-                    }}>{den.denVTyzdni}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        minWidth: '30px',
-                        textAlign: 'center',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontWeight: '700',
-                        backgroundColor: den.pocet > 0 ? '#e8f3ff' : '#f5f5f7',
-                        color: den.pocet > 0 ? '#0071e3' : '#86868b'
-                      }}>
-                        {den.pocet}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px', color: den.mena.length > 0 ? '#1d1d1f' : '#c7c7cc', fontSize: '11px' }}>
-                      {den.mena.length > 0 ? den.mena.join(', ') : 'Nikto'}
-                    </td>
-                    <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-                      {den.pocetNepritomnych === 0 ? (
-                        <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {den.skupinyNepritomnosti.map((skupina: any) => (
-                            <div key={skupina.dovod} style={{ fontSize: '11px', lineHeight: '1.4' }}>
-                              <span style={{ fontWeight: '700', color: '#7c3aed' }}>{skupina.dovod}:</span>{' '}
-                              {skupina.polozky.map((polozka: any, index: number) => (
-                                <span key={polozka.id}>
-                                  {index > 0 ? ', ' : ''}
-                                  <span style={{ color: '#1d1d1f' }}>{polozka.meno}</span>
-                                  <button
-                                    type="button"
-                                    title="Vymazať neprítomnosť"
-                                    onClick={() => vymazatNepritomnost(polozka.id)}
-                                    style={{ marginLeft: '3px', padding: 0, border: 'none', background: 'none', color: '#c7c7cc', cursor: 'pointer', fontSize: '10px' }}
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              ))}
+                {dennyPrehladNaZobrazenie.map(den => {
+                  const jeSobota = den.denVTyzdni === 'So'
+                  const jeNedela = den.denVTyzdni === 'Ne'
+                  const jeDnes = den.datum === dnesText
+
+                  return (
+                    <tr
+                      key={den.datum}
+                      style={{
+                        borderBottom: '1px solid #f2f2f4',
+                        backgroundColor: jeNedela ? '#fef2f2' : jeSobota ? '#fff7ed' : jeDnes ? '#eff6ff' : '#ffffff'
+                      }}
+                    >
+                      <td style={{ padding: '11px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                          <div>
+                            <div style={{ fontWeight: '700', color: '#1d1d1f', fontSize: '12px' }}>{formatujDatumSK(den.datum)}</div>
+                            <div style={{
+                              marginTop: '2px',
+                              fontSize: '10px',
+                              fontWeight: jeSobota || jeNedela ? '700' : '550',
+                              color: jeNedela ? '#b42318' : jeSobota ? '#9a3412' : '#86868b'
+                            }}>
+                              {den.denVTyzdni}
                             </div>
-                          ))}
+                          </div>
+                          {jeDnes && (
+                            <span style={{ padding: '3px 7px', borderRadius: '10px', backgroundColor: '#0071e3', color: '#ffffff', fontSize: '8px', fontWeight: '750', letterSpacing: '0.04em' }}>
+                              DNES
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 18px', textAlign: 'right' }}>
-                      {(den.pocet > 0 || den.pocetNepritomnych > 0) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFilterDen(den.datum)
-                            setFilterMesiac(den.datum.slice(0, 7))
-                            setFilterMeno('')
-                            setFilterZakazka('')
-                            setFilterPolovica('cely')
-                            setFilterProblem('vsetko')
-                          }}
-                          style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '11px', fontWeight: '600', padding: 0 }}
-                        >
-                          Detail
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+
+                      <td style={{ padding: '11px 12px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          minWidth: '38px',
+                          height: '30px',
+                          padding: '0 10px',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '15px',
+                          fontSize: '14px',
+                          fontWeight: '750',
+                          backgroundColor: den.pocet > 0 ? '#e8f3ff' : '#f0f0f2',
+                          color: den.pocet > 0 ? '#0071e3' : '#86868b'
+                        }}>
+                          {den.pocet}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '11px 12px', color: den.mena.length > 0 ? '#1d1d1f' : '#b0b0b5', fontSize: '11px', lineHeight: '1.45' }}>
+                        {den.mena.length > 0 ? den.mena.join(', ') : 'Nikto'}
+                      </td>
+
+                      <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
+                        {den.pocetNepritomnych === 0 ? (
+                          <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {den.skupinyNepritomnosti.map((skupina: any) => (
+                              <div key={skupina.dovod} style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: '3px',
+                                width: 'fit-content',
+                                padding: '4px 7px',
+                                borderRadius: '8px',
+                                backgroundColor: '#f3e8ff',
+                                fontSize: '10px',
+                                lineHeight: '1.35'
+                              }}>
+                                <span style={{ fontWeight: '750', color: '#7c3aed' }}>{skupina.dovod}</span>
+                                <span style={{ color: '#a1a1a6' }}>·</span>
+                                {skupina.polozky.map((polozka: any, index: number) => (
+                                  <span key={polozka.id}>
+                                    {index > 0 ? ', ' : ''}
+                                    <span style={{ color: '#4c1d95', fontWeight: '550' }}>{polozka.meno}</span>
+                                    <button
+                                      type="button"
+                                      title="Vymazať neprítomnosť"
+                                      onClick={() => vymazatNepritomnost(polozka.id)}
+                                      style={{ marginLeft: '3px', padding: 0, border: 'none', background: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '10px' }}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '11px 20px', textAlign: 'right' }}>
+                        {(den.pocet > 0 || den.pocetNepritomnych > 0) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilterDen(den.datum)
+                              setFilterMesiac(den.datum.slice(0, 7))
+                              setFilterMeno('')
+                              setFilterZakazka('')
+                              setFilterPolovica('cely')
+                              setFilterProblem('vsetko')
+                            }}
+                            style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '4px 0' }}
+                          >
+                            Detail
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
