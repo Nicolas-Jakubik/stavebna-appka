@@ -20,7 +20,7 @@ export default function ZamestnanciPage() {
   const [upravovaneMeno, setUpravovaneMeno] = useState('')
   const [upravovanaSadzba, setUpravovanaSadzba] = useState('')
   const [hladat, setHladat] = useState('')
-  const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc'>('az')
+  const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc' | 'hodiny_desc' | 'posledna_praca' | 'nepritomnosti_desc'>('az')
   const [pocetDochadzkyPodlaMena, setPocetDochadzkyPodlaMena] = useState<Record<string, number>>({})
   const [hodinyPodlaMena, setHodinyPodlaMena] = useState<Record<string, number>>({})
   const [poslednaAktivitaPodlaMena, setPoslednaAktivitaPodlaMena] = useState<Record<string, string>>({})
@@ -328,16 +328,31 @@ export default function ZamestnanciPage() {
       String(zamestnanec.meno || '').toLocaleLowerCase('sk').includes(hladanyText)
     )
     .sort((a, b) => {
+      const menoA = String(a.meno || '').trim()
+      const menoB = String(b.meno || '').trim()
+
       if (zoradenie === 'sadzba_desc') {
-        return (Number(b.sadzba) || 0) - (Number(a.sadzba) || 0)
+        return (Number(b.sadzba) || 0) - (Number(a.sadzba) || 0) || menoA.localeCompare(menoB, 'sk')
       }
 
       if (zoradenie === 'sadzba_asc') {
-        return (Number(a.sadzba) || 0) - (Number(b.sadzba) || 0)
+        return (Number(a.sadzba) || 0) - (Number(b.sadzba) || 0) || menoA.localeCompare(menoB, 'sk')
       }
 
-      const menoA = String(a.meno || '')
-      const menoB = String(b.meno || '')
+      if (zoradenie === 'hodiny_desc') {
+        return (hodinyPodlaMena[menoB] || 0) - (hodinyPodlaMena[menoA] || 0) || menoA.localeCompare(menoB, 'sk')
+      }
+
+      if (zoradenie === 'posledna_praca') {
+        const datumA = poslednaAktivitaPodlaMena[menoA] || ''
+        const datumB = poslednaAktivitaPodlaMena[menoB] || ''
+        return datumB.localeCompare(datumA) || menoA.localeCompare(menoB, 'sk')
+      }
+
+      if (zoradenie === 'nepritomnosti_desc') {
+        return (pocetNepritomnostiPodlaMena[menoB] || 0) - (pocetNepritomnostiPodlaMena[menoA] || 0) || menoA.localeCompare(menoB, 'sk')
+      }
+
       return zoradenie === 'za'
         ? menoB.localeCompare(menoA, 'sk')
         : menoA.localeCompare(menoB, 'sk')
@@ -606,13 +621,16 @@ export default function ZamestnanciPage() {
                 <label style={labelStyle}>Zoradiť</label>
                 <select
                   value={zoradenie}
-                  onChange={(e) => setZoradenie(e.target.value as 'az' | 'za' | 'sadzba_desc' | 'sadzba_asc')}
+                  onChange={(e) => setZoradenie(e.target.value as 'az' | 'za' | 'sadzba_desc' | 'sadzba_asc' | 'hodiny_desc' | 'posledna_praca' | 'nepritomnosti_desc')}
                   style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
                 >
                   <option value="az">Meno A–Z</option>
                   <option value="za">Meno Z–A</option>
                   <option value="sadzba_desc">Najvyššia sadzba</option>
                   <option value="sadzba_asc">Najnižšia sadzba</option>
+                  <option value="hodiny_desc">Najviac hodín</option>
+                  <option value="posledna_praca">Posledná práca</option>
+                  <option value="nepritomnosti_desc">Najviac neprítomností</option>
                 </select>
               </div>
 
