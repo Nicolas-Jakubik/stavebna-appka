@@ -187,7 +187,7 @@ export default function ZakazkyPage() {
   }
 
   return (
-    <div style={{
+    <div className="simple-admin-shell" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -197,12 +197,106 @@ export default function ZakazkyPage() {
       gap: '24px',
       alignItems: 'flex-start'
     }}>
+      <style>{`
+        @media (max-width: 760px) {
+          .simple-admin-shell {
+            padding: 64px 12px 20px !important;
+            display: block !important;
+          }
+
+          .simple-admin-content {
+            max-width: 100% !important;
+          }
+
+          .simple-admin-form-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .simple-admin-form-grid button {
+            width: 100% !important;
+            min-height: 44px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .simple-mobile-table {
+            display: block;
+            width: 100% !important;
+          }
+
+          .simple-mobile-table thead {
+            display: none;
+          }
+
+          .simple-mobile-table tbody {
+            display: grid;
+            gap: 10px;
+          }
+
+          .simple-mobile-table tr.simple-mobile-row {
+            display: block;
+            border: 1px solid #e5e5e7 !important;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell {
+            display: grid;
+            grid-template-columns: 82px minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            min-height: 44px;
+            padding: 9px 12px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.055);
+            text-align: left !important;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell:last-child {
+            border-bottom: none;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell::before {
+            content: attr(data-label);
+            color: #86868b;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.45px;
+          }
+
+          .simple-mobile-table select {
+            width: 100%;
+            min-height: 40px;
+          }
+
+          .simple-mobile-table td.simple-mobile-actions button {
+            min-height: 38px;
+            padding: 8px 10px !important;
+          }
+
+          .simple-empty-row {
+            display: table-row !important;
+            border: none !important;
+          }
+
+          .simple-empty-cell {
+            display: table-cell !important;
+            border: none !important;
+          }
+
+          .simple-empty-cell::before {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <AdminSidebar
         active="zakazky"
         onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
       />
 
-      <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+      <div className="simple-admin-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px' }}>
           <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
             Firemná administrácia
@@ -217,7 +311,7 @@ export default function ZakazkyPage() {
 
         <div style={{...cardStyle, marginBottom: '24px'}}>
           <form onSubmit={pridatZakazku}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'flex-end' }}>
+            <div className="simple-admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ minWidth: 0 }}>
                 <label style={labelStyle}>Nová stavba</label>
                 <input 
@@ -247,7 +341,7 @@ export default function ZakazkyPage() {
             Aktívne stavby ({aktivneZakazky.length})
           </h3>
           <div style={{...cardStyle}}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Stavba</th>
@@ -257,12 +351,12 @@ export default function ZakazkyPage() {
               </thead>
               <tbody>
                 {aktivneZakazky.length === 0 ? (
-                  <tr><td colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne aktívne stavby.</td></tr>
+                  <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne aktívne stavby.</td></tr>
                 ) : (
                   aktivneZakazky.map((zak) => (
-                    <tr key={zak.id} style={{ borderBottom: '1px solid #f5f5f7' }}>
-                      <td style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>{zak.nazov}</td>
-                      <td style={{ padding: '10px 0' }}>
+                    <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
+                      <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>{zak.nazov}</td>
+                      <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 0' }}>
                         <select 
                           value={zak.stav || 'Aktívna'} 
                           onChange={(e) => zmenitStav(zak.id, e.target.value)} 
@@ -272,7 +366,7 @@ export default function ZakazkyPage() {
                           <option value="Dokončená">Dokončená</option>
                         </select>
                       </td>
-                      <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                      <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
                         <button 
                           onClick={() => vymazatZakazku(zak.id)} 
                           style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
@@ -295,7 +389,7 @@ export default function ZakazkyPage() {
             Dokončené stavby ({dokonceneZakazky.length})
           </h3>
           <div style={{...cardStyle, opacity: 0.8}}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                   <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Stavba</th>
@@ -305,12 +399,12 @@ export default function ZakazkyPage() {
               </thead>
               <tbody>
                 {dokonceneZakazky.length === 0 ? (
-                  <tr><td colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dokončené stavby.</td></tr>
+                  <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dokončené stavby.</td></tr>
                 ) : (
                   dokonceneZakazky.map((zak) => (
-                    <tr key={zak.id} style={{ borderBottom: '1px solid #f5f5f7' }}>
-                      <td style={{ padding: '10px 0', color: '#9ca3af', fontWeight: '500', textDecoration: 'line-through' }}>{zak.nazov}</td>
-                      <td style={{ padding: '10px 0' }}>
+                    <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
+                      <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '10px 0', color: '#9ca3af', fontWeight: '500', textDecoration: 'line-through' }}>{zak.nazov}</td>
+                      <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 0' }}>
                         <select 
                           value={zak.stav || 'Dokončená'} 
                           onChange={(e) => zmenitStav(zak.id, e.target.value)} 
@@ -320,7 +414,7 @@ export default function ZakazkyPage() {
                           <option value="Dokončená">Dokončená</option>
                         </select>
                       </td>
-                      <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                      <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
                         <button 
                           onClick={() => vymazatZakazku(zak.id)} 
                           style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
