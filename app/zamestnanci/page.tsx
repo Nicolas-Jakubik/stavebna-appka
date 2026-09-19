@@ -418,93 +418,110 @@ export default function ZamestnanciPage() {
           </form>
         </div>
 
-        <div className="simple-admin-card" style={{...cardStyle, overflowX: 'auto'}}>
-          <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Meno</th>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '100px', textAlign: 'center' }}>Sadzba</th>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '140px', textAlign: 'right' }}>Akcia</th>
-              </tr>
-            </thead>
-            <tbody>
-              {zamestnanci.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadni zamestnanci.</td></tr>
-              ) : (
-                zamestnanci.map((z) => (
-                  <tr key={z.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
-                    <td className="simple-mobile-cell" data-label="Meno" style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>
-                      {upravovaneId === z.id ? (
-                        <input 
-                          type="text" 
-                          value={upravovaneMeno} 
-                          onChange={(e) => setUpravovaneMeno(e.target.value)} 
-                          autoFocus 
-                          style={{...inputStyle, maxWidth: '200px', fontSize: '12px'}}
-                        />
-                      ) : (
-                        z.meno
-                      )}
-                    </td>
-                    <td className="simple-mobile-cell" data-label="Sadzba" style={{ padding: '10px 0', color: '#1d1d1f', textAlign: 'center', fontWeight: '500' }}>
-                      {upravovaneId === z.id ? (
-                        <input 
-                          type="number" 
-                          value={upravovanaSadzba} 
-                          onChange={(e) => setUpravovanaSadzba(e.target.value)} 
-                          step="0.1" 
-                          style={{...inputStyle, width: '80px', fontSize: '12px'}}
-                        />
-                      ) : (
-                        `${z.sadzba || 0} €`
-                      )}
-                    </td>
-                    <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
-                      {upravovaneId === z.id ? (
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          <button 
-                            onClick={() => zrusitUpravu()} 
-                            style={{ color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}
-                          >
-                            Zrušiť
-                          </button>
-                          <button 
-                            onClick={() => ulozitUpravu(z.id)} 
-                            style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', transition: 'color 0.2s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#10b981'}
-                          >
-                            Uložiť
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                          <button 
-                            onClick={() => zacatUpravu(z.id, z.meno, z.sadzba)} 
-                            style={{ color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#0077ed'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#0071e3'}
-                          >
-                            Upraviť
-                          </button>
-                          <button 
-                            onClick={() => vymazatZamestnanca(z.id, z.meno)} 
-                            style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
-                          >
-                            Zmazať
-                          </button>
-                        </div>
-                      )}
+        <div className="simple-admin-card" style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Prehľad pracovníkov</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Meno, hodinová sadzba a rýchla správa pracovníkov.</div>
+            </div>
+            <span style={{ padding: '4px 9px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>
+              {zamestnanci.length} {zamestnanci.length === 1 ? 'pracovník' : 'pracovníkov'}
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
+                  <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovník</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '140px' }}>Hodinová sadzba</th>
+                  <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zamestnanci.length === 0 ? (
+                  <tr className="simple-empty-row">
+                    <td className="simple-empty-cell" colSpan={3} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
+                      Zatiaľ nie je pridaný žiadny pracovník.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  zamestnanci.map((z) => (
+                    <tr key={z.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
+                      <td className="simple-mobile-cell" data-label="Pracovník" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>
+                        {upravovaneId === z.id ? (
+                          <input 
+                            type="text" 
+                            value={upravovaneMeno} 
+                            onChange={(e) => setUpravovaneMeno(e.target.value)} 
+                            autoFocus 
+                            style={{ ...inputStyle, maxWidth: '260px', fontSize: '12px', backgroundColor: '#ffffff' }}
+                          />
+                        ) : (
+                          z.meno
+                        )}
+                      </td>
+                      <td className="simple-mobile-cell" data-label="Hodinová sadzba" style={{ padding: '10px 12px' }}>
+                        {upravovaneId === z.id ? (
+                          <input 
+                            type="number" 
+                            value={upravovanaSadzba} 
+                            onChange={(e) => setUpravovanaSadzba(e.target.value)} 
+                            step="0.1"
+                            min="0"
+                            style={{ ...inputStyle, width: '96px', fontSize: '12px', backgroundColor: '#ffffff' }}
+                          />
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#1d1d1f', fontWeight: '700', fontSize: '11px' }}>
+                            {Number(z.sadzba || 0).toFixed(2)} €/h
+                          </span>
+                        )}
+                      </td>
+                      <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
+                        {upravovaneId === z.id ? (
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <button 
+                              type="button"
+                              onClick={zrusitUpravu}
+                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Zrušiť
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => ulozitUpravu(z.id)}
+                              style={{ color: '#ffffff', backgroundColor: '#0071e3', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Uložiť
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <button 
+                              type="button"
+                              onClick={() => zacatUpravu(z.id, z.meno, z.sadzba)}
+                              style={{ color: '#0071e3', backgroundColor: '#eef6ff', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Upraviť
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => vymazatZamestnanca(z.id, z.meno)}
+                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                            >
+                              Zmazať
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
       </div>
