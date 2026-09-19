@@ -99,6 +99,16 @@ export default function MzdyPage() {
   const fondPrvaPolovica = vypocitajFondObdobia(filterMesiac, 1, 15)
   const fondDruhaPolovica = vypocitajFondObdobia(filterMesiac, 16, pocetDniVoVybranomMesiaci)
   const fondCelyMesiac = fondPrvaPolovica + fondDruhaPolovica
+  const fondVybranehoObdobia = filterPolovica === 'prva'
+    ? fondPrvaPolovica
+    : filterPolovica === 'druha'
+      ? fondDruhaPolovica
+      : fondCelyMesiac
+  const nazovVyplatnehoObdobia = filterPolovica === 'prva'
+    ? 'Výplata 1 · 1.–15.'
+    : filterPolovica === 'druha'
+      ? 'Výplata 2 · 16.–koniec'
+      : 'Celý mesiac'
 
   useEffect(() => {
     const ulozeneStavy = localStorage.getItem('stavyStaviebAdmin')
@@ -392,40 +402,69 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, overflowX: 'auto' }}>
-          <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>1. Výplata</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Zamestnanec</th>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'center' }}>Hodiny</th>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'center' }}>Sadzba</th>
-                <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Mzda (€)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.keys(zamestnanciHodiny).length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dáta.</td></tr>
-              ) : (
-                Object.entries(zamestnanciHodiny).map(([meno, hodiny]) => {
-                  const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-                  const sadzba = dbZamestnanec ? dbZamestnanec.sadzba : 0
-                  const mzda = hodiny * sadzba
-                  
-                  return (
-                    <tr key={meno} style={{ borderBottom: '1px solid #f5f5f7' }}>
-                      <td style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>{meno}</td>
-                      <td style={{ padding: '10px 0', color: '#1d1d1f', textAlign: 'center' }}>{hodiny.toFixed(2)} h</td>
-                      <td style={{ padding: '10px 0', textAlign: 'center', color: '#86868b', fontSize: '12px' }}>
-                        {sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
-                      </td>
-                      <td style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '600', textAlign: 'right' }}>{mzda.toFixed(2)} €</td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, padding: '0', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Výplaty pracovníkov</div>
+              <div style={{ color: '#86868b', fontSize: '10px', marginTop: '3px' }}>{nazovVyplatnehoObdobia} · fond {fondVybranehoObdobia.toFixed(1)} h / pracovník</div>
+            </div>
+            <div style={{ fontSize: '10px', color: '#86868b' }}>
+              {Object.keys(zamestnanciHodiny).length} pracovníkov
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', backgroundColor: '#f7f7f8', borderBottom: '1px solid #e5e5e7' }}>
+                  <th style={{ padding: '11px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovník</th>
+                  <th style={{ padding: '11px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>Odpracované</th>
+                  <th style={{ padding: '11px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>Fond</th>
+                  <th style={{ padding: '11px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>Rozdiel</th>
+                  <th style={{ padding: '11px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>Sadzba</th>
+                  <th style={{ padding: '11px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>Na výplatu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(zamestnanciHodiny).length === 0 ? (
+                  <tr><td colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Pre vybrané obdobie nie sú žiadne dáta.</td></tr>
+                ) : (
+                  Object.entries(zamestnanciHodiny).map(([meno, hodiny]) => {
+                    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
+                    const sadzba = dbZamestnanec ? dbZamestnanec.sadzba : 0
+                    const mzda = hodiny * sadzba
+                    const rozdiel = hodiny - fondVybranehoObdobia
+                    
+                    return (
+                      <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
+                        <td style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
+                        <td style={{ padding: '12px', color: '#1d1d1f', textAlign: 'right', fontWeight: '650' }}>{hodiny.toFixed(2)} h</td>
+                        <td style={{ padding: '12px', color: '#86868b', textAlign: 'right' }}>{fondVybranehoObdobia.toFixed(1)} h</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            minWidth: '64px',
+                            padding: '4px 7px',
+                            borderRadius: '9px',
+                            backgroundColor: rozdiel >= 0 ? '#ecfdf5' : '#fef2f2',
+                            color: rozdiel >= 0 ? '#047857' : '#b42318',
+                            fontWeight: '700',
+                            fontSize: '10px'
+                          }}>
+                            {rozdiel >= 0 ? '+' : ''}{rozdiel.toFixed(1)} h
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', color: '#86868b', fontSize: '11px' }}>
+                          {sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
+                        </td>
+                        <td style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '750', textAlign: 'right', fontSize: '14px' }}>{mzda.toFixed(2)} €</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div style={{ marginTop: '20px' }}>
