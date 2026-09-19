@@ -11,6 +11,7 @@ export default function MzdyPage() {
   const SPRAVNE_HESLO = 'sef123'
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
+  const [mesacneZaznamy, setMesacneZaznamy] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterPolovica, setFilterPolovica] = useState('cely') 
   
@@ -162,6 +163,19 @@ export default function MzdyPage() {
     const { data: dochData } = await query
     setZaznamy(dochData || [])
 
+    if (rok && mesiac) {
+      const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
+      const poslednyDenText = String(pocetDni).padStart(2, '0')
+      const { data: mesacneData } = await supabase
+        .from('dochadzka')
+        .select('*')
+        .gte('datum', `${rok}-${mesiac}-01`)
+        .lte('datum', `${rok}-${mesiac}-${poslednyDenText}`)
+      setMesacneZaznamy(mesacneData || [])
+    } else {
+      setMesacneZaznamy([])
+    }
+
     const { data: zamData } = await supabase.from('zamestnanci').select('*')
     setDatabazoviZamestnancov(zamData || [])
   }
@@ -195,6 +209,30 @@ export default function MzdyPage() {
     const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
     return sucet + hodiny * sadzba
   }, 0)
+
+  const suhrnPolovice = (prvaPolovica: boolean) => mesacneZaznamy.reduce(
+    (suhrn, z) => {
+      const den = Number(String(z.datum).slice(8, 10))
+      const patriDoObdobia = prvaPolovica ? den <= 15 : den >= 16
+      if (!patriDoObdobia) return suhrn
+
+      const hodiny = vypocitajHodiny(z.prichod, z.odchod)
+      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
+      const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+
+      suhrn.hodiny += hodiny
+      suhrn.suma += hodiny * sadzba
+      return suhrn
+    },
+    { hodiny: 0, suma: 0 }
+  )
+
+  const suhrnPrvaPolovica = suhrnPolovice(true)
+  const suhrnDruhaPolovica = suhrnPolovice(false)
+  const suhrnCelyMesiac = {
+    hodiny: suhrnPrvaPolovica.hodiny + suhrnDruhaPolovica.hodiny,
+    suma: suhrnPrvaPolovica.suma + suhrnDruhaPolovica.suma
+  }
 
   const nezaplateneStavby: [string, number][] = []
   const poslaneFaStavby: [string, number][] = []
@@ -407,6 +445,33 @@ export default function MzdyPage() {
                 </button>
               )
             })}
+          </div>
+        </div>
+
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Porovnanie výplat v mesiaci</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia naraz · {nazovMesiacaBezPolovice}</div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))' }}>
+            <div style={{ padding: '16px 18px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Výplata 1 · 1.–15.</div>
+              <div style={{ marginTop: '7px', fontSize: '20px', fontWeight: '750', color: '#1d1d1f' }}>{suhrnPrvaPolovica.hodiny.toFixed(2)} h</div>
+              <div style={{ marginTop: '4px', fontSize: '15px', fontWeight: '750', color: '#0071e3' }}>{suhrnPrvaPolovica.suma.toFixed(2)} €</div>
+            </div>
+
+            <div style={{ padding: '16px 18px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Výplata 2 · 16.–koniec</div>
+              <div style={{ marginTop: '7px', fontSize: '20px', fontWeight: '750', color: '#1d1d1f' }}>{suhrnDruhaPolovica.hodiny.toFixed(2)} h</div>
+              <div style={{ marginTop: '4px', fontSize: '15px', fontWeight: '750', color: '#0071e3' }}>{suhrnDruhaPolovica.suma.toFixed(2)} €</div>
+            </div>
+
+            <div style={{ padding: '16px 18px', backgroundColor: '#f7fbff' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Spolu mesiac</div>
+              <div style={{ marginTop: '7px', fontSize: '20px', fontWeight: '750', color: '#1d1d1f' }}>{suhrnCelyMesiac.hodiny.toFixed(2)} h</div>
+              <div style={{ marginTop: '4px', fontSize: '15px', fontWeight: '750', color: '#0071e3' }}>{suhrnCelyMesiac.suma.toFixed(2)} €</div>
+            </div>
           </div>
         </div>
 
