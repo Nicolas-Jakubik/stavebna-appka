@@ -292,8 +292,8 @@ export default function MzdyPage() {
           <div style={{ fontSize: '11px', color: '#86868b', fontWeight: '650' }}>{hodinySpolu.toFixed(2)} h</div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px' }}>
+        <div className="vyplaty-mobile-scroll" style={{ overflowX: 'auto' }}>
+          <table className="vyplaty-mobile-table vyplaty-billing-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #eeeeef' }}>
                 <th style={{ padding: '9px 16px', textAlign: 'left', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
@@ -311,10 +311,10 @@ export default function MzdyPage() {
                   const aktualnyStav = stavyStavieb[`${filterMesiac}_${filterPolovica}_${stavba}`] || 'Nezaplatená'
                   const farby = dajFarbuStavu(aktualnyStav)
                   return (
-                    <tr key={stavba} style={{ borderBottom: '1px solid #eeeeef', backgroundColor: jeVyplatena ? '#fcfcfd' : '#ffffff' }}>
-                      <td style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '650', fontSize: '12px' }}>{stavba}</td>
+                    <tr key={stavba} className="vyplaty-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: jeVyplatena ? '#fcfcfd' : '#ffffff' }}>
+                      <td className="vyplaty-mobile-cell" data-label="Stavba" style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '650', fontSize: '12px' }}>{stavba}</td>
 
-                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                      <td className="vyplaty-mobile-cell" data-label="Stav faktúry" style={{ padding: '9px 12px', textAlign: 'center' }}>
                         <span className="ukazat-iba-pri-tlaci" style={{ fontSize: '11px', fontWeight: '700', color: farby.color }}>{aktualnyStav}</span>
                         <select
                           value={aktualnyStav}
@@ -339,7 +339,7 @@ export default function MzdyPage() {
                         </select>
                       </td>
 
-                      <td style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '700', textAlign: 'right', fontSize: '12px' }}>{hodiny.toFixed(2)} h</td>
+                      <td className="vyplaty-mobile-cell" data-label="Hodiny" style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '700', textAlign: 'right', fontSize: '12px' }}>{hodiny.toFixed(2)} h</td>
                     </tr>
                   )
                 })
@@ -397,6 +397,124 @@ export default function MzdyPage() {
       }}
     >
       <style>{`
+        @media (max-width: 760px) {
+          .admin-page-shell {
+            padding: 64px 12px 20px !important;
+            display: block !important;
+          }
+
+          .hlavny-kontajner {
+            max-width: 100% !important;
+          }
+
+          .vyplaty-grid-3,
+          .vyplaty-grid-summary,
+          .vyplaty-billing-summary {
+            grid-template-columns: 1fr !important;
+          }
+
+          .vyplaty-grid-3 > div,
+          .vyplaty-grid-summary > div,
+          .vyplaty-billing-summary > div {
+            border-right: none !important;
+            border-bottom: 1px solid #eeeeef;
+          }
+
+          .vyplaty-mobile-scroll {
+            margin-left: -16px;
+            margin-right: -16px;
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+
+          .vyplaty-period-actions {
+            width: 100%;
+          }
+
+          .vyplaty-period-actions button {
+            flex: 1 1 30%;
+            min-height: 42px;
+          }
+
+          .vyplaty-toolbar {
+            width: 100%;
+          }
+
+          .vyplaty-toolbar select,
+          .vyplaty-toolbar button {
+            width: 100% !important;
+            min-height: 44px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .vyplaty-mobile-table {
+            display: block;
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
+          .vyplaty-mobile-table thead {
+            display: none;
+          }
+
+          .vyplaty-mobile-table tbody {
+            display: grid;
+            gap: 10px;
+          }
+
+          .vyplaty-mobile-table tr.vyplaty-mobile-row {
+            display: block;
+            border: 1px solid #e5e5e7 !important;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #ffffff;
+          }
+
+          .vyplaty-mobile-table td.vyplaty-mobile-cell {
+            display: grid;
+            grid-template-columns: 104px minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            min-height: 42px;
+            padding: 8px 12px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.055);
+            text-align: left !important;
+          }
+
+          .vyplaty-mobile-table td.vyplaty-mobile-cell:last-child {
+            border-bottom: none;
+          }
+
+          .vyplaty-mobile-table td.vyplaty-mobile-cell::before {
+            content: attr(data-label);
+            color: #86868b;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.45px;
+          }
+
+          .vyplaty-mobile-table tr.vyplaty-empty-row {
+            display: table-row !important;
+            border: none !important;
+          }
+
+          .vyplaty-mobile-table td.vyplaty-empty-cell {
+            display: table-cell !important;
+            border: none !important;
+          }
+
+          .vyplaty-mobile-table td.vyplaty-empty-cell::before {
+            display: none !important;
+          }
+
+          .vyplaty-billing-table select {
+            width: 100%;
+            min-height: 40px;
+          }
+        }
+
         @page { size: A4 landscape; margin: 12mm; }
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -474,7 +592,7 @@ export default function MzdyPage() {
               <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Fond hodín na jedného pracovníka · sviatky sa počítajú ako bežný pracovný deň.</div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="vyplaty-toolbar" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <select value={filterMesiac} onChange={(e) => setFilterMesiac(e.target.value)} style={{...inputStyle, width: 'auto', minWidth: '148px', backgroundColor: '#ffffff'} as any}>
                 {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
               </select>
@@ -489,7 +607,7 @@ export default function MzdyPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
+          <div className="vyplaty-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
             <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef', backgroundColor: filterPolovica === 'prva' ? '#f7fbff' : '#ffffff' }}>
               <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>1.–15.</div>
               <div style={{ marginTop: '7px', fontSize: '26px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.03em' }}>{fondPrvaPolovica.toFixed(1)} h</div>
@@ -507,7 +625,7 @@ export default function MzdyPage() {
             </div>
           </div>
 
-          <div style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="vyplaty-period-actions" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '10px', color: '#86868b', fontWeight: '650', marginRight: '4px' }}>Zobraziť výplatu:</span>
             {[
               { key: 'cely', label: 'Celý mesiac' },
@@ -544,7 +662,7 @@ export default function MzdyPage() {
             <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Prehľad 1.–15., 16.–koniec a celého mesiaca · {nazovMesiacaBezPolovice}</div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))' }}>
+          <div className="vyplaty-grid-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))' }}>
             <div style={{ padding: '16px 18px', borderRight: '1px solid #eeeeef' }}>
               <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Výplata 1 · 1.–15.</div>
               <div style={{ marginTop: '7px', fontSize: '20px', fontWeight: '750', color: '#1d1d1f' }}>{suhrnPrvaPolovica.hodiny.toFixed(2)} h</div>
@@ -571,8 +689,8 @@ export default function MzdyPage() {
             <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia pri každom pracovníkovi · {nazovMesiacaBezPolovice}</div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '920px', fontSize: '11px' }}>
+          <div className="vyplaty-mobile-scroll" style={{ overflowX: 'auto' }}>
+            <table className="vyplaty-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '920px', fontSize: '11px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #e5e5e7' }}>
                   <th style={{ padding: '10px 18px', textAlign: 'left', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Pracovník</th>
@@ -586,7 +704,7 @@ export default function MzdyPage() {
               </thead>
               <tbody>
                 {pracovniciMesacneZoradeni.length === 0 ? (
-                  <tr><td colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6' }}>Pre tento mesiac nie sú žiadne dáta.</td></tr>
+                  <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6' }}>Pre tento mesiac nie sú žiadne dáta.</td></tr>
                 ) : (
                   pracovniciMesacneZoradeni.map(([meno, data]) => {
                     const prvaSuma = data.prvaHodiny * data.sadzba
@@ -595,14 +713,14 @@ export default function MzdyPage() {
                     const spoluSuma = prvaSuma + druhaSuma
 
                     return (
-                      <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
-                        <td style={{ padding: '11px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
-                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.prvaHodiny.toFixed(2)} h</td>
-                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{prvaSuma.toFixed(2)} €</td>
-                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.druhaHodiny.toFixed(2)} h</td>
-                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{druhaSuma.toFixed(2)} €</td>
-                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f', fontWeight: '650' }}>{spoluHodiny.toFixed(2)} h</td>
-                        <td style={{ padding: '11px 18px', textAlign: 'right', color: '#1d1d1f', fontWeight: '750' }}>{spoluSuma.toFixed(2)} €</td>
+                      <tr key={meno} className="vyplaty-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
+                        <td className="vyplaty-mobile-cell" data-label="Pracovník" style={{ padding: '11px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
+                        <td className="vyplaty-mobile-cell" data-label="1.–15. hodiny" style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.prvaHodiny.toFixed(2)} h</td>
+                        <td className="vyplaty-mobile-cell" data-label="Výplata 1" style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{prvaSuma.toFixed(2)} €</td>
+                        <td className="vyplaty-mobile-cell" data-label="16.–koniec" style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.druhaHodiny.toFixed(2)} h</td>
+                        <td className="vyplaty-mobile-cell" data-label="Výplata 2" style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{druhaSuma.toFixed(2)} €</td>
+                        <td className="vyplaty-mobile-cell" data-label="Spolu hodiny" style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f', fontWeight: '650' }}>{spoluHodiny.toFixed(2)} h</td>
+                        <td className="vyplaty-mobile-cell" data-label="Spolu €" style={{ padding: '11px 18px', textAlign: 'right', color: '#1d1d1f', fontWeight: '750' }}>{spoluSuma.toFixed(2)} €</td>
                       </tr>
                     )
                   })
@@ -620,7 +738,7 @@ export default function MzdyPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
+          <div className="vyplaty-grid-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
             <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef' }}>
               <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovníci</div>
               <div style={{ fontSize: '22px', fontWeight: '750', color: '#1d1d1f', marginTop: '5px' }}>{pocetPracovnikovVyplata}</div>
@@ -635,8 +753,8 @@ export default function MzdyPage() {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px', fontSize: '12px' }}>
+          <div className="vyplaty-mobile-scroll" style={{ overflowX: 'auto' }}>
+            <table className="vyplaty-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px', fontSize: '12px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', backgroundColor: '#f7f7f8', borderBottom: '1px solid #e5e5e7' }}>
                   <th style={{ padding: '11px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovník</th>
@@ -649,7 +767,7 @@ export default function MzdyPage() {
               </thead>
               <tbody>
                 {Object.keys(zamestnanciHodiny).length === 0 ? (
-                  <tr><td colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Pre vybrané obdobie nie sú žiadne dáta.</td></tr>
+                  <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Pre vybrané obdobie nie sú žiadne dáta.</td></tr>
                 ) : (
                   Object.entries(zamestnanciHodiny).map(([meno, hodiny]) => {
                     const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
@@ -658,11 +776,11 @@ export default function MzdyPage() {
                     const rozdiel = hodiny - fondVybranehoObdobia
                     
                     return (
-                      <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
-                        <td style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
-                        <td style={{ padding: '12px', color: '#1d1d1f', textAlign: 'right', fontWeight: '650' }}>{hodiny.toFixed(2)} h</td>
-                        <td style={{ padding: '12px', color: '#86868b', textAlign: 'right' }}>{fondVybranehoObdobia.toFixed(1)} h</td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <tr key={meno} className="vyplaty-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
+                        <td className="vyplaty-mobile-cell" data-label="Pracovník" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
+                        <td className="vyplaty-mobile-cell" data-label="Odpracované" style={{ padding: '12px', color: '#1d1d1f', textAlign: 'right', fontWeight: '650' }}>{hodiny.toFixed(2)} h</td>
+                        <td className="vyplaty-mobile-cell" data-label="Fond" style={{ padding: '12px', color: '#86868b', textAlign: 'right' }}>{fondVybranehoObdobia.toFixed(1)} h</td>
+                        <td className="vyplaty-mobile-cell" data-label="Rozdiel" style={{ padding: '12px', textAlign: 'right' }}>
                           <span style={{
                             display: 'inline-block',
                             minWidth: '64px',
@@ -676,10 +794,10 @@ export default function MzdyPage() {
                             {rozdiel >= 0 ? '+' : ''}{rozdiel.toFixed(1)} h
                           </span>
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'right', color: '#86868b', fontSize: '11px' }}>
+                        <td className="vyplaty-mobile-cell" data-label="Sadzba" style={{ padding: '12px', textAlign: 'right', color: '#86868b', fontSize: '11px' }}>
                           {sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
                         </td>
-                        <td style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '750', textAlign: 'right', fontSize: '14px' }}>{mzda.toFixed(2)} €</td>
+                        <td className="vyplaty-mobile-cell" data-label="Na výplatu" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '750', textAlign: 'right', fontSize: '14px' }}>{mzda.toFixed(2)} €</td>
                       </tr>
                     )
                   })
@@ -698,7 +816,7 @@ export default function MzdyPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))' }}>
+            <div className="vyplaty-billing-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))' }}>
               <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef', backgroundColor: '#fffafa' }}>
                 <div style={{ fontSize: '9px', color: '#b42318', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Nezaplatené</div>
                 <div style={{ fontSize: '22px', color: '#1d1d1f', fontWeight: '750', marginTop: '5px' }}>{nezaplateneStavby.length}</div>
