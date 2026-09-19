@@ -2,14 +2,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import AdminSidebar from '../../components/AdminSidebar'
-import { adminStore } from '../../lib/store'
 
 export default function MzdyPage() {
-  const [zadaneHeslo, setZadaneHeslo] = useState('')
-  const [jeOdomknute, setJeOdomknute] = useState(adminStore.jeOdomknute)
-  const [chybaHesla, setChybaHesla] = useState(false)
-  const SPRAVNE_HESLO = 'sef123'
-
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [mesacneZaznamy, setMesacneZaznamy] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
@@ -116,17 +110,6 @@ export default function MzdyPage() {
     if (ulozeneStavy) setStavyStavieb(JSON.parse(ulozeneStavy))
   }, [])
 
-  function skontrolovatHeslo(e: React.FormEvent) {
-    e.preventDefault()
-    if (zadaneHeslo === SPRAVNE_HESLO) {
-      adminStore.jeOdomknute = true
-      setJeOdomknute(true)
-      setChybaHesla(false)
-    } else {
-      setChybaHesla(true)
-    }
-  }
-
   function vypocitajHodiny(prichod: string, odchod: string) {
     if (!prichod || !odchod) return 0
     const [pHod, pMin] = prichod.split(':').map(Number)
@@ -180,7 +163,7 @@ export default function MzdyPage() {
     setDatabazoviZamestnancov(zamData || [])
   }
 
-  useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterPolovica, jeOdomknute])
+  useEffect(() => { nacitaj() }, [filterMesiac, filterPolovica])
 
   function zmenaStavuStavby(stavba: string, hodnota: string) {
     const kluc = `${filterMesiac}_${filterPolovica}_${stavba}`
@@ -355,37 +338,6 @@ export default function MzdyPage() {
     )
   }
 
-  if (!jeOdomknute) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '320px' }}>
-          <div style={{ ...cardStyle, textAlign: 'center' }}>
-            <h2 style={{ color: '#1d1d1f', marginBottom: '20px', fontSize: '26px', fontWeight: '600', letterSpacing: '-0.003em', margin: '0 0 20px 0' }}>Výplata</h2>
-            <form onSubmit={skontrolovatHeslo}>
-              <input 
-                type="password" 
-                placeholder="Heslo" 
-                value={zadaneHeslo} 
-                onChange={e => setZadaneHeslo(e.target.value)} 
-                required 
-                style={{ ...inputStyle, marginBottom: '14px', textAlign: 'center' }}
-              />
-              {chybaHesla && <p style={{ color: '#ff3b30', fontSize: '11px', marginBottom: '12px' }}>Nesprávne heslo.</p>}
-              <button 
-                type="submit" 
-                style={{ ...buttonPrimaryStyle, width: '100%' } as any}
-                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
-                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
-              >
-                Vstúpiť
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div
       className="admin-page-shell"
@@ -543,10 +495,7 @@ export default function MzdyPage() {
       `}</style>
 
       <div className="skryt-pri-tlaci">
-        <AdminSidebar
-          active="mzdy"
-          onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-        />
+        <AdminSidebar active="mzdy" />
       </div>
 
       <div className="hlavny-kontajner" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>

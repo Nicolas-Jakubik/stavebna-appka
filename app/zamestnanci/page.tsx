@@ -2,14 +2,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import AdminSidebar from '../../components/AdminSidebar'
-import { adminStore } from '../../lib/store'
 
 export default function ZamestnanciPage() {
-  const [zadaneHeslo, setZadaneHeslo] = useState('')
-  const [jeOdomknute, setJeOdomknute] = useState(adminStore.jeOdomknute)
-  const [chybaHesla, setChybaHesla] = useState(false)
-  const SPRAVNE_HESLO = 'sef123'
-
   const [zamestnanci, setZamestnanci] = useState<any[]>([])
   
   const [noveMeno, setNoveMeno] = useState('')
@@ -84,17 +78,6 @@ export default function ZamestnanciPage() {
     fontWeight: '500',
     borderRadius: '98px',
     transition: 'all 0.2s',
-  }
-
-  function skontrolovatHeslo(e: React.FormEvent) {
-    e.preventDefault()
-    if (zadaneHeslo === SPRAVNE_HESLO) {
-      adminStore.jeOdomknute = true
-      setJeOdomknute(true)
-      setChybaHesla(false)
-    } else {
-      setChybaHesla(true)
-    }
   }
 
   function vypocitajHodiny(prichod: string, odchod: string) {
@@ -328,10 +311,8 @@ export default function ZamestnanciPage() {
   }
 
   useEffect(() => {
-    if (jeOdomknute) {
-      nacitajZamestnancov()
-    }
-  }, [jeOdomknute])
+    nacitajZamestnancov()
+  }, [])
 
   const priemernaSadzba = zamestnanci.length > 0
     ? zamestnanci.reduce((sucet, zamestnanec) => sucet + (Number(zamestnanec.sadzba) || 0), 0) / zamestnanci.length
@@ -378,37 +359,6 @@ export default function ZamestnanciPage() {
         ? menoB.localeCompare(menoA, 'sk')
         : menoA.localeCompare(menoB, 'sk')
     })
-
-  if (!jeOdomknute) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '320px' }}>
-          <div style={{ ...cardStyle, textAlign: 'center' }}>
-            <h2 style={{ color: '#1d1d1f', marginBottom: '20px', fontSize: '26px', fontWeight: '600', letterSpacing: '-0.003em', margin: '0 0 20px 0' }}>Zamestnanci</h2>
-            <form onSubmit={skontrolovatHeslo}>
-              <input 
-                type="password" 
-                placeholder="Heslo" 
-                value={zadaneHeslo} 
-                onChange={e => setZadaneHeslo(e.target.value)} 
-                required 
-                style={{ ...inputStyle, marginBottom: '14px', textAlign: 'center' }}
-              />
-              {chybaHesla && <p style={{ color: '#ff3b30', fontSize: '11px', marginBottom: '12px' }}>Nesprávne heslo.</p>}
-              <button 
-                type="submit" 
-                style={{ ...buttonPrimaryStyle, width: '100%' } as any}
-                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
-                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
-              >
-                Vstúpiť
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="simple-admin-shell" style={{
@@ -531,10 +481,7 @@ export default function ZamestnanciPage() {
         }
       `}</style>
 
-      <AdminSidebar
-        active="zamestnanci"
-        onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-      />
+      <AdminSidebar active="zamestnanci" />
 
       <div className="simple-admin-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px' }}>
