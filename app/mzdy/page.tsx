@@ -431,7 +431,7 @@ export default function MzdyPage() {
             Výplaty
           </h1>
           <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
-            Mesačné hodiny, mzdy a stav fakturácie podľa stavieb.
+            Výplatné obdobia, mzdy pracovníkov a fakturácia stavieb na jednom mieste.
           </div>
         </div>
 
@@ -467,10 +467,10 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '20px' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný prehľad</div>
+              <div style={{ fontSize: '15px', fontWeight: '750', color: '#1d1d1f' }}>Výplatný mesiac</div>
               <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Fond hodín na jedného pracovníka · sviatky sa počítajú ako bežný pracovný deň.</div>
             </div>
 
@@ -538,10 +538,10 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '20px' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef' }}>
-            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Porovnanie výplat v mesiaci</div>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia naraz · {nazovMesiacaBezPolovice}</div>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Súhrn výplatných období</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Prehľad 1.–15., 16.–koniec a celého mesiaca · {nazovMesiacaBezPolovice}</div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))' }}>
@@ -565,10 +565,10 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '20px' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef' }}>
-            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný prehľad pracovníkov</div>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Výplata 1 a Výplata 2 pri každom pracovníkovi · {nazovMesiacaBezPolovice}</div>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Pracovníci za celý mesiac</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia pri každom pracovníkovi · {nazovMesiacaBezPolovice}</div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -612,10 +612,10 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="print-card" style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, padding: '0', overflow: 'hidden' }}>
+        <div className="print-card" style={{ marginBottom: '20px', pageBreakInside: 'avoid', ...cardStyle, padding: '0', overflow: 'hidden' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Výplaty pracovníkov</div>
+              <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Detail vybraného obdobia</div>
               <div style={{ color: '#86868b', fontSize: '10px', marginTop: '3px' }}>{nazovVyplatnehoObdobia} · fond {fondVybranehoObdobia.toFixed(1)} h / pracovník</div>
             </div>
           </div>
@@ -689,12 +689,12 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginTop: '4px' }}>
           <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px', pageBreakInside: 'avoid' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef' }}>
               <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Fakturácia stavieb</div>
               <div style={{ color: '#86868b', fontSize: '10px', marginTop: '3px' }}>
-                Stav fakturácie pre {nazovVyplatnehoObdobia.toLowerCase()}.
+                Stav fakturácie stavieb pre {nazovVyplatnehoObdobia.toLowerCase()}.
               </div>
             </div>
 
