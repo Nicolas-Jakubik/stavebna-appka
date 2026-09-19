@@ -441,7 +441,7 @@ export default function Home() {
           }
 
           .attendance-week-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             gap: 7px !important;
           }
 
@@ -519,7 +519,8 @@ export default function Home() {
           }
 
           .attendance-recent-item > div:first-child {
-            gap: 8px !important;
+            gap: 6px !important;
+            flex-direction: column !important;
           }
 
           .attendance-admin-link {
@@ -779,11 +780,11 @@ export default function Home() {
           <div className="attendance-time-row" style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Príchod</span>
-              <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+              <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required className="attendance-field" style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odchod</span>
-              <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+              <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required className="attendance-field" style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
           </div>
 
