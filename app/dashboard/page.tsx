@@ -824,6 +824,95 @@ export default function DashboardPage() {
           }
         }
 
+        @media (max-width: 600px) {
+          .attendance-table-wrap {
+            margin: 0 !important;
+            padding: 10px 12px 14px !important;
+            max-height: none !important;
+            overflow: visible !important;
+            background: #f5f5f7;
+          }
+
+          .attendance-table {
+            display: block;
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+
+          .attendance-table thead {
+            display: none;
+          }
+
+          .attendance-table tbody {
+            display: grid;
+            gap: 10px;
+          }
+
+          .attendance-table tr.attendance-row {
+            display: block;
+            border: 1px solid #e5e5e7 !important;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          }
+
+          .attendance-table td.attendance-cell {
+            display: grid;
+            grid-template-columns: 88px minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            min-height: 42px;
+            padding: 8px 12px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.055);
+            text-align: left !important;
+          }
+
+          .attendance-table td.attendance-cell:last-child {
+            border-bottom: none;
+          }
+
+          .attendance-table td.attendance-cell::before {
+            content: attr(data-label);
+            color: #86868b;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.45px;
+          }
+
+          .attendance-table td.attendance-actions > div {
+            justify-content: flex-start !important;
+            flex-wrap: wrap;
+          }
+
+          .attendance-table td.attendance-actions button {
+            min-height: 38px;
+            padding: 8px 12px !important;
+          }
+
+          .attendance-table input[type="time"],
+          .attendance-table input[type="number"] {
+            min-height: 38px;
+            width: 100% !important;
+            max-width: 150px;
+          }
+
+          .attendance-empty-row {
+            display: table-row !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+
+          .attendance-empty-cell {
+            display: table-cell !important;
+            border: none !important;
+          }
+
+          .attendance-empty-cell::before {
+            display: none !important;
+          }
+        }
+
         @media (max-width: 480px) {
           .dashboard-month-grid {
             grid-template-columns: 1fr !important;
@@ -1774,8 +1863,8 @@ export default function DashboardPage() {
               <div style={{ fontSize: '16px', fontWeight: '750', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
             </div>
           )}
-          <div className="dashboard-scroll-table" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px', fontSize: '12px' }}>
+          <div className="dashboard-scroll-table attendance-table-wrap" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
+            <table className="attendance-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#f7f7f8', boxShadow: '0 1px 0 #e5e5e7' }}>
                 <tr style={{ textAlign: 'left' }}>
                   <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>
@@ -1797,7 +1886,7 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {zoradeneZaznamy.length === 0 ? ( 
-                  <tr><td colSpan={7} style={{ padding: '34px 14px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
+                  <tr className="attendance-empty-row"><td className="attendance-empty-cell" colSpan={7} style={{ padding: '34px 14px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
                 ) : (
                   zoradeneZaznamy.map((z) => {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
@@ -1821,7 +1910,8 @@ export default function DashboardPage() {
 
                     return (
                       <tr 
-                        key={z.id} 
+                        key={z.id}
+                        className="attendance-row" 
                         style={{ 
                           borderBottom: '1px solid #eeeeef',
                           backgroundColor: farbaRiadku,
@@ -1830,19 +1920,19 @@ export default function DashboardPage() {
                         onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(0.98)'}
                         onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                       >
-                        <td style={{ padding: '11px 14px', color: '#1d1d1f', fontWeight: '500' }}>
+                        <td className="attendance-cell" data-label="Dátum" style={{ padding: '11px 14px', color: '#1d1d1f', fontWeight: '500' }}>
                           {formatujDatumSK(z.datum)}
                           {jeVikend && <span style={{ fontSize: '8px', backgroundColor: '#ffedd5', color: '#9a3412', padding: '2px 5px', marginLeft: '6px', letterSpacing: '0.3px', textTransform: 'uppercase', borderRadius: '8px', fontWeight: '700' }}>Víkend</span>}
                         </td>
-                        <td style={{ padding: '11px 14px', fontWeight: '600', color: '#1d1d1f' }}>
+                        <td className="attendance-cell" data-label="Osoba" style={{ padding: '11px 14px', fontWeight: '600', color: '#1d1d1f' }}>
                           {z.meno}
                           {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>DUP</span>}
                           {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>PREKRYV</span>}
                           {maViacUsekov && !jeDuplicite && !jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>VIAC</span>}
                         </td>
-                        <td style={{ padding: '11px 14px', color: '#6e6e73', fontSize: '11px', fontWeight: '500' }}>{z.zakazka}</td>
+                        <td className="attendance-cell" data-label="Stavba" style={{ padding: '11px 14px', color: '#6e6e73', fontSize: '11px', fontWeight: '500' }}>{z.zakazka}</td>
                         
-                        <td style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
+                        <td className="attendance-cell" data-label="Príchod" style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
@@ -1855,7 +1945,7 @@ export default function DashboardPage() {
                           )}
                         </td>
 
-                        <td style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
+                        <td className="attendance-cell" data-label="Odchod" style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
@@ -1868,7 +1958,7 @@ export default function DashboardPage() {
                           )}
                         </td>
 
-                        <td style={{ padding: '11px 14px', color: jePodozrivy ? '#ff3b30' : '#1d1d1f', fontWeight: jePodozrivy ? '700' : '600', textAlign: 'right' }} title={jePodozrivy ? "Podozrivý čas" : ""}>
+                        <td className="attendance-cell" data-label="Hodiny" style={{ padding: '11px 14px', color: jePodozrivy ? '#ff3b30' : '#1d1d1f', fontWeight: jePodozrivy ? '700' : '600', textAlign: 'right' }} title={jePodozrivy ? "Podozrivý čas" : ""}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="number" 
@@ -1894,7 +1984,7 @@ export default function DashboardPage() {
                           )}
                         </td>
 
-                        <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                        <td className="attendance-cell attendance-actions" data-label="Akcie" style={{ padding: '11px 14px', textAlign: 'right' }}>
                           {upravovaneId === z.id ? (
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                               <button 
