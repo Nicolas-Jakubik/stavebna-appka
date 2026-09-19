@@ -951,9 +951,26 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {dennyPrehladNaZobrazenie.map(den => (
-                  <tr key={den.datum} style={{ borderBottom: '1px solid #f5f5f7', backgroundColor: den.datum === dnesText ? '#eff6ff' : 'transparent' }}>
+                  <tr
+                    key={den.datum}
+                    style={{
+                      borderBottom: '1px solid #f5f5f7',
+                      backgroundColor:
+                        den.denVTyzdni === 'Ne'
+                          ? '#fef2f2'
+                          : den.denVTyzdni === 'So'
+                            ? '#fff7ed'
+                            : den.datum === dnesText
+                              ? '#eff6ff'
+                              : 'transparent'
+                    }}
+                  >
                     <td style={{ padding: '10px 18px', fontWeight: '600', color: '#1d1d1f' }}>{formatujDatumSK(den.datum)}</td>
-                    <td style={{ padding: '10px 12px', color: den.denVTyzdni === 'Ne' ? '#86868b' : '#1d1d1f' }}>{den.denVTyzdni}</td>
+                    <td style={{
+                      padding: '10px 12px',
+                      color: den.denVTyzdni === 'Ne' ? '#b42318' : den.denVTyzdni === 'So' ? '#9a3412' : '#1d1d1f',
+                      fontWeight: den.denVTyzdni === 'Ne' || den.denVTyzdni === 'So' ? '700' : '400'
+                    }}>{den.denVTyzdni}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                       <span style={{
                         display: 'inline-block',
