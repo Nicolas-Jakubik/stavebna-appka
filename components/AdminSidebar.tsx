@@ -39,7 +39,11 @@ export default function AdminSidebar({
             min-width: 0 !important;
             height: 100dvh !important;
             border-radius: 0 18px 18px 0 !important;
-            padding: max(20px, env(safe-area-inset-top)) 14px max(20px, env(safe-area-inset-bottom)) !important;
+            padding:
+              max(20px, env(safe-area-inset-top))
+              max(14px, env(safe-area-inset-right))
+              max(20px, env(safe-area-inset-bottom))
+              max(14px, env(safe-area-inset-left)) !important;
             transform: translateX(-105%);
             transition: transform 180ms ease;
             box-shadow: 12px 0 36px rgba(0,0,0,0.16) !important;
