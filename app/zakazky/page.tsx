@@ -13,6 +13,8 @@ export default function ZakazkyPage() {
   const [zakazky, setZakazky] = useState<any[]>([])
   const [novyNazov, setNovyNazov] = useState('')
   const [pridavaSa, setPridavaSa] = useState(false)
+  const [hladat, setHladat] = useState('')
+  const [filterStav, setFilterStav] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -154,6 +156,11 @@ export default function ZakazkyPage() {
 
   const aktivneZakazky = zakazky.filter(z => z.stav !== 'Dokončená')
   const dokonceneZakazky = zakazky.filter(z => z.stav === 'Dokončená')
+  const hladanyText = hladat.trim().toLocaleLowerCase('sk')
+  const filtrujPodlaNazvu = (zoznam: any[]) =>
+    hladanyText ? zoznam.filter(z => String(z.nazov || '').toLocaleLowerCase('sk').includes(hladanyText)) : zoznam
+  const aktivneZakazkyNaZobrazenie = filtrujPodlaNazvu(aktivneZakazky)
+  const dokonceneZakazkyNaZobrazenie = filtrujPodlaNazvu(dokonceneZakazky)
 
   if (!jeOdomknute) {
     return (
@@ -213,7 +220,8 @@ export default function ZakazkyPage() {
           }
 
           .simple-admin-form-grid,
-          .stavby-summary-grid {
+          .stavby-summary-grid,
+          .stavby-filter-grid {
             grid-template-columns: 1fr !important;
           }
 
@@ -366,13 +374,74 @@ export default function ZakazkyPage() {
           </form>
         </div>
 
+        <div style={{ ...cardStyle, marginBottom: '16px', padding: '14px 16px' }}>
+          <div className="stavby-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto', gap: '12px', alignItems: 'center' }}>
+            <div>
+              <label style={labelStyle}>Vyhľadať stavbu</label>
+              <input
+                type="search"
+                placeholder="Napíš názov stavby..."
+                value={hladat}
+                onChange={(e) => setHladat(e.target.value)}
+                style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Zobraziť</label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'vsetky', label: 'Všetky' },
+                  { key: 'aktivne', label: 'Aktívne' },
+                  { key: 'dokoncene', label: 'Dokončené' },
+                ].map(volba => {
+                  const aktivna = filterStav === volba.key
+                  return (
+                    <button
+                      key={volba.key}
+                      type="button"
+                      onClick={() => setFilterStav(volba.key as 'vsetky' | 'aktivne' | 'dokoncene')}
+                      style={{
+                        ...(aktivna ? buttonPrimaryStyle : buttonSecondaryStyle),
+                        minHeight: '40px',
+                        padding: '7px 13px',
+                        fontSize: '10px',
+                        textTransform: 'none',
+                        letterSpacing: 0
+                      } as any}
+                    >
+                      {volba.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {(hladat || filterStav !== 'vsetky') && (
+            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ color: '#86868b', fontSize: '10px' }}>
+                Nájdené: {aktivneZakazkyNaZobrazenie.length + dokonceneZakazkyNaZobrazenie.length} stavieb
+              </div>
+              <button
+                type="button"
+                onClick={() => { setHladat(''); setFilterStav('vsetky') }}
+                style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: 0 }}
+              >
+                Vyčistiť filter
+              </button>
+            </div>
+          )}
+        </div>
+
+        {filterStav !== 'dokoncene' && (
         <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
                 <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Aktívne stavby</div>
-                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#ecfdf5', color: '#047857', fontSize: '9px', fontWeight: '750' }}>{aktivneZakazky.length}</span>
+                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#ecfdf5', color: '#047857', fontSize: '9px', fontWeight: '750' }}>{aktivneZakazkyNaZobrazenie.length}</span>
               </div>
               <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Rozpracované zákazky. Stav môžeš kedykoľvek zmeniť na dokončený.</div>
             </div>
@@ -387,10 +456,10 @@ export default function ZakazkyPage() {
               </tr>
             </thead>
             <tbody>
-              {aktivneZakazky.length === 0 ? (
+              {aktivneZakazkyNaZobrazenie.length === 0 ? (
                 <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
               ) : (
-                aktivneZakazky.map((zak) => (
+                aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
                     <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{zak.nazov}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
@@ -419,14 +488,16 @@ export default function ZakazkyPage() {
             </tbody>
           </table>
         </div>
+        )}
 
+        {filterStav !== 'aktivne' && (
         <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', opacity: 0.88 }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', backgroundColor: '#fbfbfc' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#a1a1a6', display: 'inline-block' }} />
                 <div style={{ fontSize: '14px', fontWeight: '750', color: '#6e6e73' }}>Dokončené stavby</div>
-                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#f0f0f2', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{dokonceneZakazky.length}</span>
+                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#f0f0f2', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{dokonceneZakazkyNaZobrazenie.length}</span>
               </div>
               <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Uzavreté zákazky zostávajú v evidencii a dajú sa znovu aktivovať.</div>
             </div>
@@ -441,10 +512,10 @@ export default function ZakazkyPage() {
               </tr>
             </thead>
             <tbody>
-              {dokonceneZakazky.length === 0 ? (
+              {dokonceneZakazkyNaZobrazenie.length === 0 ? (
                 <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
               ) : (
-                dokonceneZakazky.map((zak) => (
+                dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
                     <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#6e6e73', fontWeight: '600' }}>{zak.nazov}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
@@ -473,6 +544,7 @@ export default function ZakazkyPage() {
             </tbody>
           </table>
         </div>
+        )}
 
       </div>
     </div>
