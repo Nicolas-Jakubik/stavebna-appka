@@ -279,39 +279,74 @@ export default function MzdyPage() {
   const RenderujTabulkuStavieb = ({ zoznam, nadpis, predvolenyStav }: any) => {
     const jeVyplatena = predvolenyStav === 'Vyplatená'
     const farba = dajFarbuStavu(predvolenyStav)
-    const farbaCiary = jeVyplatena ? '#d1d5db' : farba.border
+    const hodinySpolu = zoznam.reduce((sucet: number, [, hodiny]: [string, number]) => sucet + hodiny, 0)
 
     return (
-      <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-        <h4 style={{ color: jeVyplatena ? '#6b7280' : '#1d1d1f', margin: '0 0 12px 0', fontSize: '14px', borderBottom: `2px solid ${farbaCiary}`, paddingBottom: '6px', width: 'fit-content', fontWeight: '600' }}>
-          {nadpis} ({zoznam.length})
-        </h4>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {zoznam.length === 0 ? (
-              <tr className="skryt-pri-tlaci"><td style={{ padding: '12px 0', color: '#9ca3af', fontSize: '13px', fontStyle: 'italic' }}>V tejto kategórii nie sú žiadne stavby.</td></tr>
-            ) : (
-              zoznam.map(([stavba, hodiny]: any) => {
-                const aktualnyStav = stavyStavieb[`${filterMesiac}_${filterPolovica}_${stavba}`] || 'Nezaplatená'
-                const farby = dajFarbuStavu(aktualnyStav)
-                return (
-                  <tr key={stavba} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '10px 0', color: jeVyplatena ? '#9ca3af' : '#1d1d1f', fontWeight: '500', textDecoration: jeVyplatena ? 'line-through' : 'none', fontSize: '13px' }}>{stavba}</td>
-                    
-                    <td style={{ padding: '10px 0', textAlign: 'center', width: '180px' }}>
-                      <span className="ukazat-iba-pri-tlaci" style={{ fontSize: '12px', fontWeight: '600', color: farby.color }}>{aktualnyStav}</span>
-                      <select value={aktualnyStav} onChange={(e) => zmenaStavuStavby(stavba, e.target.value)} className="skryt-pri-tlaci" style={{ padding: '6px 10px', border: '1px solid', borderColor: farby.border, borderRadius: '6px', color: farby.color, backgroundColor: farby.bg, outline: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>
-                        <option value="Nezaplatená">Nezaplatená</option><option value="Poslaná FA">Poslaná FA</option><option value="Vyplatená">Vyplatená</option>
-                      </select>
-                    </td>
-                    
-                    <td style={{ padding: '10px 0', color: jeVyplatena ? '#9ca3af' : '#1d1d1f', fontWeight: '600', textAlign: 'right', fontSize: '13px', width: '100px', paddingRight: '10px' }}>{hodiny.toFixed(2)} h</td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+      <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '14px', pageBreakInside: 'avoid' }}>
+        <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderBottom: '1px solid #eeeeef', backgroundColor: jeVyplatena ? '#fbfbfc' : '#ffffff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: farba.color, display: 'inline-block' }} />
+            <div style={{ color: jeVyplatena ? '#6e6e73' : '#1d1d1f', fontSize: '13px', fontWeight: '750' }}>{nadpis}</div>
+            <span style={{ fontSize: '9px', color: '#86868b', backgroundColor: '#f5f5f7', borderRadius: '999px', padding: '3px 7px', fontWeight: '700' }}>{zoznam.length}</span>
+          </div>
+          <div style={{ fontSize: '11px', color: '#86868b', fontWeight: '650' }}>{hodinySpolu.toFixed(2)} h</div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #eeeeef' }}>
+                <th style={{ padding: '9px 16px', textAlign: 'left', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
+                <th style={{ padding: '9px 12px', textAlign: 'center', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '190px' }}>Stav faktúry</th>
+                <th style={{ padding: '9px 16px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Hodiny</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zoznam.length === 0 ? (
+                <tr className="skryt-pri-tlaci">
+                  <td colSpan={3} style={{ padding: '20px 16px', color: '#a1a1a6', fontSize: '11px', textAlign: 'center' }}>V tejto kategórii nie sú žiadne stavby.</td>
+                </tr>
+              ) : (
+                zoznam.map(([stavba, hodiny]: any) => {
+                  const aktualnyStav = stavyStavieb[`${filterMesiac}_${filterPolovica}_${stavba}`] || 'Nezaplatená'
+                  const farby = dajFarbuStavu(aktualnyStav)
+                  return (
+                    <tr key={stavba} style={{ borderBottom: '1px solid #eeeeef', backgroundColor: jeVyplatena ? '#fcfcfd' : '#ffffff' }}>
+                      <td style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '650', fontSize: '12px' }}>{stavba}</td>
+
+                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                        <span className="ukazat-iba-pri-tlaci" style={{ fontSize: '11px', fontWeight: '700', color: farby.color }}>{aktualnyStav}</span>
+                        <select
+                          value={aktualnyStav}
+                          onChange={(e) => zmenaStavuStavby(stavba, e.target.value)}
+                          className="skryt-pri-tlaci"
+                          style={{
+                            minWidth: '132px',
+                            padding: '6px 9px',
+                            border: `1px solid ${farby.border}`,
+                            borderRadius: '9px',
+                            color: farby.color,
+                            backgroundColor: farby.bg,
+                            outline: 'none',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            fontWeight: '700'
+                          }}
+                        >
+                          <option value="Nezaplatená">Nezaplatená</option>
+                          <option value="Poslaná FA">Poslaná FA</option>
+                          <option value="Vyplatená">Vyplatená</option>
+                        </select>
+                      </td>
+
+                      <td style={{ padding: '11px 16px', color: jeVyplatena ? '#86868b' : '#1d1d1f', fontWeight: '700', textAlign: 'right', fontSize: '12px' }}>{hodiny.toFixed(2)} h</td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }
