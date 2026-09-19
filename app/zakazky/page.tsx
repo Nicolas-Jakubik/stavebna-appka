@@ -15,6 +15,7 @@ export default function ZakazkyPage() {
   const [pridavaSa, setPridavaSa] = useState(false)
   const [hladat, setHladat] = useState('')
   const [filterStav, setFilterStav] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
+  const [zoradenie, setZoradenie] = useState<'najnovsie' | 'najstarsie' | 'az'>('najnovsie')
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -159,8 +160,23 @@ export default function ZakazkyPage() {
   const hladanyText = hladat.trim().toLocaleLowerCase('sk')
   const filtrujPodlaNazvu = (zoznam: any[]) =>
     hladanyText ? zoznam.filter(z => String(z.nazov || '').toLocaleLowerCase('sk').includes(hladanyText)) : zoznam
-  const aktivneZakazkyNaZobrazenie = filtrujPodlaNazvu(aktivneZakazky)
-  const dokonceneZakazkyNaZobrazenie = filtrujPodlaNazvu(dokonceneZakazky)
+
+  const datumZakazky = (zak: any) => String(zak.datum_pridania || zak.created_at || '')
+  const zoradZakazky = (zoznam: any[]) => [...zoznam].sort((a, b) => {
+    if (zoradenie === 'az') return String(a.nazov || '').localeCompare(String(b.nazov || ''), 'sk')
+    const datumA = datumZakazky(a)
+    const datumB = datumZakazky(b)
+    return zoradenie === 'najstarsie' ? datumA.localeCompare(datumB) : datumB.localeCompare(datumA)
+  })
+  const formatujDatumPridania = (zak: any) => {
+    const hodnota = datumZakazky(zak)
+    if (!hodnota) return '—'
+    const datum = new Date(hodnota)
+    return Number.isNaN(datum.getTime()) ? hodnota : datum.toLocaleDateString('sk-SK')
+  }
+
+  const aktivneZakazkyNaZobrazenie = zoradZakazky(filtrujPodlaNazvu(aktivneZakazky))
+  const dokonceneZakazkyNaZobrazenie = zoradZakazky(filtrujPodlaNazvu(dokonceneZakazky))
 
   if (!jeOdomknute) {
     return (
@@ -375,7 +391,7 @@ export default function ZakazkyPage() {
         </div>
 
         <div style={{ ...cardStyle, marginBottom: '16px', padding: '14px 16px' }}>
-          <div className="stavby-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto', gap: '12px', alignItems: 'center' }}>
+          <div className="stavby-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto 150px', gap: '12px', alignItems: 'center' }}>
             <div>
               <label style={labelStyle}>Vyhľadať stavbu</label>
               <input
@@ -416,16 +432,29 @@ export default function ZakazkyPage() {
                 })}
               </div>
             </div>
+
+            <div>
+              <label style={labelStyle}>Zoradiť</label>
+              <select
+                value={zoradenie}
+                onChange={(e) => setZoradenie(e.target.value as 'najnovsie' | 'najstarsie' | 'az')}
+                style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
+              >
+                <option value="najnovsie">Najnovšie</option>
+                <option value="najstarsie">Najstaršie</option>
+                <option value="az">A–Z</option>
+              </select>
+            </div>
           </div>
 
-          {(hladat || filterStav !== 'vsetky') && (
+          {(hladat || filterStav !== 'vsetky' || zoradenie !== 'najnovsie') && (
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ color: '#86868b', fontSize: '10px' }}>
                 Nájdené: {aktivneZakazkyNaZobrazenie.length + dokonceneZakazkyNaZobrazenie.length} stavieb
               </div>
               <button
                 type="button"
-                onClick={() => { setHladat(''); setFilterStav('vsetky') }}
+                onClick={() => { setHladat(''); setFilterStav('vsetky'); setZoradenie('najnovsie') }}
                 style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: 0 }}
               >
                 Vyčistiť filter
@@ -451,17 +480,19 @@ export default function ZakazkyPage() {
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {aktivneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={4} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
                     <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
                         value={zak.stav || 'Aktívna'}
@@ -507,17 +538,19 @@ export default function ZakazkyPage() {
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {dokonceneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={4} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
                     <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#6e6e73', fontWeight: '600' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
                         value={zak.stav || 'Dokončená'}
