@@ -896,88 +896,102 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#1d1d1f' }}>Vyžaduje kontrolu</div>
-              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Problémy v aktuálne zobrazenej dochádzke.</div>
+        <div style={{
+          ...cardStyle,
+          marginBottom: '16px',
+          padding: '14px 16px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.035)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: '145px', marginRight: 'auto' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Vyžaduje kontrolu</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kliknutím zobrazíš problémové zápisy.</div>
             </div>
-            {filterProblem !== 'vsetko' && (
-              <button
-                type="button"
-                onClick={() => setFilterProblem('vsetko')}
-                style={{ ...buttonSecondaryStyle, padding: '6px 12px', fontSize: '10px' } as any}
-              >
-                Zrušiť filter
-              </button>
-            )}
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
-            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: nezapisaniVcera.length > 0 ? '#fff7f7' : '#f7fff9', border: nezapisaniVcera.length > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Chýbajúce včera</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: nezapisaniVcera.length > 0 ? '#b42318' : '#15803d' }}>{nezapisaniVcera.length}</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>{datumKontroly ? formatujDatumSK(datumKontroly) : 'predchádzajúci deň'}</div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '7px 10px',
+              borderRadius: '10px',
+              backgroundColor: nezapisaniVcera.length > 0 ? '#fff7f7' : '#f7fff9',
+              border: nezapisaniVcera.length > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0'
+            }}>
+              <span style={{ fontSize: '19px', fontWeight: '750', color: nezapisaniVcera.length > 0 ? '#b42318' : '#15803d', lineHeight: 1 }}>{nezapisaniVcera.length}</span>
+              <span style={{ fontSize: '10px', fontWeight: '650', color: '#6e6e73' }}>Chýbajúce včera</span>
             </div>
 
             <button
               type="button"
               onClick={() => setFilterProblem(filterProblem === 'duplikat' ? 'vsetko' : 'duplikat')}
               style={{
-                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 10px',
                 borderRadius: '10px',
-                textAlign: 'left',
                 cursor: 'pointer',
-                backgroundColor: filterProblem === 'duplikat' ? '#fef3c7' : '#ffffff',
-                border: filterProblem === 'duplikat' ? '1px solid #f59e0b' : '1px solid #e5e5e5',
+                backgroundColor: filterProblem === 'duplikat' ? '#fef3c7' : '#fafafa',
+                border: filterProblem === 'duplikat' ? '1px solid #f59e0b' : '1px solid #e8e8ed',
                 color: '#1d1d1f'
               }}
             >
-              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Presné duplikáty</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetDuplikatov > 0 ? '#92400e' : '#1d1d1f' }}>{pocetDuplikatov}</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+              <span style={{ fontSize: '19px', fontWeight: '750', color: pocetDuplikatov > 0 ? '#92400e' : '#86868b', lineHeight: 1 }}>{pocetDuplikatov}</span>
+              <span style={{ fontSize: '10px', fontWeight: '650', color: '#6e6e73' }}>Duplikáty</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFilterProblem(filterProblem === 'prekryv' ? 'vsetko' : 'prekryv')}
               style={{
-                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 10px',
                 borderRadius: '10px',
-                textAlign: 'left',
                 cursor: 'pointer',
-                backgroundColor: filterProblem === 'prekryv' ? '#fff7ed' : '#ffffff',
-                border: filterProblem === 'prekryv' ? '1px solid #fb923c' : '1px solid #e5e5e5',
+                backgroundColor: filterProblem === 'prekryv' ? '#fff7ed' : '#fafafa',
+                border: filterProblem === 'prekryv' ? '1px solid #fb923c' : '1px solid #e8e8ed',
                 color: '#1d1d1f'
               }}
             >
-              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Prekryvy času</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetPrekryvov > 0 ? '#9a3412' : '#1d1d1f' }}>{pocetPrekryvov}</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+              <span style={{ fontSize: '19px', fontWeight: '750', color: pocetPrekryvov > 0 ? '#9a3412' : '#86868b', lineHeight: 1 }}>{pocetPrekryvov}</span>
+              <span style={{ fontSize: '10px', fontWeight: '650', color: '#6e6e73' }}>Prekryvy</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFilterProblem(filterProblem === 'podozrivy' ? 'vsetko' : 'podozrivy')}
               style={{
-                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 10px',
                 borderRadius: '10px',
-                textAlign: 'left',
                 cursor: 'pointer',
-                backgroundColor: filterProblem === 'podozrivy' ? '#fef2f2' : '#ffffff',
-                border: filterProblem === 'podozrivy' ? '1px solid #f87171' : '1px solid #e5e5e5',
+                backgroundColor: filterProblem === 'podozrivy' ? '#fef2f2' : '#fafafa',
+                border: filterProblem === 'podozrivy' ? '1px solid #f87171' : '1px solid #e8e8ed',
                 color: '#1d1d1f'
               }}
             >
-              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '600' }}>Podozrivé časy</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', marginTop: '4px', color: pocetPodozrivych > 0 ? '#b42318' : '#1d1d1f' }}>{pocetPodozrivych}</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Klikni pre filtrovanie</div>
+              <span style={{ fontSize: '19px', fontWeight: '750', color: pocetPodozrivych > 0 ? '#b42318' : '#86868b', lineHeight: 1 }}>{pocetPodozrivych}</span>
+              <span style={{ fontSize: '10px', fontWeight: '650', color: '#6e6e73' }}>Podozrivé</span>
             </button>
+
+            {filterProblem !== 'vsetko' && (
+              <button
+                type="button"
+                onClick={() => setFilterProblem('vsetko')}
+                style={{ ...buttonSecondaryStyle, padding: '7px 11px', fontSize: '9px' } as any}
+              >
+                Zrušiť filter
+              </button>
+            )}
           </div>
 
           {filterProblem !== 'vsetko' && (
-            <div style={{ marginTop: '10px', fontSize: '11px', color: '#0071e3', fontWeight: '600' }}>
-              Zobrazený filter: {nazovProblemFiltra} · {zaznamyNaZobrazenie.length} záznamov
+            <div style={{ marginTop: '10px', paddingTop: '9px', borderTop: '1px solid #f0f0f0', fontSize: '10px', color: '#0071e3', fontWeight: '650' }}>
+              {nazovProblemFiltra} · {zaznamyNaZobrazenie.length} záznamov
             </div>
           )}
         </div>
