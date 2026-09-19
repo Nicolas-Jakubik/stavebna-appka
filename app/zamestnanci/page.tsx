@@ -21,6 +21,7 @@ export default function ZamestnanciPage() {
   const [upravovanaSadzba, setUpravovanaSadzba] = useState('')
   const [hladat, setHladat] = useState('')
   const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc'>('az')
+  const [pocetDochadzkyPodlaMena, setPocetDochadzkyPodlaMena] = useState<Record<string, number>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -94,13 +95,36 @@ export default function ZamestnanciPage() {
   }
 
   async function nacitajZamestnancov() {
-    const { data, error } = await supabase
-      .from('zamestnanci')
-      .select('*')
-      .order('meno', { ascending: true })
+    const [{ data: dataZamestnanci, error: chybaZamestnancov }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
+      supabase
+        .from('zamestnanci')
+        .select('*')
+        .order('meno', { ascending: true }),
+      supabase
+        .from('dochadzka')
+        .select('meno')
+    ])
 
-    if (error) console.error("Chyba načítania zamestnancov:", error)
-    else setZamestnanci(data || [])
+    if (chybaZamestnancov) {
+      console.error("Chyba načítania zamestnancov:", chybaZamestnancov)
+    } else {
+      setZamestnanci(dataZamestnanci || [])
+    }
+
+    if (chybaDochadzky) {
+      console.error("Chyba načítania dochádzky pracovníkov:", chybaDochadzky)
+      setPocetDochadzkyPodlaMena({})
+    } else {
+      const pocty: Record<string, number> = {}
+
+      ;(dataDochadzka || []).forEach(zaznam => {
+        const meno = String(zaznam.meno || '').trim()
+        if (!meno) return
+        pocty[meno] = (pocty[meno] || 0) + 1
+      })
+
+      setPocetDochadzkyPodlaMena(pocty)
+    }
   }
 
   async function pridatZamestnanca(e: React.FormEvent) {
@@ -127,7 +151,12 @@ export default function ZamestnanciPage() {
   }
 
   async function vymazatZamestnanca(id: string, meno: string) {
-    if (!confirm(`Naozaj vymazať "${meno}"? (Dochádzka ostane zachovaná)`)) return
+    const pocetZaznamov = pocetDochadzkyPodlaMena[String(meno || '').trim()] || 0
+    const sprava = pocetZaznamov > 0
+      ? `Naozaj vymazať "${meno}"? V dochádzke zostane ${pocetZaznamov} historických záznamov s týmto menom.`
+      : `Naozaj vymazať "${meno}"? Tento pracovník nemá žiadne záznamy dochádzky.`
+
+    if (!confirm(sprava)) return
     
     const { error } = await supabase
       .from('zamestnanci')
@@ -499,13 +528,14 @@ export default function ZamestnanciPage() {
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovník</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '140px' }}>Hodinová sadzba</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Dochádzka</th>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
                 </tr>
               </thead>
               <tbody>
                 {zamestnanciNaZobrazenie.length === 0 ? (
                   <tr className="simple-empty-row">
-                    <td className="simple-empty-cell" colSpan={3} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
+                    <td className="simple-empty-cell" colSpan={4} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
                       {hladat ? 'Žiadny pracovník nezodpovedá vyhľadávaniu.' : 'Zatiaľ nie je pridaný žiadny pracovník.'}
                     </td>
                   </tr>
@@ -540,6 +570,22 @@ export default function ZamestnanciPage() {
                             {Number(z.sadzba || 0).toFixed(2)} €/h
                           </span>
                         )}
+                      </td>
+                      <td className="simple-mobile-cell" data-label="Dochádzka" style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '30px',
+                          padding: '4px 8px',
+                          borderRadius: '999px',
+                          backgroundColor: (pocetDochadzkyPodlaMena[String(z.meno || '').trim()] || 0) > 0 ? '#eef6ff' : '#f5f5f7',
+                          color: (pocetDochadzkyPodlaMena[String(z.meno || '').trim()] || 0) > 0 ? '#0071e3' : '#86868b',
+                          fontSize: '10px',
+                          fontWeight: '750'
+                        }}>
+                          {pocetDochadzkyPodlaMena[String(z.meno || '').trim()] || 0}
+                        </span>
                       </td>
                       <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
                         {upravovaneId === z.id ? (
