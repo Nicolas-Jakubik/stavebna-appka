@@ -397,7 +397,7 @@ export default function MzdyPage() {
       }}
     >
       <style>{`
-        @media (max-width: 760px) {
+        @media (max-width: 1024px) {
           .admin-page-shell {
             padding: 64px 12px 20px !important;
             display: block !important;
