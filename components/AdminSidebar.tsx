@@ -54,8 +54,8 @@ export default function AdminSidebar({
             top: max(12px, env(safe-area-inset-top));
             left: max(12px, env(safe-area-inset-left));
             z-index: 1001;
-            width: 42px;
-            height: 42px;
+            width: 44px;
+            height: 44px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
