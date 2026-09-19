@@ -282,7 +282,7 @@ export default function MzdyPage() {
     const hodinySpolu = zoznam.reduce((sucet: number, [, hodiny]: [string, number]) => sucet + hodiny, 0)
 
     return (
-      <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '14px', pageBreakInside: 'avoid' }}>
+      <div className="print-card" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '14px', pageBreakInside: 'avoid' }}>
         <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderBottom: '1px solid #eeeeef', backgroundColor: jeVyplatena ? '#fbfbfc' : '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: farba.color, display: 'inline-block' }} />
@@ -397,13 +397,20 @@ export default function MzdyPage() {
       }}
     >
       <style>{`
+        @page { size: A4 landscape; margin: 12mm; }
         @media print {
-          body { backgroundColor: white !important; color: black !important; padding: 0 !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          html, body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
           .admin-page-shell { display: block !important; padding: 0 !important; background: white !important; }
           .skryt-pri-tlaci { display: none !important; }
-          .ukazat-iba-pri-tlaci { display: inline-block !important; }
-          .hlavny-kontajner { boxShadow: none !important; padding: 20px !important; maxWidth: 100% !important; width: 100% !important; }
-          tr { pageBreakInside: avoid; }
+          .ukazat-iba-pri-tlaci { display: block !important; }
+          span.ukazat-iba-pri-tlaci { display: inline-block !important; }
+          .hlavny-kontajner { boxShadow: none !important; padding: 0 !important; maxWidth: 100% !important; width: 100% !important; }
+          .print-card { box-shadow: none !important; border: 1px solid #d2d2d7 !important; break-inside: avoid; }
+          table { width: 100% !important; min-width: 0 !important; }
+          thead { display: table-header-group; }
+          tr { break-inside: avoid; page-break-inside: avoid; }
+          h1, h2, h3, h4 { break-after: avoid; }
         }
         .ukazat-iba-pri-tlaci { display: none; }
       `}</style>
@@ -428,9 +435,36 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', borderBottom: '2px solid #1d1d1f', paddingBottom: '12px', marginBottom: '20px' }}>
-          <h1 style={{ fontSize: '22px', margin: 0, color: '#1d1d1f' }}>Mesačný prehľad uzávierky</h1>
-          <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#86868b' }}>Obdobie: <strong>{aktualnyNazovMesiaca}</strong></p>
+        <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px', borderBottom: '2px solid #1d1d1f', paddingBottom: '10px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · firemná uzávierka</div>
+              <h1 style={{ fontSize: '22px', margin: '3px 0 0 0', color: '#1d1d1f' }}>Výplaty a fakturácia</h1>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#86868b' }}>
+              <div>{nazovMesiacaBezPolovice}</div>
+              <strong style={{ color: '#1d1d1f' }}>{nazovVyplatnehoObdobia}</strong>
+            </div>
+          </div>
+
+          <div className="print-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '12px', border: '1px solid #d2d2d7', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
+              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Pracovníci</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{pocetPracovnikovVyplata}</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
+              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Fond / pracovník</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{fondVybranehoObdobia.toFixed(1)} h</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
+              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Odpracované spolu</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{celkoveOdpracovaneHodiny.toFixed(2)} h</div>
+            </div>
+            <div style={{ padding: '10px 12px' }}>
+              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Na výplatu spolu</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{celkovaSumaNaVyplatu.toFixed(2)} €</div>
+            </div>
+          </div>
         </div>
 
         <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
@@ -578,7 +612,7 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, padding: '0', overflow: 'hidden' }}>
+        <div className="print-card" style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, padding: '0', overflow: 'hidden' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
               <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Výplaty pracovníkov</div>
