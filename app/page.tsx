@@ -247,7 +247,12 @@ export default function Home() {
     const { error } = await supabase.from('dochadzka').insert(zaznamyNaUlozenie)
 
     if (error) {
-      setStatus('Chyba: ' + error.message)
+      if (error.code === '23505') {
+        setZobrazitPotvrdenie(false)
+        setStatus('⚠️ Rovnaký zápis už existuje. Skontrolujte dátum, pracovníka, stavbu a čas.')
+      } else {
+        setStatus('Chyba: ' + error.message)
+      }
       setOdosiela(false)
       return
     }
