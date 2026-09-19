@@ -207,7 +207,7 @@ export default function ZamestnanciPage() {
   }
 
   return (
-    <div style={{
+    <div className="simple-admin-shell" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -217,12 +217,116 @@ export default function ZamestnanciPage() {
       gap: '24px',
       alignItems: 'flex-start'
     }}>
+      <style>{`
+        @media (max-width: 760px) {
+          .simple-admin-shell {
+            padding: 64px 12px 20px !important;
+            display: block !important;
+          }
+
+          .simple-admin-content {
+            max-width: 100% !important;
+          }
+
+          .simple-admin-form-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .simple-admin-form-grid button {
+            width: 100% !important;
+            min-height: 44px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .simple-admin-card {
+            overflow: visible !important;
+          }
+
+          .simple-mobile-table {
+            display: block;
+            width: 100% !important;
+          }
+
+          .simple-mobile-table thead {
+            display: none;
+          }
+
+          .simple-mobile-table tbody {
+            display: grid;
+            gap: 10px;
+          }
+
+          .simple-mobile-table tr.simple-mobile-row {
+            display: block;
+            border: 1px solid #e5e5e7 !important;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell {
+            display: grid;
+            grid-template-columns: 82px minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            min-height: 44px;
+            padding: 9px 12px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.055);
+            text-align: left !important;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell:last-child {
+            border-bottom: none;
+          }
+
+          .simple-mobile-table td.simple-mobile-cell::before {
+            content: attr(data-label);
+            color: #86868b;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.45px;
+          }
+
+          .simple-mobile-table td.simple-mobile-actions > div {
+            justify-content: flex-start !important;
+            flex-wrap: wrap;
+          }
+
+          .simple-mobile-table td.simple-mobile-actions button {
+            min-height: 38px;
+            padding: 8px 10px !important;
+          }
+
+          .simple-mobile-table input {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 40px;
+          }
+
+          .simple-empty-row {
+            display: table-row !important;
+            border: none !important;
+          }
+
+          .simple-empty-cell {
+            display: table-cell !important;
+            border: none !important;
+          }
+
+          .simple-empty-cell::before {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       <AdminSidebar
         active="zamestnanci"
         onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
       />
 
-      <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+      <div className="simple-admin-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px' }}>
           <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
             Firemná administrácia
@@ -237,7 +341,7 @@ export default function ZamestnanciPage() {
 
         <div style={{...cardStyle, marginBottom: '24px'}}>
           <form onSubmit={pridatZamestnanca}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '10px', alignItems: 'flex-end' }}>
+            <div className="simple-admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ minWidth: 0 }}>
                 <label style={labelStyle}>Meno</label>
                 <input 
@@ -274,8 +378,8 @@ export default function ZamestnanciPage() {
           </form>
         </div>
 
-        <div style={{...cardStyle, overflowX: 'auto'}}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+        <div className="simple-admin-card" style={{...cardStyle, overflowX: 'auto'}}>
+          <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
                 <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Meno</th>
@@ -285,11 +389,11 @@ export default function ZamestnanciPage() {
             </thead>
             <tbody>
               {zamestnanci.length === 0 ? (
-                <tr><td colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadni zamestnanci.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadni zamestnanci.</td></tr>
               ) : (
                 zamestnanci.map((z) => (
-                  <tr key={z.id} style={{ borderBottom: '1px solid #f5f5f7' }}>
-                    <td style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>
+                  <tr key={z.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
+                    <td className="simple-mobile-cell" data-label="Meno" style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>
                       {upravovaneId === z.id ? (
                         <input 
                           type="text" 
@@ -302,7 +406,7 @@ export default function ZamestnanciPage() {
                         z.meno
                       )}
                     </td>
-                    <td style={{ padding: '10px 0', color: '#1d1d1f', textAlign: 'center', fontWeight: '500' }}>
+                    <td className="simple-mobile-cell" data-label="Sadzba" style={{ padding: '10px 0', color: '#1d1d1f', textAlign: 'center', fontWeight: '500' }}>
                       {upravovaneId === z.id ? (
                         <input 
                           type="number" 
@@ -315,7 +419,7 @@ export default function ZamestnanciPage() {
                         `${z.sadzba || 0} €`
                       )}
                     </td>
-                    <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                    <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
                       {upravovaneId === z.id ? (
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                           <button 
