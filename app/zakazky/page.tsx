@@ -18,6 +18,7 @@ export default function ZakazkyPage() {
   const [zoradenie, setZoradenie] = useState<'najnovsie' | 'najstarsie' | 'az'>('najnovsie')
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovanyNazov, setUpravovanyNazov] = useState('')
+  const [pocetDochadzkyPodlaZakazky, setPocetDochadzkyPodlaZakazky] = useState<Record<string, number>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -91,15 +92,32 @@ export default function ZakazkyPage() {
   }
 
   async function nacitajZakazky() {
-    const { data, error } = await supabase
-      .from('zoznam_zakaziek')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const [{ data: dataZakazky, error: chybaZakazky }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
+      supabase
+        .from('zoznam_zakaziek')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('dochadzka')
+        .select('zakazka')
+    ])
 
-    if (error) {
-      console.error("Chyba načítania zákaziek:", error)
+    if (chybaZakazky) {
+      console.error("Chyba načítania zákaziek:", chybaZakazky)
     } else {
-      setZakazky(data || [])
+      setZakazky(dataZakazky || [])
+    }
+
+    if (chybaDochadzky) {
+      console.error("Chyba načítania prepojenia dochádzky:", chybaDochadzky)
+      setPocetDochadzkyPodlaZakazky({})
+    } else {
+      const pocty = (dataDochadzka || []).reduce<Record<string, number>>((acc, zaznam) => {
+        const nazov = String(zaznam.zakazka || '').trim()
+        if (nazov) acc[nazov] = (acc[nazov] || 0) + 1
+        return acc
+      }, {})
+      setPocetDochadzkyPodlaZakazky(pocty)
     }
   }
 
@@ -197,8 +215,13 @@ export default function ZakazkyPage() {
     nacitajZakazky()
   }
 
-  async function vymazatZakazku(id: string) {
-    if (!confirm('Naozaj vymazať túto zákazku? (Dochádzka sa nezmažuje)')) return
+  async function vymazatZakazku(id: string, nazov: string) {
+    const pocetZaznamov = pocetDochadzkyPodlaZakazky[nazov] || 0
+    const sprava = pocetZaznamov > 0
+      ? `Naozaj vymazať stavbu „${nazov}“? V dochádzke zostane ${pocetZaznamov} historických záznamov s týmto názvom.`
+      : `Naozaj vymazať stavbu „${nazov}“? Táto stavba nemá žiadne záznamy dochádzky.`
+
+    if (!confirm(sprava)) return
     
     const { error } = await supabase
       .from('zoznam_zakaziek')
@@ -544,13 +567,14 @@ export default function ZakazkyPage() {
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {aktivneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={4} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={5} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
@@ -568,6 +592,11 @@ export default function ZakazkyPage() {
                       )}
                     </td>
                     <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
+                    <td className="simple-mobile-cell" data-label="Dochádzka" style={{ padding: '10px 12px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '30px', padding: '4px 8px', borderRadius: '999px', backgroundColor: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#eef6ff' : '#f5f5f7', color: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#0071e3' : '#86868b', fontSize: '10px', fontWeight: '750' }}>
+                        {pocetDochadzkyPodlaZakazky[zak.nazov] || 0}
+                      </span>
+                    </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
                         value={zak.stav || 'Aktívna'}
@@ -608,7 +637,7 @@ export default function ZakazkyPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => vymazatZakazku(zak.id)}
+                              onClick={() => vymazatZakazku(String(zak.id), zak.nazov)}
                               style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
@@ -645,13 +674,14 @@ export default function ZakazkyPage() {
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {dokonceneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={4} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={5} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
@@ -669,6 +699,11 @@ export default function ZakazkyPage() {
                       )}
                     </td>
                     <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
+                    <td className="simple-mobile-cell" data-label="Dochádzka" style={{ padding: '10px 12px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '30px', padding: '4px 8px', borderRadius: '999px', backgroundColor: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#eef6ff' : '#f5f5f7', color: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#0071e3' : '#86868b', fontSize: '10px', fontWeight: '750' }}>
+                        {pocetDochadzkyPodlaZakazky[zak.nazov] || 0}
+                      </span>
+                    </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
                         value={zak.stav || 'Dokončená'}
@@ -709,7 +744,7 @@ export default function ZakazkyPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => vymazatZakazku(zak.id)}
+                              onClick={() => vymazatZakazku(String(zak.id), zak.nazov)}
                               style={{ color: '#a1a1a6', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
                               onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1a6'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
