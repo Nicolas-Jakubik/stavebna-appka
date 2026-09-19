@@ -200,7 +200,11 @@ export default function ZakazkyPage() {
       <style>{`
         @media (max-width: 1024px) {
           .simple-admin-shell {
-            padding: 64px 12px 20px !important;
+            padding:
+              calc(64px + env(safe-area-inset-top))
+              max(12px, env(safe-area-inset-right))
+              calc(20px + env(safe-area-inset-bottom))
+              max(12px, env(safe-area-inset-left)) !important;
             display: block !important;
           }
 
