@@ -1700,47 +1700,49 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0 8px 12px 8px', marginBottom: '4px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+        <div style={{ ...cardStyle, padding: '0', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '16px 18px', borderBottom: '1px solid #eeeeef', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Záznamy dochádzky</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kliknutím na Dátum, Osobu, Zákazku alebo Hodiny zmeníš zoradenie.</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.015em' }}>Záznamy dochádzky</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Dátum, osoba, stavba a hodiny sú klikateľné pre zoradenie.</div>
             </div>
-            <div style={{ fontSize: '11px', color: '#86868b' }}>{zoradeneZaznamy.length} záznamov</div>
+            <div style={{ padding: '5px 9px', borderRadius: '12px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '10px', fontWeight: '650' }}>
+              {zoradeneZaznamy.length} záznamov
+            </div>
           </div>
           {filterMeno && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0 8px 12px 8px', marginBottom: '4px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '11px 18px', borderBottom: '1px solid #dbeafe', backgroundColor: '#f7fbff', flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#1d1d1f' }}>{filterMeno}</div>
-                <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Zobrazené sú iba záznamy tohto pracovníka.</div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>{filterMeno}</div>
+                <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Aktívny filter pracovníka</div>
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
+              <div style={{ fontSize: '16px', fontWeight: '750', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
             </div>
           )}
-          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '68vh' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px', fontSize: '12px' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#ffffff' }}>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px', fontSize: '12px' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#f7f7f8', boxShadow: '0 1px 0 #e5e5e7' }}>
+                <tr style={{ textAlign: 'left' }}>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>
                     <button type="button" onClick={() => zmenTriedenie('datum')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Dátum{indikatorTriedenia('datum')}</button>
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>
                     <button type="button" onClick={() => zmenTriedenie('meno')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Osoba{indikatorTriedenia('meno')}</button>
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>
                     <button type="button" onClick={() => zmenTriedenie('zakazka')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Zákazka{indikatorTriedenia('zakazka')}</button>
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Príchod</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Odchod</th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Príchod</th>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Odchod</th>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}>
                     <button type="button" onClick={() => zmenTriedenie('hodiny')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textTransform: 'inherit', letterSpacing: 'inherit', fontWeight: 'inherit' }}>Hodiny{indikatorTriedenia('hodiny')}</button>
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}></th>
+                  <th style={{ padding: '11px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {zoradeneZaznamy.length === 0 ? ( 
-                  <tr><td colSpan={7} style={{ padding: '20px 8px', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
+                  <tr><td colSpan={7} style={{ padding: '34px 14px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
                 ) : (
                   zoradeneZaznamy.map((z) => {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
@@ -1766,26 +1768,26 @@ export default function DashboardPage() {
                       <tr 
                         key={z.id} 
                         style={{ 
-                          borderBottom: '1px solid #f5f5f7',
+                          borderBottom: '1px solid #eeeeef',
                           backgroundColor: farbaRiadku,
                           transition: 'filter 0.2s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(0.98)'}
                         onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                       >
-                        <td style={{ padding: '10px 8px', color: '#1d1d1f', fontWeight: '500' }}>
-                          {z.datum}
-                          {jeVikend && <span style={{ fontSize: '8px', backgroundColor: '#ffb347', color: '#6f2c00', padding: '1px 3px', marginLeft: '4px', letterSpacing: '0.3px', textTransform: 'uppercase', borderRadius: '2px', fontWeight: '600' }}>W</span>}
+                        <td style={{ padding: '11px 14px', color: '#1d1d1f', fontWeight: '500' }}>
+                          {formatujDatumSK(z.datum)}
+                          {jeVikend && <span style={{ fontSize: '8px', backgroundColor: '#ffedd5', color: '#9a3412', padding: '2px 5px', marginLeft: '6px', letterSpacing: '0.3px', textTransform: 'uppercase', borderRadius: '8px', fontWeight: '700' }}>Víkend</span>}
                         </td>
-                        <td style={{ padding: '10px 8px', fontWeight: '600', color: '#1d1d1f' }}>
+                        <td style={{ padding: '11px 14px', fontWeight: '600', color: '#1d1d1f' }}>
                           {z.meno}
-                          {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>DUP</span>}
-                          {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>PREKRYV</span>}
-                          {maViacUsekov && !jeDuplicite && !jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 4px', marginLeft: '4px', borderRadius: '2px', fontWeight: '600' }}>VIAC</span>}
+                          {jeDuplicite && <span style={{ fontSize: '8px', backgroundColor: '#fde68a', color: '#92400e', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>DUP</span>}
+                          {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>PREKRYV</span>}
+                          {maViacUsekov && !jeDuplicite && !jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>VIAC</span>}
                         </td>
-                        <td style={{ padding: '10px 8px', color: '#666', fontSize: '11px' }}>{z.zakazka}</td>
+                        <td style={{ padding: '11px 14px', color: '#6e6e73', fontSize: '11px', fontWeight: '500' }}>{z.zakazka}</td>
                         
-                        <td style={{ padding: '10px 8px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
+                        <td style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
@@ -1798,7 +1800,7 @@ export default function DashboardPage() {
                           )}
                         </td>
 
-                        <td style={{ padding: '10px 8px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
+                        <td style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="time" 
@@ -1811,7 +1813,7 @@ export default function DashboardPage() {
                           )}
                         </td>
 
-                        <td style={{ padding: '10px 8px', color: jePodozrivy ? '#ff3b30' : '#1d1d1f', fontWeight: jePodozrivy ? '700' : '600', textAlign: 'right' }} title={jePodozrivy ? "Podozrivý čas" : ""}>
+                        <td style={{ padding: '11px 14px', color: jePodozrivy ? '#ff3b30' : '#1d1d1f', fontWeight: jePodozrivy ? '700' : '600', textAlign: 'right' }} title={jePodozrivy ? "Podozrivý čas" : ""}>
                           {upravovaneId === z.id ? (
                             <input 
                               type="number" 
@@ -1821,18 +1823,28 @@ export default function DashboardPage() {
                               style={{...inputStyle, width: '60px', fontSize: '11px', padding: '4px 6px', textAlign: 'right', opacity: 0.75}}
                             />
                           ) : (
-                            <>
-                              {hodinyRiadku.toFixed(2)} {jePodozrivy && <span style={{ fontSize: '9px', marginLeft: '3px', textTransform: 'uppercase' }}>⚠</span>}
-                            </>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minWidth: '58px',
+                              padding: '4px 8px',
+                              borderRadius: '10px',
+                              backgroundColor: jePodozrivy ? '#fee2e2' : '#f5f5f7',
+                              color: jePodozrivy ? '#b42318' : '#1d1d1f',
+                              fontWeight: '750'
+                            }}>
+                              {hodinyRiadku.toFixed(2)} h {jePodozrivy && <span style={{ fontSize: '9px', marginLeft: '3px' }}>⚠</span>}
+                            </span>
                           )}
                         </td>
 
-                        <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                        <td style={{ padding: '11px 14px', textAlign: 'right' }}>
                           {upravovaneId === z.id ? (
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                               <button 
                                 onClick={() => zrusitUpravu()}
-                                style={{ color: '#86868b', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                style={{ color: '#6e6e73', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '600', padding: '5px 8px', borderRadius: '8px', transition: 'all 0.2s' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#1d1d1f'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#86868b'}
                               >
@@ -1840,7 +1852,7 @@ export default function DashboardPage() {
                               </button>
                               <button 
                                 onClick={() => ulozitUpravu(z.id)}
-                                style={{ color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '600', transition: 'color 0.2s' }}
+                                style={{ color: '#047857', backgroundColor: '#ecfdf5', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '5px 8px', borderRadius: '8px', transition: 'all 0.2s' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#10b981'}
                               >
@@ -1851,7 +1863,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                               <button 
                                 onClick={() => zacatUpravu(z.id, z.prichod, z.odchod)}
-                                style={{ color: '#0071e3', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                style={{ color: '#0071e3', backgroundColor: '#e8f3ff', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '5px 8px', borderRadius: '8px', transition: 'all 0.2s' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#0077ed'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#0071e3'}
                               >
@@ -1859,7 +1871,7 @@ export default function DashboardPage() {
                               </button>
                               <button 
                                 onClick={() => vymazat(z.id)}
-                                style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '500', transition: 'color 0.2s' }}
+                                style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '600', padding: '5px 8px', borderRadius: '8px', transition: 'all 0.2s' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
                               >
@@ -1876,7 +1888,7 @@ export default function DashboardPage() {
             </table>
           </div>
           {chybaUpravaHodiny && (
-            <div style={{ padding: '12px 8px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', color: '#ff3b30', fontSize: '11px', marginTop: '12px', fontWeight: '500' }}>
+            <div style={{ padding: '10px 14px', backgroundColor: '#fef2f2', borderTop: '1px solid #fee2e2', color: '#b42318', fontSize: '10px', fontWeight: '600' }}>
               ⚠️ {chybaUpravaHodiny}
             </div>
           )}
