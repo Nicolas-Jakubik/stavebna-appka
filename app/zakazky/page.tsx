@@ -15,7 +15,7 @@ export default function ZakazkyPage() {
   const [pridavaSa, setPridavaSa] = useState(false)
   const [hladat, setHladat] = useState('')
   const [filterStav, setFilterStav] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
-  const [zoradenie, setZoradenie] = useState<'najnovsie' | 'najstarsie' | 'az'>('najnovsie')
+  const [zoradenie, setZoradenie] = useState<'najnovsie' | 'najstarsie' | 'az' | 'posledna_praca' | 'najviac_hodin'>('najnovsie')
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovanyNazov, setUpravovanyNazov] = useState('')
   const [pocetDochadzkyPodlaZakazky, setPocetDochadzkyPodlaZakazky] = useState<Record<string, number>>({})
@@ -285,7 +285,22 @@ export default function ZakazkyPage() {
 
   const datumZakazky = (zak: any) => String(zak.datum_pridania || zak.created_at || '')
   const zoradZakazky = (zoznam: any[]) => [...zoznam].sort((a, b) => {
-    if (zoradenie === 'az') return String(a.nazov || '').localeCompare(String(b.nazov || ''), 'sk')
+    if (zoradenie === 'az') {
+      return String(a.nazov || '').localeCompare(String(b.nazov || ''), 'sk')
+    }
+
+    if (zoradenie === 'posledna_praca') {
+      const aktivitaA = poslednaAktivitaPodlaZakazky[String(a.nazov || '')] || ''
+      const aktivitaB = poslednaAktivitaPodlaZakazky[String(b.nazov || '')] || ''
+      return aktivitaB.localeCompare(aktivitaA) || String(a.nazov || '').localeCompare(String(b.nazov || ''), 'sk')
+    }
+
+    if (zoradenie === 'najviac_hodin') {
+      const hodinyA = hodinyPodlaZakazky[String(a.nazov || '')] || 0
+      const hodinyB = hodinyPodlaZakazky[String(b.nazov || '')] || 0
+      return hodinyB - hodinyA || String(a.nazov || '').localeCompare(String(b.nazov || ''), 'sk')
+    }
+
     const datumA = datumZakazky(a)
     const datumB = datumZakazky(b)
     return zoradenie === 'najstarsie' ? datumA.localeCompare(datumB) : datumB.localeCompare(datumA)
@@ -306,6 +321,12 @@ export default function ZakazkyPage() {
 
   const aktivneZakazkyNaZobrazenie = zoradZakazky(filtrujPodlaNazvu(aktivneZakazky))
   const dokonceneZakazkyNaZobrazenie = zoradZakazky(filtrujPodlaNazvu(dokonceneZakazky))
+  const pocetZobrazenychZakaziek =
+    filterStav === 'aktivne'
+      ? aktivneZakazkyNaZobrazenie.length
+      : filterStav === 'dokoncene'
+        ? dokonceneZakazkyNaZobrazenie.length
+        : aktivneZakazkyNaZobrazenie.length + dokonceneZakazkyNaZobrazenie.length
 
   if (!jeOdomknute) {
     return (
@@ -566,12 +587,14 @@ export default function ZakazkyPage() {
               <label style={labelStyle}>Zoradiť</label>
               <select
                 value={zoradenie}
-                onChange={(e) => setZoradenie(e.target.value as 'najnovsie' | 'najstarsie' | 'az')}
+                onChange={(e) => setZoradenie(e.target.value as 'najnovsie' | 'najstarsie' | 'az' | 'posledna_praca' | 'najviac_hodin')}
                 style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
               >
                 <option value="najnovsie">Najnovšie</option>
                 <option value="najstarsie">Najstaršie</option>
                 <option value="az">A–Z</option>
+                <option value="posledna_praca">Posledná práca</option>
+                <option value="najviac_hodin">Najviac hodín</option>
               </select>
             </div>
           </div>
@@ -579,7 +602,7 @@ export default function ZakazkyPage() {
           {(hladat || filterStav !== 'vsetky' || zoradenie !== 'najnovsie') && (
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ color: '#86868b', fontSize: '10px' }}>
-                Nájdené: {aktivneZakazkyNaZobrazenie.length + dokonceneZakazkyNaZobrazenie.length} stavieb
+                Nájdené: {pocetZobrazenychZakaziek} {pocetZobrazenychZakaziek === 1 ? 'stavba' : 'stavieb'}
               </div>
               <button
                 type="button"
@@ -619,7 +642,7 @@ export default function ZakazkyPage() {
             </thead>
             <tbody>
               {aktivneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{hladat ? 'Žiadna aktívna stavba nezodpovedá vyhľadávaniu.' : 'Žiadne aktívne stavby.'}</td></tr>
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
@@ -734,7 +757,7 @@ export default function ZakazkyPage() {
             </thead>
             <tbody>
               {dokonceneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={7} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{hladat ? 'Žiadna dokončená stavba nezodpovedá vyhľadávaniu.' : 'Žiadne dokončené stavby.'}</td></tr>
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
