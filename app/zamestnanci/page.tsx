@@ -300,27 +300,6 @@ export default function ZamestnanciPage() {
         return
       }
 
-      const { error: chybaNepritomnosti } = await supabase
-        .from('nepritomnosti')
-        .update({ meno: noveMeno })
-        .eq('meno', povodneMeno)
-
-      if (chybaNepritomnosti) {
-        console.error('Chyba premenovania pracovníka v neprítomnostiach:', chybaNepritomnosti)
-
-        await supabase
-          .from('dochadzka')
-          .update({ meno: povodneMeno })
-          .eq('meno', noveMeno)
-
-        await supabase
-          .from('zamestnanci')
-          .update({ meno: povodneMeno, sadzba: povodnaSadzba })
-          .eq('id', id)
-
-        alert('Meno sa nepodarilo zmeniť v neprítomnostiach. Pôvodné údaje boli obnovené.')
-        return
-      }
     }
 
     zrusitUpravu()
