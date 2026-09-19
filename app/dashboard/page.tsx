@@ -1048,13 +1048,14 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ maxHeight: '390px', overflowY: 'auto', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px', fontSize: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Deň</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Pracovníci</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Mená</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Neprítomní</th>
                   <th style={{ padding: '10px 18px', width: '80px' }}></th>
                 </tr>
               </thead>
@@ -1097,8 +1098,35 @@ export default function DashboardPage() {
                     <td style={{ padding: '10px 12px', color: den.mena.length > 0 ? '#1d1d1f' : '#c7c7cc', fontSize: '11px' }}>
                       {den.mena.length > 0 ? den.mena.join(', ') : 'Nikto'}
                     </td>
+                    <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                      {den.pocetNepritomnych === 0 ? (
+                        <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {den.skupinyNepritomnosti.map((skupina: any) => (
+                            <div key={skupina.dovod} style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                              <span style={{ fontWeight: '700', color: '#7c3aed' }}>{skupina.dovod}:</span>{' '}
+                              {skupina.polozky.map((polozka: any, index: number) => (
+                                <span key={polozka.id}>
+                                  {index > 0 ? ', ' : ''}
+                                  <span style={{ color: '#1d1d1f' }}>{polozka.meno}</span>
+                                  <button
+                                    type="button"
+                                    title="Vymazať neprítomnosť"
+                                    onClick={() => vymazatNepritomnost(polozka.id)}
+                                    style={{ marginLeft: '3px', padding: 0, border: 'none', background: 'none', color: '#c7c7cc', cursor: 'pointer', fontSize: '10px' }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 18px', textAlign: 'right' }}>
-                      {den.pocet > 0 && (
+                      {(den.pocet > 0 || den.pocetNepritomnych > 0) && (
                         <button
                           type="button"
                           onClick={() => {
@@ -1122,9 +1150,23 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setUkazatNepritomnost(!ukazatNepritomnost)
+              if (!ukazatNepritomnost) setUkazatFormular(false)
+            }}
+            style={{ ...(ukazatNepritomnost ? buttonSecondaryStyle : buttonPrimaryStyle) } as any}
+          >
+            {ukazatNepritomnost ? '✕ Zavrieť neprítomnosť' : '+ Neprítomnosť'}
+          </button>
+
           <button 
-            onClick={() => setUkazatFormular(!ukazatFormular)} 
+            onClick={() => {
+              setUkazatFormular(!ukazatFormular)
+              if (!ukazatFormular) setUkazatNepritomnost(false)
+            }} 
             style={{ 
               ...(ukazatFormular ? buttonSecondaryStyle : buttonPrimaryStyle)
             } as any}
@@ -1140,6 +1182,95 @@ export default function DashboardPage() {
             {ukazatFormular ? '✕ Zavrieť' : '+ Zápis dochádzky'}
           </button>
         </div>
+
+        {ukazatNepritomnost && (
+          <div style={{ ...cardStyle, marginBottom: '20px' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Zapísať neprítomnosť</div>
+              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>
+                Eviduje dôvod, prečo pracovník nebol v práci. Nepridáva odpracované hodiny.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '220px minmax(240px, 1fr)', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <label style={labelStyle}>Dátum</label>
+                <input
+                  type="date"
+                  value={novaNepritomnost.datum}
+                  onChange={e => setNovaNepritomnost({ ...novaNepritomnost, datum: e.target.value })}
+                  style={inputStyle as any}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Dôvod</label>
+                <input
+                  type="text"
+                  placeholder="Napr. svadba, dovolenka, lekár..."
+                  value={novaNepritomnost.dovod}
+                  onChange={e => setNovaNepritomnost({ ...novaNepritomnost, dovod: e.target.value })}
+                  style={inputStyle as any}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Pracovníci</label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                {dostupneMena.map(meno => {
+                  const vybrany = novaNepritomnost.mena.includes(meno)
+                  return (
+                    <button
+                      key={meno}
+                      type="button"
+                      onClick={() => {
+                        setNovaNepritomnost({
+                          ...novaNepritomnost,
+                          mena: vybrany
+                            ? novaNepritomnost.mena.filter(m => m !== meno)
+                            : [...novaNepritomnost.mena, meno]
+                        })
+                      }}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '18px',
+                        border: vybrany ? '1px solid #7c3aed' : '1px solid #d2d2d7',
+                        backgroundColor: vybrany ? '#f3e8ff' : '#f5f5f7',
+                        color: vybrany ? '#6d28d9' : '#1d1d1f',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: vybrany ? '700' : '500'
+                      }}
+                    >
+                      {meno}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {chybaNepritomnosti && (
+              <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', color: '#b42318', fontSize: '11px' }}>
+                {chybaNepritomnosti}
+              </div>
+            )}
+
+            <div style={{ marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={ulozitNepritomnost}
+                disabled={ukladaNepritomnost}
+                style={{
+                  ...buttonPrimaryStyle,
+                  opacity: ukladaNepritomnost ? 0.65 : 1,
+                  cursor: ukladaNepritomnost ? 'default' : 'pointer'
+                } as any}
+              >
+                {ukladaNepritomnost ? 'Ukladám...' : 'Uložiť neprítomnosť'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {ukazatFormular && (
           <div style={{...cardStyle, marginBottom: '20px'}}>
