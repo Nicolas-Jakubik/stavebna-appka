@@ -1495,20 +1495,20 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div style={{ ...cardStyle, marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+        <div style={{ ...cardStyle, marginBottom: '16px', padding: '16px 18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Rýchle zobrazenie tabuľky</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Jedným klikom vyber obdobie dochádzky.</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#1d1d1f' }}>Filtre dochádzky</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Obdobie, pracovník a stavba na jednom mieste.</div>
             </div>
             {filterDen && filterDen !== dnesText && filterDen !== vceraText && (
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#0071e3' }}>
-                Vybraný deň: {formatujDatumSK(filterDen)}
+              <div style={{ fontSize: '10px', fontWeight: '650', color: '#0071e3', padding: '5px 9px', backgroundColor: '#e8f3ff', borderRadius: '12px' }}>
+                {formatujDatumSK(filterDen)}
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginBottom: '14px' }}>
             {[
               { key: 'cely', label: 'Celý mesiac', active: !filterDen && filterPolovica === 'cely' },
               { key: 'prva', label: '1.–15.', active: !filterDen && filterPolovica === 'prva' },
@@ -1522,71 +1522,94 @@ export default function DashboardPage() {
                 onClick={() => nastavRychlyFilter(item.key as 'cely' | 'prva' | 'druha' | 'dnes' | 'vcera')}
                 style={{
                   ...(item.active ? buttonPrimaryStyle : buttonSecondaryStyle),
-                  padding: '7px 14px',
-                  fontSize: '10px'
+                  padding: '6px 12px',
+                  fontSize: '9px'
                 } as any}
               >
                 {item.label}
               </button>
             ))}
           </div>
-        </div>
 
-        <div style={{...cardStyle, marginBottom: '16px'}}>
-          <label style={{...labelStyle, marginBottom: '6px'}}>Pracovník</label>
-          <select
-            value={filterMeno}
-            onChange={(e) => setFilterMeno(e.target.value)}
-            style={{
-              ...inputStyle,
-              fontSize: '13px',
-              padding: '10px 12px',
-              backgroundColor: '#ffffff',
-              cursor: 'pointer'
-            } as any}
-          >
-            <option value="">Všetci pracovníci</option>
-            {dostupneMena.map((meno) => (
-              <option key={meno} value={meno}>{meno}</option>
-            ))}
-          </select>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '7px' }}>
-            Vyber pracovníka zo zoznamu. Dashboard potom zobrazí iba jeho dochádzku a hodiny.
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.35fr) repeat(3, minmax(155px, 1fr))', gap: '10px' }}>
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '5px' }}>Pracovník</label>
+              <select
+                value={filterMeno}
+                onChange={(e) => setFilterMeno(e.target.value)}
+                style={{ ...inputStyle, backgroundColor: '#ffffff', cursor: 'pointer' } as any}
+              >
+                <option value="">Všetci pracovníci</option>
+                {dostupneMena.map((meno) => (
+                  <option key={meno} value={meno}>{meno}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '5px' }}>Stavba</label>
+              <select
+                value={filterZakazka}
+                onChange={(e) => setFilterZakazka(e.target.value)}
+                style={{ ...inputStyle, backgroundColor: '#ffffff', cursor: 'pointer' } as any}
+              >
+                <option value="">Všetky stavby</option>
+                {dostupneZakazky.map((z) => <option key={z} value={z}>{z}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '5px' }}>Mesiac</label>
+              <select
+                value={filterMesiac}
+                disabled={!!filterDen}
+                onChange={(e) => {
+                  setFilterMesiac(e.target.value)
+                  setFilterProblem('vsetko')
+                }}
+                style={{ ...inputStyle, backgroundColor: '#ffffff', cursor: filterDen ? 'default' : 'pointer', opacity: filterDen ? 0.5 : 1 } as any}
+              >
+                {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ ...labelStyle, marginBottom: '5px' }}>Konkrétny deň</label>
+              <input
+                type="date"
+                value={filterDen}
+                onChange={(e) => {
+                  const hodnota = e.target.value
+                  setFilterDen(hodnota)
+                  setFilterPolovica('cely')
+                  setFilterProblem('vsetko')
+                  if (hodnota) setFilterMesiac(hodnota.slice(0, 7))
+                }}
+                style={{ ...inputStyle, backgroundColor: '#ffffff' } as any}
+              />
+            </div>
           </div>
-        </div>
 
-        <div style={{...cardStyle, marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-          <select 
-            value={filterZakazka} 
-            onChange={(e) => setFilterZakazka(e.target.value)} 
-            style={{...inputStyle, flex: 1, minWidth: '110px'} as any}
-          >
-            <option value="">Všetky</option>
-            {dostupneZakazky.map((z) => <option key={z} value={z}>{z}</option>)}
-          </select>
-          <select 
-            value={filterMesiac} 
-            disabled={!!filterDen} 
-            onChange={(e) => {
-              setFilterMesiac(e.target.value)
-              setFilterProblem('vsetko')
-            }} 
-            style={{...inputStyle, flex: 1, minWidth: '110px', opacity: filterDen ? 0.5 : 1} as any}
-          >
-            {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
-          </select>
-          <input 
-            type="date" 
-            value={filterDen} 
-            onChange={(e) => {
-              const hodnota = e.target.value
-              setFilterDen(hodnota)
-              setFilterPolovica('cely')
-              setFilterProblem('vsetko')
-              if (hodnota) setFilterMesiac(hodnota.slice(0, 7))
-            }} 
-            style={{...inputStyle, flex: 1, minWidth: '110px'} as any}
-          />
+          {(filterMeno || filterZakazka || filterDen || filterPolovica !== 'cely') && (
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '10px', color: '#86868b' }}>
+                Aktívny výber ovplyvňuje tabuľku dochádzky a súvisiace súhrny.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterMeno('')
+                  setFilterZakazka('')
+                  setFilterDen('')
+                  setFilterPolovica('cely')
+                  setFilterProblem('vsetko')
+                }}
+                style={{ border: 'none', background: 'none', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: 0 }}
+              >
+                Vyčistiť filtre
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={cardStyle}>
