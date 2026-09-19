@@ -777,9 +777,13 @@ export default function DashboardPage() {
       alignItems: 'flex-start'
     }}>
       <style>{`
-        @media (max-width: 760px) {
+        @media (max-width: 1024px) {
           .dashboard-shell {
-            padding: 64px 12px 20px !important;
+            padding:
+              calc(64px + env(safe-area-inset-top))
+              max(12px, env(safe-area-inset-right))
+              calc(20px + env(safe-area-inset-bottom))
+              max(12px, env(safe-area-inset-left)) !important;
             display: block !important;
           }
 
@@ -788,9 +792,12 @@ export default function DashboardPage() {
           }
 
           .dashboard-today-grid,
-          .dashboard-filter-grid,
+          .dashboard-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
           .dashboard-form-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: 1fr 1fr !important;
           }
 
           .dashboard-month-grid {
@@ -821,6 +828,14 @@ export default function DashboardPage() {
             margin-right: -16px;
             padding-left: 16px;
             padding-right: 16px;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .dashboard-today-grid,
+          .dashboard-filter-grid,
+          .dashboard-form-grid {
+            grid-template-columns: 1fr !important;
           }
         }
 
