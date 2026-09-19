@@ -1283,37 +1283,55 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setUkazatNepritomnost(!ukazatNepritomnost)
-              if (!ukazatNepritomnost) setUkazatFormular(false)
-            }}
-            style={{ ...(ukazatNepritomnost ? buttonSecondaryStyle : buttonPrimaryStyle) } as any}
-          >
-            {ukazatNepritomnost ? '✕ Zavrieť neprítomnosť' : '+ Neprítomnosť'}
-          </button>
+        <div style={{
+          ...cardStyle,
+          marginBottom: '16px',
+          padding: '14px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Rýchle akcie</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Pridaj dochádzku alebo eviduj neprítomnosť.</div>
+          </div>
 
-          <button 
-            onClick={() => {
-              setUkazatFormular(!ukazatFormular)
-              if (!ukazatFormular) setUkazatNepritomnost(false)
-            }} 
-            style={{ 
-              ...(ukazatFormular ? buttonSecondaryStyle : buttonPrimaryStyle)
-            } as any}
-            onMouseEnter={(e) => {
-              if (!ukazatFormular) (e.currentTarget as any).style.backgroundColor = '#0077ed'
-              else (e.currentTarget as any).style.backgroundColor = '#efefef'
-            }}
-            onMouseLeave={(e) => {
-              if (!ukazatFormular) (e.currentTarget as any).style.backgroundColor = '#0071e3'
-              else (e.currentTarget as any).style.backgroundColor = '#f5f5f7'
-            }}
-          >
-            {ukazatFormular ? '✕ Zavrieť' : '+ Zápis dochádzky'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setUkazatFormular(!ukazatFormular)
+                if (!ukazatFormular) setUkazatNepritomnost(false)
+              }}
+              style={{
+                ...(ukazatFormular ? buttonSecondaryStyle : buttonPrimaryStyle),
+                padding: '7px 14px',
+                fontSize: '10px'
+              } as any}
+            >
+              {ukazatFormular ? '✕ Zavrieť dochádzku' : '+ Dochádzka'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUkazatNepritomnost(!ukazatNepritomnost)
+                if (!ukazatNepritomnost) setUkazatFormular(false)
+              }}
+              style={{
+                ...(ukazatNepritomnost ? buttonSecondaryStyle : buttonSecondaryStyle),
+                padding: '7px 14px',
+                fontSize: '10px',
+                color: ukazatNepritomnost ? '#1d1d1f' : '#6d28d9',
+                borderColor: ukazatNepritomnost ? '#d2d2d7' : '#ddd6fe',
+                backgroundColor: ukazatNepritomnost ? '#f5f5f7' : '#faf5ff'
+              } as any}
+            >
+              {ukazatNepritomnost ? '✕ Zavrieť neprítomnosť' : '+ Neprítomnosť'}
+            </button>
+          </div>
         </div>
 
         {ukazatNepritomnost && (
