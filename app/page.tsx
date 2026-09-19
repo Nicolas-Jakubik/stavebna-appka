@@ -26,6 +26,12 @@ export default function Home() {
     kompletne: boolean
     chybaMena: string[]
   }>({ nacitava: true, chyba: false, kompletne: false, chybaMena: [] })
+  const [tyzdennyPrehlad, setTyzdennyPrehlad] = useState<Array<{
+    datum: string
+    den: string
+    stav: 'hotovy' | 'neuplny' | 'bez_zapisu' | 'buduci'
+    chybaMena: string[]
+  }>>([])
 
   useEffect(() => {
     adminStore.jeOdomknute = false
@@ -57,16 +63,22 @@ export default function Home() {
       if (zamData) setZoznamZamestnancov(zamData)
     }
     nacitajData()
-    nacitajStavDnesnehoDna()
+    nacitajKontroluZapisov()
   }, [])
 
-  async function nacitajStavDnesnehoDna() {
-    const dnes = datumDoLocalString(new Date())
+  async function nacitajKontroluZapisov() {
+    const dnesDatum = new Date()
+    const dnes = datumDoLocalString(dnesDatum)
+    const denTyzdna = dnesDatum.getDay()
+    const pondelok = new Date(dnesDatum)
+    pondelok.setHours(12, 0, 0, 0)
+    pondelok.setDate(dnesDatum.getDate() + (denTyzdna === 0 ? -6 : 1 - denTyzdna))
 
-    if (new Date().getDay() === 0) {
-      setStavDnesnehoDna({ nacitava: false, chyba: false, kompletne: true, chybaMena: [] })
-      return
-    }
+    const sobota = new Date(pondelok)
+    sobota.setDate(pondelok.getDate() + 5)
+
+    const odDatumu = datumDoLocalString(pondelok)
+    const doDatumu = datumDoLocalString(sobota)
 
     setStavDnesnehoDna(prev => ({ ...prev, nacitava: true, chyba: false }))
 
@@ -76,31 +88,63 @@ export default function Home() {
       { data: nepritomnostiData, error: chybaNepritomnosti }
     ] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno').eq('datum', dnes),
-      supabase.from('nepritomnosti').select('meno').eq('datum', dnes)
+      supabase.from('dochadzka').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu),
+      supabase.from('nepritomnosti').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu)
     ])
 
     if (chybaZamestnancov || chybaDochadzky || chybaNepritomnosti) {
-      console.error('Chyba kontroly dnešného zápisu:', chybaZamestnancov || chybaDochadzky || chybaNepritomnosti)
+      console.error('Chyba kontroly zápisov:', chybaZamestnancov || chybaDochadzky || chybaNepritomnosti)
       setStavDnesnehoDna({ nacitava: false, chyba: true, kompletne: false, chybaMena: [] })
+      setTyzdennyPrehlad([])
       return
     }
 
-    const vyrieseni = new Set(
-      [...(dochadzkaData || []), ...(nepritomnostiData || [])]
-        .map(z => String(z.meno || '').trim())
-        .filter(Boolean)
-    )
-
-    const chybaMena = (zamestnanciData || [])
+    const mena = (zamestnanciData || [])
       .map(z => String(z.meno || '').trim())
-      .filter(meno => meno && !vyrieseni.has(meno))
+      .filter(Boolean)
 
+    const nazvyDni = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota']
+    const prehlad = nazvyDni.map((den, index) => {
+      const datumDnaObj = new Date(pondelok)
+      datumDnaObj.setDate(pondelok.getDate() + index)
+      const datumDna = datumDoLocalString(datumDnaObj)
+
+      if (datumDna > dnes) {
+        return { datum: datumDna, den, stav: 'buduci' as const, chybaMena: [] }
+      }
+
+      const vyrieseni = new Set(
+        [
+          ...(dochadzkaData || []).filter(z => z.datum === datumDna),
+          ...(nepritomnostiData || []).filter(z => z.datum === datumDna)
+        ]
+          .map(z => String(z.meno || '').trim())
+          .filter(Boolean)
+      )
+
+      const chybaMena = mena.filter(meno => !vyrieseni.has(meno))
+      const stav = chybaMena.length === 0
+        ? 'hotovy' as const
+        : vyrieseni.size === 0
+          ? 'bez_zapisu' as const
+          : 'neuplny' as const
+
+      return { datum: datumDna, den, stav, chybaMena }
+    })
+
+    setTyzdennyPrehlad(prehlad)
+
+    if (denTyzdna === 0) {
+      setStavDnesnehoDna({ nacitava: false, chyba: false, kompletne: true, chybaMena: [] })
+      return
+    }
+
+    const dnesnyStav = prehlad.find(d => d.datum === dnes)
     setStavDnesnehoDna({
       nacitava: false,
       chyba: false,
-      kompletne: chybaMena.length === 0,
-      chybaMena
+      kompletne: dnesnyStav?.stav === 'hotovy',
+      chybaMena: dnesnyStav?.chybaMena || []
     })
   }
 
@@ -226,7 +270,7 @@ export default function Home() {
     } catch {}
 
     setStatus(`✅ Záznam uložený pre ${vybraneMena.length} zamestnancov`)
-    nacitajStavDnesnehoDna()
+    nacitajKontroluZapisov()
     setZobrazitPotvrdenie(false)
     setVybraneMena([])
     setZakazka('')
@@ -463,6 +507,55 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {tyzdennyPrehlad.length > 0 && (
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', marginBottom: '10px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Tento týždeň</div>
+                <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kontrola zápisov od pondelka do soboty</div>
+              </div>
+              <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                {tyzdennyPrehlad.filter(d => d.stav === 'hotovy').length} / {tyzdennyPrehlad.filter(d => d.stav !== 'buduci').length} hotových
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+              {tyzdennyPrehlad.map(den => {
+                const jeHotovy = den.stav === 'hotovy'
+                const jeNeuplny = den.stav === 'neuplny'
+                const jeBezZapisu = den.stav === 'bez_zapisu'
+                const statusText = jeHotovy
+                  ? 'Hotové'
+                  : jeNeuplny
+                    ? `Chýba ${den.chybaMena.length}`
+                    : jeBezZapisu
+                      ? 'Bez zápisu'
+                      : 'Čaká'
+                const farba = jeHotovy ? '#15803d' : jeNeuplny ? '#c2410c' : jeBezZapisu ? '#b91c1c' : '#86868b'
+                const pozadie = jeHotovy ? '#f0fdf4' : jeNeuplny ? '#fff7ed' : jeBezZapisu ? '#fef2f2' : '#f5f5f7'
+                const okraj = jeHotovy ? '#bbf7d0' : jeNeuplny ? '#fed7aa' : jeBezZapisu ? '#fecaca' : '#e5e7eb'
+
+                return (
+                  <div key={den.datum} style={{ padding: '10px 12px', borderRadius: '12px', backgroundColor: pozadie, border: `1px solid ${okraj}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#1d1d1f', fontWeight: '650' }}>{den.den}</div>
+                        <div style={{ fontSize: '9px', color: '#86868b', marginTop: '2px' }}>{formatujDatum(den.datum)}</div>
+                      </div>
+                      <span style={{ fontSize: '9px', fontWeight: '750', color: farba, whiteSpace: 'nowrap' }}>{statusText}</span>
+                    </div>
+                    {(jeNeuplny || jeBezZapisu) && den.chybaMena.length > 0 && (
+                      <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '6px', lineHeight: '1.35' }}>
+                        {den.chybaMena.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={otvoritKontrolu} style={{ display: 'flex', flexDirection: 'column' }}>
           
