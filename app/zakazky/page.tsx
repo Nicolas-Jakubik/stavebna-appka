@@ -19,6 +19,7 @@ export default function ZakazkyPage() {
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovanyNazov, setUpravovanyNazov] = useState('')
   const [pocetDochadzkyPodlaZakazky, setPocetDochadzkyPodlaZakazky] = useState<Record<string, number>>({})
+  const [hodinyPodlaZakazky, setHodinyPodlaZakazky] = useState<Record<string, number>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -91,6 +92,21 @@ export default function ZakazkyPage() {
     }
   }
 
+  function vypocitajHodiny(prichod: string, odchod: string) {
+    if (!prichod || !odchod) return 0
+    const [pHod, pMin] = prichod.split(':').map(Number)
+    const [oHod, oMin] = odchod.split(':').map(Number)
+    let minutySpolu = (oHod * 60 + oMin) - (pHod * 60 + pMin)
+    if (minutySpolu < 0) minutySpolu += 24 * 60
+    let hodinySpolu = minutySpolu / 60
+    if (hodinySpolu > 5.5) hodinySpolu -= 0.5
+    return hodinySpolu
+  }
+
+  function formatujHodiny(hodiny: number) {
+    return Number.isInteger(hodiny) ? String(hodiny) : hodiny.toFixed(1)
+  }
+
   async function nacitajZakazky() {
     const [{ data: dataZakazky, error: chybaZakazky }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
       supabase
@@ -99,7 +115,7 @@ export default function ZakazkyPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('zakazka')
+        .select('zakazka, prichod, odchod')
     ])
 
     if (chybaZakazky) {
@@ -111,13 +127,24 @@ export default function ZakazkyPage() {
     if (chybaDochadzky) {
       console.error("Chyba načítania prepojenia dochádzky:", chybaDochadzky)
       setPocetDochadzkyPodlaZakazky({})
+      setHodinyPodlaZakazky({})
     } else {
-      const pocty = (dataDochadzka || []).reduce<Record<string, number>>((acc, zaznam) => {
+      const pocty: Record<string, number> = {}
+      const hodiny: Record<string, number> = {}
+
+      ;(dataDochadzka || []).forEach(zaznam => {
         const nazov = String(zaznam.zakazka || '').trim()
-        if (nazov) acc[nazov] = (acc[nazov] || 0) + 1
-        return acc
-      }, {})
+        if (!nazov) return
+
+        pocty[nazov] = (pocty[nazov] || 0) + 1
+        hodiny[nazov] = (hodiny[nazov] || 0) + vypocitajHodiny(
+          String(zaznam.prichod || ''),
+          String(zaznam.odchod || '')
+        )
+      })
+
       setPocetDochadzkyPodlaZakazky(pocty)
+      setHodinyPodlaZakazky(hodiny)
     }
   }
 
@@ -568,13 +595,14 @@ export default function ZakazkyPage() {
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Hodiny</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {aktivneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={5} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={6} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
@@ -596,6 +624,9 @@ export default function ZakazkyPage() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '30px', padding: '4px 8px', borderRadius: '999px', backgroundColor: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#eef6ff' : '#f5f5f7', color: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#0071e3' : '#86868b', fontSize: '10px', fontWeight: '750' }}>
                         {pocetDochadzkyPodlaZakazky[zak.nazov] || 0}
                       </span>
+                    </td>
+                    <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
+                      {formatujHodiny(hodinyPodlaZakazky[zak.nazov] || 0)} h
                     </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
@@ -675,13 +706,14 @@ export default function ZakazkyPage() {
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Pridaná</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Dochádzka</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '100px' }}>Hodiny</th>
                 <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
                 <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
               </tr>
             </thead>
             <tbody>
               {dokonceneZakazkyNaZobrazenie.length === 0 ? (
-                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={5} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={6} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
@@ -703,6 +735,9 @@ export default function ZakazkyPage() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '30px', padding: '4px 8px', borderRadius: '999px', backgroundColor: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#eef6ff' : '#f5f5f7', color: (pocetDochadzkyPodlaZakazky[zak.nazov] || 0) > 0 ? '#0071e3' : '#86868b', fontSize: '10px', fontWeight: '750' }}>
                         {pocetDochadzkyPodlaZakazky[zak.nazov] || 0}
                       </span>
+                    </td>
+                    <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
+                      {formatujHodiny(hodinyPodlaZakazky[zak.nazov] || 0)} h
                     </td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
