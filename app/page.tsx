@@ -20,6 +20,12 @@ export default function Home() {
 
   const [aktivneZakazky, setAktivneZakazky] = useState<any[]>([])
   const [zoznamZamestnancov, setZoznamZamestnancov] = useState<any[]>([])
+  const [stavDnesnehoDna, setStavDnesnehoDna] = useState<{
+    nacitava: boolean
+    chyba: boolean
+    kompletne: boolean
+    chybaMena: string[]
+  }>({ nacitava: true, chyba: false, kompletne: false, chybaMena: [] })
 
   useEffect(() => {
     adminStore.jeOdomknute = false
@@ -51,7 +57,52 @@ export default function Home() {
       if (zamData) setZoznamZamestnancov(zamData)
     }
     nacitajData()
+    nacitajStavDnesnehoDna()
   }, [])
+
+  async function nacitajStavDnesnehoDna() {
+    const dnes = datumDoLocalString(new Date())
+
+    if (new Date().getDay() === 0) {
+      setStavDnesnehoDna({ nacitava: false, chyba: false, kompletne: true, chybaMena: [] })
+      return
+    }
+
+    setStavDnesnehoDna(prev => ({ ...prev, nacitava: true, chyba: false }))
+
+    const [
+      { data: zamestnanciData, error: chybaZamestnancov },
+      { data: dochadzkaData, error: chybaDochadzky },
+      { data: nepritomnostiData, error: chybaNepritomnosti }
+    ] = await Promise.all([
+      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      supabase.from('dochadzka').select('meno').eq('datum', dnes),
+      supabase.from('nepritomnosti').select('meno').eq('datum', dnes)
+    ])
+
+    if (chybaZamestnancov || chybaDochadzky || chybaNepritomnosti) {
+      console.error('Chyba kontroly dnešného zápisu:', chybaZamestnancov || chybaDochadzky || chybaNepritomnosti)
+      setStavDnesnehoDna({ nacitava: false, chyba: true, kompletne: false, chybaMena: [] })
+      return
+    }
+
+    const vyrieseni = new Set(
+      [...(dochadzkaData || []), ...(nepritomnostiData || [])]
+        .map(z => String(z.meno || '').trim())
+        .filter(Boolean)
+    )
+
+    const chybaMena = (zamestnanciData || [])
+      .map(z => String(z.meno || '').trim())
+      .filter(meno => meno && !vyrieseni.has(meno))
+
+    setStavDnesnehoDna({
+      nacitava: false,
+      chyba: false,
+      kompletne: chybaMena.length === 0,
+      chybaMena
+    })
+  }
 
   async function najdiKonflikt(datumKontroly: string) {
     if (vybraneMena.length === 0) return ''
@@ -175,6 +226,7 @@ export default function Home() {
     } catch {}
 
     setStatus(`✅ Záznam uložený pre ${vybraneMena.length} zamestnancov`)
+    nacitajStavDnesnehoDna()
     setZobrazitPotvrdenie(false)
     setVybraneMena([])
     setZakazka('')
@@ -356,8 +408,60 @@ export default function Home() {
 
       <div style={{ width: '100%', maxWidth: '720px', backgroundColor: 'white', padding: '36px 44px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
         
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Image src="/logo.png" alt="Logo" width={150} height={60} style={{ objectFit: 'contain' }} />
+        </div>
+
+        <div style={{
+          marginBottom: '26px',
+          padding: '14px 16px',
+          borderRadius: '14px',
+          backgroundColor: stavDnesnehoDna.chyba
+            ? '#f5f5f7'
+            : stavDnesnehoDna.kompletne
+              ? '#f0fdf4'
+              : '#fff7ed',
+          border: stavDnesnehoDna.chyba
+            ? '1px solid #e5e7eb'
+            : stavDnesnehoDna.kompletne
+              ? '1px solid #bbf7d0'
+              : '1px solid #fed7aa'
+        }}>
+          {stavDnesnehoDna.nacitava ? (
+            <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+              Kontrolujem dnešný zápis...
+            </div>
+          ) : stavDnesnehoDna.chyba ? (
+            <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+              Stav dnešného zápisu sa nepodarilo načítať.
+            </div>
+          ) : new Date().getDay() === 0 ? (
+            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
+              Nedeľa – zápis pracovníkov dnes nie je potrebný.
+            </div>
+          ) : stavDnesnehoDna.kompletne ? (
+            <div>
+              <div style={{ fontSize: '14px', color: '#15803d', fontWeight: '700' }}>
+                ✓ Dnešný zápis je kompletný
+              </div>
+              <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '3px' }}>
+                Každý pracovník má dnes dochádzku alebo evidovanú neprítomnosť.
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: '14px', color: '#c2410c', fontWeight: '700' }}>
+                ⚠ Dnes nie je splnený zápis
+              </div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.5' }}>
+                Chýba {stavDnesnehoDna.chybaMena.length} pracovník{stavDnesnehoDna.chybaMena.length === 1 ? '' : 'ov'}:
+                {' '}
+                <span style={{ color: '#9a3412', fontWeight: '600' }}>
+                  {stavDnesnehoDna.chybaMena.join(', ')}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <form onSubmit={otvoritKontrolu} style={{ display: 'flex', flexDirection: 'column' }}>
