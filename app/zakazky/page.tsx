@@ -16,6 +16,8 @@ export default function ZakazkyPage() {
   const [hladat, setHladat] = useState('')
   const [filterStav, setFilterStav] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
   const [zoradenie, setZoradenie] = useState<'najnovsie' | 'najstarsie' | 'az'>('najnovsie')
+  const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
+  const [upravovanyNazov, setUpravovanyNazov] = useState('')
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -132,6 +134,67 @@ export default function ZakazkyPage() {
     } else {
       nacitajZakazky()
     }
+  }
+
+  function zacatUpravuNazvu(id: string, nazov: string) {
+    setUpravovaneId(id)
+    setUpravovanyNazov(nazov)
+  }
+
+  function zrusitUpravuNazvu() {
+    setUpravovaneId(null)
+    setUpravovanyNazov('')
+  }
+
+  async function ulozitNazovZakazky(id: string, povodnyNazov: string) {
+    const novyNazov = upravovanyNazov.trim()
+    if (!novyNazov) return
+
+    const existujeRovnakyNazov = zakazky.some(z =>
+      String(z.id) !== String(id) &&
+      String(z.nazov || '').trim().toLocaleLowerCase('sk') === novyNazov.toLocaleLowerCase('sk')
+    )
+
+    if (existujeRovnakyNazov) {
+      alert('Stavba s týmto názvom už existuje.')
+      return
+    }
+
+    if (novyNazov === povodnyNazov) {
+      zrusitUpravuNazvu()
+      return
+    }
+
+    const { error: chybaZakazky } = await supabase
+      .from('zoznam_zakaziek')
+      .update({ nazov: novyNazov })
+      .eq('id', id)
+
+    if (chybaZakazky) {
+      console.error('Chyba úpravy názvu stavby:', chybaZakazky)
+      alert('Názov stavby sa nepodarilo uložiť.')
+      return
+    }
+
+    const { error: chybaDochadzky } = await supabase
+      .from('dochadzka')
+      .update({ zakazka: novyNazov })
+      .eq('zakazka', povodnyNazov)
+
+    if (chybaDochadzky) {
+      console.error('Chyba premenovania stavby v dochádzke:', chybaDochadzky)
+
+      await supabase
+        .from('zoznam_zakaziek')
+        .update({ nazov: povodnyNazov })
+        .eq('id', id)
+
+      alert('Názov sa nepodarilo zmeniť vo všetkých záznamoch. Pôvodný názov bol obnovený.')
+      return
+    }
+
+    zrusitUpravuNazvu()
+    nacitajZakazky()
   }
 
   async function vymazatZakazku(id: string) {
@@ -491,7 +554,19 @@ export default function ZakazkyPage() {
               ) : (
                 aktivneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
-                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>
+                      {upravovaneId === String(zak.id) ? (
+                        <input
+                          type="text"
+                          value={upravovanyNazov}
+                          onChange={(e) => setUpravovanyNazov(e.target.value)}
+                          autoFocus
+                          style={{ ...inputStyle, backgroundColor: '#ffffff', fontSize: '12px', minHeight: '38px' }}
+                        />
+                      ) : (
+                        zak.nazov
+                      )}
+                    </td>
                     <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
@@ -504,14 +579,45 @@ export default function ZakazkyPage() {
                       </select>
                     </td>
                     <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => vymazatZakazku(zak.id)}
-                        style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
-                      >
-                        Zmazať
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        {upravovaneId === String(zak.id) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={zrusitUpravuNazvu}
+                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Zrušiť
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => ulozitNazovZakazky(String(zak.id), zak.nazov)}
+                              style={{ color: '#ffffff', backgroundColor: '#0071e3', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Uložiť
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => zacatUpravuNazvu(String(zak.id), zak.nazov)}
+                              style={{ color: '#0071e3', backgroundColor: '#eef6ff', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Upraviť
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => vymazatZakazku(zak.id)}
+                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                            >
+                              Zmazať
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -549,7 +655,19 @@ export default function ZakazkyPage() {
               ) : (
                 dokonceneZakazkyNaZobrazenie.map((zak) => (
                   <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
-                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#6e6e73', fontWeight: '600' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#6e6e73', fontWeight: '600' }}>
+                      {upravovaneId === String(zak.id) ? (
+                        <input
+                          type="text"
+                          value={upravovanyNazov}
+                          onChange={(e) => setUpravovanyNazov(e.target.value)}
+                          autoFocus
+                          style={{ ...inputStyle, backgroundColor: '#ffffff', fontSize: '12px', minHeight: '38px' }}
+                        />
+                      ) : (
+                        zak.nazov
+                      )}
+                    </td>
                     <td className="simple-mobile-cell" data-label="Pridaná" style={{ padding: '10px 12px', color: '#86868b', fontSize: '11px' }}>{formatujDatumPridania(zak)}</td>
                     <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
                       <select
@@ -562,14 +680,45 @@ export default function ZakazkyPage() {
                       </select>
                     </td>
                     <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => vymazatZakazku(zak.id)}
-                        style={{ color: '#a1a1a6', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1a6'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
-                      >
-                        Zmazať
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        {upravovaneId === String(zak.id) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={zrusitUpravuNazvu}
+                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Zrušiť
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => ulozitNazovZakazky(String(zak.id), zak.nazov)}
+                              style={{ color: '#ffffff', backgroundColor: '#0071e3', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Uložiť
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => zacatUpravuNazvu(String(zak.id), zak.nazov)}
+                              style={{ color: '#6e6e73', backgroundColor: '#f0f0f2', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px' }}
+                            >
+                              Upraviť
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => vymazatZakazku(zak.id)}
+                              style={{ color: '#a1a1a6', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1a6'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                            >
+                              Zmazať
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
