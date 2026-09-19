@@ -19,6 +19,8 @@ export default function ZamestnanciPage() {
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
   const [upravovaneMeno, setUpravovaneMeno] = useState('')
   const [upravovanaSadzba, setUpravovanaSadzba] = useState('')
+  const [hladat, setHladat] = useState('')
+  const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc'>('az')
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -184,6 +186,28 @@ export default function ZamestnanciPage() {
     0
   )
 
+  const hladanyText = hladat.trim().toLocaleLowerCase('sk')
+  const zamestnanciNaZobrazenie = zamestnanci
+    .filter(zamestnanec =>
+      !hladanyText ||
+      String(zamestnanec.meno || '').toLocaleLowerCase('sk').includes(hladanyText)
+    )
+    .sort((a, b) => {
+      if (zoradenie === 'sadzba_desc') {
+        return (Number(b.sadzba) || 0) - (Number(a.sadzba) || 0)
+      }
+
+      if (zoradenie === 'sadzba_asc') {
+        return (Number(a.sadzba) || 0) - (Number(b.sadzba) || 0)
+      }
+
+      const menoA = String(a.meno || '')
+      const menoB = String(b.meno || '')
+      return zoradenie === 'za'
+        ? menoB.localeCompare(menoA, 'sk')
+        : menoA.localeCompare(menoB, 'sk')
+    })
+
   if (!jeOdomknute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -242,7 +266,8 @@ export default function ZamestnanciPage() {
           }
 
           .simple-admin-form-grid,
-          .zamestnanci-summary-grid {
+          .zamestnanci-summary-grid,
+          .zamestnanci-filter-grid {
             grid-template-columns: 1fr !important;
           }
 
@@ -425,8 +450,47 @@ export default function ZamestnanciPage() {
               <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Meno, hodinová sadzba a rýchla správa pracovníkov.</div>
             </div>
             <span style={{ padding: '4px 9px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>
-              {zamestnanci.length} {zamestnanci.length === 1 ? 'pracovník' : 'pracovníkov'}
+              {zamestnanciNaZobrazenie.length} / {zamestnanci.length}
             </span>
+          </div>
+
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid #eeeeef', backgroundColor: '#fbfbfc' }}>
+            <div className="zamestnanci-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 180px auto', gap: '10px', alignItems: 'flex-end' }}>
+              <div>
+                <label style={labelStyle}>Vyhľadať pracovníka</label>
+                <input
+                  type="search"
+                  placeholder="Napíš meno..."
+                  value={hladat}
+                  onChange={(e) => setHladat(e.target.value)}
+                  style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Zoradiť</label>
+                <select
+                  value={zoradenie}
+                  onChange={(e) => setZoradenie(e.target.value as 'az' | 'za' | 'sadzba_desc' | 'sadzba_asc')}
+                  style={{ ...inputStyle, backgroundColor: '#ffffff', minHeight: '40px' }}
+                >
+                  <option value="az">Meno A–Z</option>
+                  <option value="za">Meno Z–A</option>
+                  <option value="sadzba_desc">Najvyššia sadzba</option>
+                  <option value="sadzba_asc">Najnižšia sadzba</option>
+                </select>
+              </div>
+
+              {(hladat || zoradenie !== 'az') && (
+                <button
+                  type="button"
+                  onClick={() => { setHladat(''); setZoradenie('az') }}
+                  style={{ ...buttonSecondaryStyle, minHeight: '40px', padding: '8px 14px', fontSize: '10px', textTransform: 'none', letterSpacing: 0 } as any}
+                >
+                  Vyčistiť
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -439,14 +503,14 @@ export default function ZamestnanciPage() {
                 </tr>
               </thead>
               <tbody>
-                {zamestnanci.length === 0 ? (
+                {zamestnanciNaZobrazenie.length === 0 ? (
                   <tr className="simple-empty-row">
                     <td className="simple-empty-cell" colSpan={3} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
-                      Zatiaľ nie je pridaný žiadny pracovník.
+                      {hladat ? 'Žiadny pracovník nezodpovedá vyhľadávaniu.' : 'Zatiaľ nie je pridaný žiadny pracovník.'}
                     </td>
                   </tr>
                 ) : (
-                  zamestnanci.map((z) => (
+                  zamestnanciNaZobrazenie.map((z) => (
                     <tr key={z.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
                       <td className="simple-mobile-cell" data-label="Pracovník" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>
                         {upravovaneId === z.id ? (
