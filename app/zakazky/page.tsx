@@ -159,13 +159,14 @@ export default function ZakazkyPage() {
 
   async function pridatZakazku(e: React.FormEvent) {
     e.preventDefault()
-    if (!novyNazov.trim()) return
+    const cistyNazov = novyNazov.trim()
+    if (!cistyNazov) return
 
     setPridavaSa(true)
     const dnesnyDatum = new Date().toISOString().split('T')[0]
     const { error } = await supabase
       .from('zoznam_zakaziek')
-      .insert([{ nazov: novyNazov, stav: 'Aktívna', datum_pridania: dnesnyDatum }])
+      .insert([{ nazov: cistyNazov, stav: 'Aktívna', datum_pridania: dnesnyDatum }])
     setPridavaSa(false)
 
     if (error) {
