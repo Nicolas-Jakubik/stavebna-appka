@@ -188,6 +188,14 @@ export default function MzdyPage() {
     stavbyData[z.zakazka] += hodiny
   })
 
+  const pocetPracovnikovVyplata = Object.keys(zamestnanciHodiny).length
+  const celkoveOdpracovaneHodiny = Object.values(zamestnanciHodiny).reduce((sucet, hodiny) => sucet + hodiny, 0)
+  const celkovaSumaNaVyplatu = Object.entries(zamestnanciHodiny).reduce((sucet, [meno, hodiny]) => {
+    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
+    const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+    return sucet + hodiny * sadzba
+  }, 0)
+
   const nezaplateneStavby: [string, number][] = []
   const poslaneFaStavby: [string, number][] = []
   const vyplateneStavby: [string, number][] = []
@@ -408,8 +416,20 @@ export default function MzdyPage() {
               <div style={{ color: '#1d1d1f', fontSize: '16px', fontWeight: '750' }}>Výplaty pracovníkov</div>
               <div style={{ color: '#86868b', fontSize: '10px', marginTop: '3px' }}>{nazovVyplatnehoObdobia} · fond {fondVybranehoObdobia.toFixed(1)} h / pracovník</div>
             </div>
-            <div style={{ fontSize: '10px', color: '#86868b' }}>
-              {Object.keys(zamestnanciHodiny).length} pracovníkov
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(170px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovníci</div>
+              <div style={{ fontSize: '22px', fontWeight: '750', color: '#1d1d1f', marginTop: '5px' }}>{pocetPracovnikovVyplata}</div>
+            </div>
+            <div style={{ padding: '14px 18px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Odpracované spolu</div>
+              <div style={{ fontSize: '22px', fontWeight: '750', color: '#1d1d1f', marginTop: '5px' }}>{celkoveOdpracovaneHodiny.toFixed(2)} h</div>
+            </div>
+            <div style={{ padding: '14px 18px', backgroundColor: '#f7fbff' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Na výplatu spolu</div>
+              <div style={{ fontSize: '22px', fontWeight: '750', color: '#0071e3', marginTop: '5px' }}>{celkovaSumaNaVyplatu.toFixed(2)} €</div>
             </div>
           </div>
 
