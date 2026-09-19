@@ -284,6 +284,14 @@ export default function ZamestnanciPage() {
       return
     }
 
+    const pocetHistorickychNepritomnosti = pocetNepritomnostiPodlaMena[povodneMeno.trim()] || 0
+    if (noveMeno !== povodneMeno.trim() && pocetHistorickychNepritomnosti > 0) {
+      alert(
+        `Meno nie je možné zmeniť, pretože pracovník má ${pocetHistorickychNepritomnosti} evidovanú neprítomnosť${pocetHistorickychNepritomnosti === 1 ? '' : 'í'}. Sadzbu môžete upraviť bez zmeny mena.`
+      )
+      return
+    }
+
     const { error: chybaZamestnanca } = await supabase
       .from('zamestnanci')
       .update({ meno: noveMeno, sadzba: sadzbaCislo })
