@@ -198,7 +198,7 @@ export default function ZakazkyPage() {
       alignItems: 'flex-start'
     }}>
       <style>{`
-        @media (max-width: 760px) {
+        @media (max-width: 1024px) {
           .simple-admin-shell {
             padding: 64px 12px 20px !important;
             display: block !important;
