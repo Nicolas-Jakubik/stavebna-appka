@@ -675,6 +675,18 @@ export default function DashboardPage() {
   })
 
   const jePodozrivyZaznam = (z: any) => jePodozrivyCas(z.prichod, z.odchod, vypocitajHodiny(z.prichod, z.odchod))
+
+  const dnesneZaznamy = kontrolneZaznamy.filter(z => z.datum === dnesText)
+  const pocetPracovnikovDnes = new Set(dnesneZaznamy.map(z => z.meno).filter(Boolean)).size
+  const pocetNepritomnychDnes = new Set(
+    nepritomnosti.filter(n => n.datum === dnesText).map(n => n.meno).filter(Boolean)
+  ).size
+  const pocetProblemovDnes = dnesneZaznamy.filter(z =>
+    jePresnyDuplikat(z, z.id) ||
+    maPrekryvajuciSaCas(z, z.id) ||
+    jePodozrivyZaznam(z)
+  ).length
+
   const pocetDuplikatov = zaznamyObdobia.filter(z => jePresnyDuplikat(z, z.id)).length
   const pocetPrekryvov = zaznamyObdobia.filter(z => maPrekryvajuciSaCas(z, z.id)).length
   const pocetPodozrivych = zaznamyObdobia.filter(jePodozrivyZaznam).length
@@ -770,6 +782,57 @@ export default function DashboardPage() {
       />
 
       <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#86868b', fontWeight: '600', marginBottom: '4px' }}>FIREMNÝ PREHĽAD</div>
+              <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
+                Dnešný stav
+              </h1>
+            </div>
+            <div style={{ fontSize: '12px', color: '#86868b', fontWeight: '600' }}>
+              {formatujDatumSK(dnesText)}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px' }}>
+            <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>V práci dnes</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '7px' }}>
+                <span style={{ fontSize: '32px', lineHeight: 1, fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.04em' }}>{pocetPracovnikovDnes}</span>
+                <span style={{ fontSize: '11px', color: '#86868b' }}>pracovníkov</span>
+              </div>
+              <div style={{ fontSize: '10px', color: '#15803d', marginTop: '8px', fontWeight: '600' }}>Unikátni pracovníci s dnešným zápisom</div>
+            </div>
+
+            <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Neprítomní dnes</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '7px' }}>
+                <span style={{ fontSize: '32px', lineHeight: 1, fontWeight: '750', color: '#7c3aed', letterSpacing: '-0.04em' }}>{pocetNepritomnychDnes}</span>
+                <span style={{ fontSize: '11px', color: '#86868b' }}>pracovníkov</span>
+              </div>
+              <div style={{ fontSize: '10px', color: '#7c3aed', marginTop: '8px', fontWeight: '600' }}>Evidovaná neprítomnosť na dnešný deň</div>
+            </div>
+
+            <div style={{
+              ...cardStyle,
+              padding: '18px 20px',
+              boxShadow: '0 6px 22px rgba(0,0,0,0.045)',
+              border: pocetProblemovDnes > 0 ? '1px solid #fecaca' : '1px solid rgba(0,0,0,0.08)',
+              backgroundColor: pocetProblemovDnes > 0 ? '#fffafa' : '#ffffff'
+            }}>
+              <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Problémy dnes</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '7px' }}>
+                <span style={{ fontSize: '32px', lineHeight: 1, fontWeight: '750', color: pocetProblemovDnes > 0 ? '#b42318' : '#1d1d1f', letterSpacing: '-0.04em' }}>{pocetProblemovDnes}</span>
+                <span style={{ fontSize: '11px', color: '#86868b' }}>záznamov</span>
+              </div>
+              <div style={{ fontSize: '10px', color: pocetProblemovDnes > 0 ? '#b42318' : '#15803d', marginTop: '8px', fontWeight: '600' }}>
+                {pocetProblemovDnes > 0 ? 'Duplikáty, prekryvy alebo podozrivé časy' : 'Dnešné zápisy sú bez zisteného problému'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style={{
           ...cardStyle,
           marginBottom: '16px',
