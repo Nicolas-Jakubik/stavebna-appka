@@ -777,7 +777,7 @@ export default function DashboardPage() {
       alignItems: 'flex-start'
     }}>
       <style>{`
-        @media (max-width: 760px) {
+        @media (max-width: 1024px) {
           .dashboard-shell {
             padding: 64px 12px 20px !important;
             display: block !important;
