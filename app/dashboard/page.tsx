@@ -766,7 +766,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{
+    <div className="dashboard-shell" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -776,12 +776,67 @@ export default function DashboardPage() {
       gap: '24px',
       alignItems: 'flex-start'
     }}>
+      <style>{`
+        @media (max-width: 760px) {
+          .dashboard-shell {
+            padding: 64px 12px 20px !important;
+            display: block !important;
+          }
+
+          .dashboard-content {
+            max-width: 100% !important;
+          }
+
+          .dashboard-today-grid,
+          .dashboard-filter-grid,
+          .dashboard-form-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .dashboard-month-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .dashboard-month-grid > div {
+            border-right: none !important;
+            border-bottom: 1px solid #eeeeef;
+          }
+
+          .dashboard-mobile-full-button {
+            width: 100% !important;
+            min-height: 44px;
+          }
+
+          .dashboard-mobile-actions {
+            width: 100%;
+          }
+
+          .dashboard-mobile-actions > button {
+            flex: 1 1 140px;
+            min-height: 44px;
+          }
+
+          .dashboard-scroll-table {
+            margin-left: -16px;
+            margin-right: -16px;
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .dashboard-month-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       <AdminSidebar
         active="dashboard"
         onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
       />
 
-      <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+      <div className="dashboard-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div>
@@ -795,7 +850,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px' }}>
+          <div className="dashboard-today-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px' }}>
             <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
               <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>V práci dnes</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '7px' }}>
@@ -1023,7 +1078,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))' }}>
+          <div className="dashboard-month-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))' }}>
             <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef' }}>
               <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Odpracované hodiny</div>
               <div style={{ fontSize: '28px', lineHeight: 1.05, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.035em', marginTop: '7px' }}>
@@ -1085,7 +1140,7 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
-            <div style={{ overflowX: 'auto', maxHeight: '68vh', overflowY: 'auto' }}>
+            <div className="dashboard-scroll-table" style={{ overflowX: 'auto', maxHeight: '68vh', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
@@ -1320,7 +1375,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Pridaj dochádzku alebo eviduj neprítomnosť.</div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="dashboard-mobile-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => {
@@ -1365,7 +1420,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '220px minmax(240px, 1fr)', gap: '12px', marginBottom: '14px' }}>
+            <div className="dashboard-form-grid" style={{ display: 'grid', gridTemplateColumns: '220px minmax(240px, 1fr)', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <label style={labelStyle}>Dátum</label>
                 <input
@@ -1453,7 +1508,7 @@ export default function DashboardPage() {
             {noveZaznamy.map((z, i) => (
               <div key={i} style={{ marginBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', paddingBottom: i !== noveZaznamy.length - 1 ? '18px' : '0', borderBottom: i !== noveZaznamy.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                <div className="dashboard-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '12px' }}>
                   <div style={{ minWidth: 0 }}>
                     <label style={labelStyle}>Dátum</label>
                     <input type="date" value={z.datum} onChange={e => zmenaNovehoZaznamu(i, 'datum', e.target.value)} style={{...inputStyle, fontSize: '12px'}} />
@@ -1619,7 +1674,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.35fr) repeat(3, minmax(155px, 1fr))', gap: '10px' }}>
+          <div className="dashboard-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.35fr) repeat(3, minmax(155px, 1fr))', gap: '10px' }}>
             <div>
               <label style={{ ...labelStyle, marginBottom: '5px' }}>Pracovník</label>
               <select
@@ -1719,7 +1774,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: '16px', fontWeight: '750', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
             </div>
           )}
-          <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
+          <div className="dashboard-scroll-table" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#f7f7f8', boxShadow: '0 1px 0 #e5e5e7' }}>
                 <tr style={{ textAlign: 'left' }}>
