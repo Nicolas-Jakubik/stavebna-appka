@@ -488,8 +488,6 @@ export default function ZakazkyPage() {
             </tbody>
           </table>
         </div>
-
-        </div>
         )}
 
         {filterStav !== 'aktivne' && (
