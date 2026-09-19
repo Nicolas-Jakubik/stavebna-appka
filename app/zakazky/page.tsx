@@ -366,100 +366,112 @@ export default function ZakazkyPage() {
           </form>
         </div>
 
-        <div style={{ marginBottom: '30px' }}>
-          <h3 style={{ color: '#1d1d1f', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #1d1d1f', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>
-            Aktívne stavby ({aktivneZakazky.length})
-          </h3>
-          <div style={{...cardStyle}}>
-            <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Stavba</th>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '140px' }}>Stav</th>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right', width: '60px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {aktivneZakazky.length === 0 ? (
-                  <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne aktívne stavby.</td></tr>
-                ) : (
-                  aktivneZakazky.map((zak) => (
-                    <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
-                      <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '10px 0', color: '#1d1d1f', fontWeight: '500' }}>{zak.nazov}</td>
-                      <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 0' }}>
-                        <select 
-                          value={zak.stav || 'Aktívna'} 
-                          onChange={(e) => zmenitStav(zak.id, e.target.value)} 
-                          style={{ padding: '6px 10px', border: '1px solid #10b981', borderRadius: '6px', color: '#047857', backgroundColor: '#ecfdf5', outline: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}
-                        >
-                          <option value="Aktívna">Aktívna</option>
-                          <option value="Dokončená">Dokončená</option>
-                        </select>
-                      </td>
-                      <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => vymazatZakazku(zak.id)} 
-                          style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
-                        >
-                          Zmazať
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+                <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Aktívne stavby</div>
+                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#ecfdf5', color: '#047857', fontSize: '9px', fontWeight: '750' }}>{aktivneZakazky.length}</span>
+              </div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Rozpracované zákazky. Stav môžeš kedykoľvek zmeniť na dokončený.</div>
+            </div>
           </div>
+
+          <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
+                <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
+                <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {aktivneZakazky.length === 0 ? (
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne aktívne stavby.</td></tr>
+              ) : (
+                aktivneZakazky.map((zak) => (
+                  <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef' }}>
+                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '650' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
+                      <select
+                        value={zak.stav || 'Aktívna'}
+                        onChange={(e) => zmenitStav(zak.id, e.target.value)}
+                        style={{ minWidth: '126px', padding: '6px 10px', border: '1px solid #bbf7d0', borderRadius: '9px', color: '#047857', backgroundColor: '#ecfdf5', outline: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}
+                      >
+                        <option value="Aktívna">Aktívna</option>
+                        <option value="Dokončená">Dokončená</option>
+                      </select>
+                    </td>
+                    <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => vymazatZakazku(zak.id)}
+                        style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                      >
+                        Zmazať
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div>
-          <h3 style={{ color: '#6b7280', margin: '0 0 16px 0', fontSize: '16px', borderBottom: '2px solid #d1d5db', paddingBottom: '8px', width: 'fit-content', fontWeight: '600' }}>
-            Dokončené stavby ({dokonceneZakazky.length})
-          </h3>
-          <div style={{...cardStyle, opacity: 0.8}}>
-            <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #d2d2d7' }}>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Stavba</th>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', width: '140px' }}>Stav</th>
-                  <th style={{ padding: '10px 0', color: '#86868b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right', width: '60px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {dokonceneZakazky.length === 0 ? (
-                  <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '20px 0', color: '#d2d2d7', textAlign: 'center', fontSize: '12px' }}>Žiadne dokončené stavby.</td></tr>
-                ) : (
-                  dokonceneZakazky.map((zak) => (
-                    <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #f5f5f7' }}>
-                      <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '10px 0', color: '#9ca3af', fontWeight: '500', textDecoration: 'line-through' }}>{zak.nazov}</td>
-                      <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 0' }}>
-                        <select 
-                          value={zak.stav || 'Dokončená'} 
-                          onChange={(e) => zmenitStav(zak.id, e.target.value)} 
-                          style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: '6px', color: '#6b7280', backgroundColor: '#f3f4f6', outline: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}
-                        >
-                          <option value="Aktívna">Aktívna</option>
-                          <option value="Dokončená">Dokončená</option>
-                        </select>
-                      </td>
-                      <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 0', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => vymazatZakazku(zak.id)} 
-                          style={{ color: '#d2d2d7', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'color 0.2s' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#ff3b30'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#d2d2d7'}
-                        >
-                          Zmazať
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', opacity: 0.88 }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', backgroundColor: '#fbfbfc' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#a1a1a6', display: 'inline-block' }} />
+                <div style={{ fontSize: '14px', fontWeight: '750', color: '#6e6e73' }}>Dokončené stavby</div>
+                <span style={{ padding: '3px 7px', borderRadius: '999px', backgroundColor: '#f0f0f2', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{dokonceneZakazky.length}</span>
+              </div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Uzavreté zákazky zostávajú v evidencii a dajú sa znovu aktivovať.</div>
+            </div>
           </div>
+
+          <table className="simple-mobile-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid #eeeeef', backgroundColor: '#f7f7f8' }}>
+                <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Stavba</th>
+                <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '160px' }}>Stav</th>
+                <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', textAlign: 'right', width: '90px' }}>Akcia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dokonceneZakazky.length === 0 ? (
+                <tr className="simple-empty-row"><td className="simple-empty-cell" colSpan={3} style={{ padding: '28px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Žiadne dokončené stavby.</td></tr>
+              ) : (
+                dokonceneZakazky.map((zak) => (
+                  <tr key={zak.id} className="simple-mobile-row" style={{ borderBottom: '1px solid #eeeeef', backgroundColor: '#fcfcfd' }}>
+                    <td className="simple-mobile-cell" data-label="Stavba" style={{ padding: '12px 18px', color: '#6e6e73', fontWeight: '600' }}>{zak.nazov}</td>
+                    <td className="simple-mobile-cell" data-label="Stav" style={{ padding: '10px 12px' }}>
+                      <select
+                        value={zak.stav || 'Dokončená'}
+                        onChange={(e) => zmenitStav(zak.id, e.target.value)}
+                        style={{ minWidth: '126px', padding: '6px 10px', border: '1px solid #d2d2d7', borderRadius: '9px', color: '#6e6e73', backgroundColor: '#f5f5f7', outline: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}
+                      >
+                        <option value="Aktívna">Aktívna</option>
+                        <option value="Dokončená">Dokončená</option>
+                      </select>
+                    </td>
+                    <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => vymazatZakazku(zak.id)}
+                        style={{ color: '#a1a1a6', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1a6'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                      >
+                        Zmazať
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
       </div>
