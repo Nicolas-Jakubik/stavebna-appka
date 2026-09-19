@@ -12,6 +12,7 @@ export default function DashboardPage() {
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
+  const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
@@ -32,6 +33,14 @@ export default function DashboardPage() {
   const [nacitavaKontrola, setNacitavaKontrola] = useState(false)
 
   const [ukazatFormular, setUkazatFormular] = useState(false)
+  const [ukazatNepritomnost, setUkazatNepritomnost] = useState(false)
+  const [ukladaNepritomnost, setUkladaNepritomnost] = useState(false)
+  const [chybaNepritomnosti, setChybaNepritomnosti] = useState('')
+  const [novaNepritomnost, setNovaNepritomnost] = useState({
+    datum: new Date().toISOString().split('T')[0],
+    dovod: '',
+    mena: [] as string[]
+  })
   const [noveZaznamy, setNoveZaznamy] = useState([
     { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
@@ -267,9 +276,10 @@ export default function DashboardPage() {
     const datum = datumDoLocalString(vcera)
     setDatumKontroly(datum)
 
-    const [zamestnanciResult, dochadzkaResult] = await Promise.all([
+    const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno').eq('datum', datum)
+      supabase.from('dochadzka').select('meno').eq('datum', datum),
+      supabase.from('nepritomnosti').select('meno').eq('datum', datum)
     ])
 
     if (zamestnanciResult.error || dochadzkaResult.error) {
@@ -287,9 +297,91 @@ export default function DashboardPage() {
     const zapisani = new Set(
       (dochadzkaResult.data || []).map(z => z.meno).filter(Boolean)
     )
+    const ospravedlneni = new Set(
+      (nepritomnostiResult.error ? [] : (nepritomnostiResult.data || []))
+        .map(z => z.meno)
+        .filter(Boolean)
+    )
 
-    setNezapisaniVcera(vsetci.filter(meno => !zapisani.has(meno)))
+    setNezapisaniVcera(vsetci.filter(meno => !zapisani.has(meno) && !ospravedlneni.has(meno)))
     setNacitavaKontrola(false)
+  }
+
+  async function nacitajNepritomnosti() {
+    const { data, error } = await supabase
+      .from('nepritomnosti')
+      .select('id, datum, meno, dovod, created_at')
+      .order('datum', { ascending: false })
+
+    if (error) {
+      console.error('Chyba načítania neprítomností:', error.message)
+      setNepritomnosti([])
+      return
+    }
+
+    setNepritomnosti(data || [])
+  }
+
+  async function ulozitNepritomnost() {
+    setChybaNepritomnosti('')
+
+    const datum = novaNepritomnost.datum
+    const dovod = novaNepritomnost.dovod.trim()
+    const mena = novaNepritomnost.mena
+
+    if (!datum || !dovod || mena.length === 0) {
+      setChybaNepritomnosti('Vyber dátum, zadaj dôvod a označ aspoň jedného pracovníka.')
+      return
+    }
+
+    const majuDochadzku = mena.filter(meno =>
+      kontrolneZaznamy.some(z => z.datum === datum && z.meno === meno)
+    )
+
+    if (majuDochadzku.length > 0) {
+      setChybaNepritomnosti(`Títo pracovníci už majú v daný deň dochádzku: ${majuDochadzku.join(', ')}.`)
+      return
+    }
+
+    const uzEvidovani = mena.filter(meno =>
+      nepritomnosti.some(n => n.datum === datum && n.meno === meno)
+    )
+
+    if (uzEvidovani.length > 0) {
+      setChybaNepritomnosti(`Neprítomnosť už je evidovaná pre: ${uzEvidovani.join(', ')}.`)
+      return
+    }
+
+    setUkladaNepritomnost(true)
+    const dataNaVlozenie = mena.map(meno => ({ datum, meno, dovod }))
+    const { error } = await supabase.from('nepritomnosti').insert(dataNaVlozenie)
+
+    if (error) {
+      setChybaNepritomnosti(
+        error.code === '42P01'
+          ? 'Tabuľka neprítomností ešte nie je pripravená v Supabase.'
+          : 'Neprítomnosť sa nepodarilo uložiť: ' + error.message
+      )
+      setUkladaNepritomnost(false)
+      return
+    }
+
+    setNovaNepritomnost({ datum: datumDoLocalString(new Date()), dovod: '', mena: [] })
+    setUkazatNepritomnost(false)
+    setUkladaNepritomnost(false)
+    await Promise.all([nacitajNepritomnosti(), nacitajNezapisanychVcera()])
+  }
+
+  async function vymazatNepritomnost(id: string) {
+    if (!confirm('Naozaj vymazať túto neprítomnosť?')) return
+
+    const { error } = await supabase.from('nepritomnosti').delete().eq('id', id)
+    if (error) {
+      alert('Neprítomnosť sa nepodarilo vymazať: ' + error.message)
+      return
+    }
+
+    await Promise.all([nacitajNepritomnosti(), nacitajNezapisanychVcera()])
   }
 
   async function nacitajFiltre() {
@@ -479,7 +571,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy() } }, [jeOdomknute])
+  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy(); nacitajNepritomnosti() } }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitajNezapisanychVcera() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
 
@@ -536,13 +628,30 @@ export default function DashboardPage() {
       )
     ).sort((a, b) => String(a).localeCompare(String(b), 'sk')) as string[]
 
+    const nepritomnostiDna = nepritomnosti
+      .filter(n => n.datum === datum)
+      .sort((a, b) => String(a.meno).localeCompare(String(b.meno), 'sk'))
+
+    const skupinyMapa = new Map<string, any[]>()
+    nepritomnostiDna.forEach(n => {
+      const aktualne = skupinyMapa.get(n.dovod) || []
+      aktualne.push(n)
+      skupinyMapa.set(n.dovod, aktualne)
+    })
+    const skupinyNepritomnosti = Array.from(skupinyMapa.entries()).map(([dovod, polozky]) => ({
+      dovod,
+      polozky
+    }))
+
     const denVTyzdni = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     return {
       datum,
       den,
       denVTyzdni: nazvyDni[denVTyzdni],
       pocet: mena.length,
-      mena
+      mena,
+      pocetNepritomnych: new Set(nepritomnostiDna.map(n => n.meno)).size,
+      skupinyNepritomnosti
     }
   })
 
