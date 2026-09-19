@@ -12,6 +12,7 @@ export default function DashboardPage() {
 
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
+  const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
@@ -32,6 +33,14 @@ export default function DashboardPage() {
   const [nacitavaKontrola, setNacitavaKontrola] = useState(false)
 
   const [ukazatFormular, setUkazatFormular] = useState(false)
+  const [ukazatNepritomnost, setUkazatNepritomnost] = useState(false)
+  const [ukladaNepritomnost, setUkladaNepritomnost] = useState(false)
+  const [chybaNepritomnosti, setChybaNepritomnosti] = useState('')
+  const [novaNepritomnost, setNovaNepritomnost] = useState({
+    datum: new Date().toISOString().split('T')[0],
+    dovod: '',
+    mena: [] as string[]
+  })
   const [noveZaznamy, setNoveZaznamy] = useState([
     { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
@@ -267,9 +276,10 @@ export default function DashboardPage() {
     const datum = datumDoLocalString(vcera)
     setDatumKontroly(datum)
 
-    const [zamestnanciResult, dochadzkaResult] = await Promise.all([
+    const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno').eq('datum', datum)
+      supabase.from('dochadzka').select('meno').eq('datum', datum),
+      supabase.from('nepritomnosti').select('meno').eq('datum', datum)
     ])
 
     if (zamestnanciResult.error || dochadzkaResult.error) {
@@ -287,9 +297,91 @@ export default function DashboardPage() {
     const zapisani = new Set(
       (dochadzkaResult.data || []).map(z => z.meno).filter(Boolean)
     )
+    const ospravedlneni = new Set(
+      (nepritomnostiResult.error ? [] : (nepritomnostiResult.data || []))
+        .map(z => z.meno)
+        .filter(Boolean)
+    )
 
-    setNezapisaniVcera(vsetci.filter(meno => !zapisani.has(meno)))
+    setNezapisaniVcera(vsetci.filter(meno => !zapisani.has(meno) && !ospravedlneni.has(meno)))
     setNacitavaKontrola(false)
+  }
+
+  async function nacitajNepritomnosti() {
+    const { data, error } = await supabase
+      .from('nepritomnosti')
+      .select('id, datum, meno, dovod, created_at')
+      .order('datum', { ascending: false })
+
+    if (error) {
+      console.error('Chyba načítania neprítomností:', error.message)
+      setNepritomnosti([])
+      return
+    }
+
+    setNepritomnosti(data || [])
+  }
+
+  async function ulozitNepritomnost() {
+    setChybaNepritomnosti('')
+
+    const datum = novaNepritomnost.datum
+    const dovod = novaNepritomnost.dovod.trim()
+    const mena = novaNepritomnost.mena
+
+    if (!datum || !dovod || mena.length === 0) {
+      setChybaNepritomnosti('Vyber dátum, zadaj dôvod a označ aspoň jedného pracovníka.')
+      return
+    }
+
+    const majuDochadzku = mena.filter(meno =>
+      kontrolneZaznamy.some(z => z.datum === datum && z.meno === meno)
+    )
+
+    if (majuDochadzku.length > 0) {
+      setChybaNepritomnosti(`Títo pracovníci už majú v daný deň dochádzku: ${majuDochadzku.join(', ')}.`)
+      return
+    }
+
+    const uzEvidovani = mena.filter(meno =>
+      nepritomnosti.some(n => n.datum === datum && n.meno === meno)
+    )
+
+    if (uzEvidovani.length > 0) {
+      setChybaNepritomnosti(`Neprítomnosť už je evidovaná pre: ${uzEvidovani.join(', ')}.`)
+      return
+    }
+
+    setUkladaNepritomnost(true)
+    const dataNaVlozenie = mena.map(meno => ({ datum, meno, dovod }))
+    const { error } = await supabase.from('nepritomnosti').insert(dataNaVlozenie)
+
+    if (error) {
+      setChybaNepritomnosti(
+        error.code === '42P01'
+          ? 'Tabuľka neprítomností ešte nie je pripravená v Supabase.'
+          : 'Neprítomnosť sa nepodarilo uložiť: ' + error.message
+      )
+      setUkladaNepritomnost(false)
+      return
+    }
+
+    setNovaNepritomnost({ datum: datumDoLocalString(new Date()), dovod: '', mena: [] })
+    setUkazatNepritomnost(false)
+    setUkladaNepritomnost(false)
+    await Promise.all([nacitajNepritomnosti(), nacitajNezapisanychVcera()])
+  }
+
+  async function vymazatNepritomnost(id: string) {
+    if (!confirm('Naozaj vymazať túto neprítomnosť?')) return
+
+    const { error } = await supabase.from('nepritomnosti').delete().eq('id', id)
+    if (error) {
+      alert('Neprítomnosť sa nepodarilo vymazať: ' + error.message)
+      return
+    }
+
+    await Promise.all([nacitajNepritomnosti(), nacitajNezapisanychVcera()])
   }
 
   async function nacitajFiltre() {
@@ -479,7 +571,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy() } }, [jeOdomknute])
+  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy(); nacitajNepritomnosti() } }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitajNezapisanychVcera() }, [jeOdomknute])
   useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
 
@@ -536,13 +628,30 @@ export default function DashboardPage() {
       )
     ).sort((a, b) => String(a).localeCompare(String(b), 'sk')) as string[]
 
+    const nepritomnostiDna = nepritomnosti
+      .filter(n => n.datum === datum)
+      .sort((a, b) => String(a.meno).localeCompare(String(b.meno), 'sk'))
+
+    const skupinyMapa = new Map<string, any[]>()
+    nepritomnostiDna.forEach(n => {
+      const aktualne = skupinyMapa.get(n.dovod) || []
+      aktualne.push(n)
+      skupinyMapa.set(n.dovod, aktualne)
+    })
+    const skupinyNepritomnosti = Array.from(skupinyMapa.entries()).map(([dovod, polozky]) => ({
+      dovod,
+      polozky
+    }))
+
     const denVTyzdni = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     return {
       datum,
       den,
       denVTyzdni: nazvyDni[denVTyzdni],
       pocet: mena.length,
-      mena
+      mena,
+      pocetNepritomnych: new Set(nepritomnostiDna.map(n => n.meno)).size,
+      skupinyNepritomnosti
     }
   })
 
@@ -939,13 +1048,14 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ maxHeight: '390px', overflowY: 'auto', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px', fontSize: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Dátum</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Deň</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600', textAlign: 'right' }}>Pracovníci</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Mená</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Neprítomní</th>
                   <th style={{ padding: '10px 18px', width: '80px' }}></th>
                 </tr>
               </thead>
@@ -988,8 +1098,35 @@ export default function DashboardPage() {
                     <td style={{ padding: '10px 12px', color: den.mena.length > 0 ? '#1d1d1f' : '#c7c7cc', fontSize: '11px' }}>
                       {den.mena.length > 0 ? den.mena.join(', ') : 'Nikto'}
                     </td>
+                    <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                      {den.pocetNepritomnych === 0 ? (
+                        <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {den.skupinyNepritomnosti.map((skupina: any) => (
+                            <div key={skupina.dovod} style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                              <span style={{ fontWeight: '700', color: '#7c3aed' }}>{skupina.dovod}:</span>{' '}
+                              {skupina.polozky.map((polozka: any, index: number) => (
+                                <span key={polozka.id}>
+                                  {index > 0 ? ', ' : ''}
+                                  <span style={{ color: '#1d1d1f' }}>{polozka.meno}</span>
+                                  <button
+                                    type="button"
+                                    title="Vymazať neprítomnosť"
+                                    onClick={() => vymazatNepritomnost(polozka.id)}
+                                    style={{ marginLeft: '3px', padding: 0, border: 'none', background: 'none', color: '#c7c7cc', cursor: 'pointer', fontSize: '10px' }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 18px', textAlign: 'right' }}>
-                      {den.pocet > 0 && (
+                      {(den.pocet > 0 || den.pocetNepritomnych > 0) && (
                         <button
                           type="button"
                           onClick={() => {
@@ -1013,9 +1150,23 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setUkazatNepritomnost(!ukazatNepritomnost)
+              if (!ukazatNepritomnost) setUkazatFormular(false)
+            }}
+            style={{ ...(ukazatNepritomnost ? buttonSecondaryStyle : buttonPrimaryStyle) } as any}
+          >
+            {ukazatNepritomnost ? '✕ Zavrieť neprítomnosť' : '+ Neprítomnosť'}
+          </button>
+
           <button 
-            onClick={() => setUkazatFormular(!ukazatFormular)} 
+            onClick={() => {
+              setUkazatFormular(!ukazatFormular)
+              if (!ukazatFormular) setUkazatNepritomnost(false)
+            }} 
             style={{ 
               ...(ukazatFormular ? buttonSecondaryStyle : buttonPrimaryStyle)
             } as any}
@@ -1031,6 +1182,95 @@ export default function DashboardPage() {
             {ukazatFormular ? '✕ Zavrieť' : '+ Zápis dochádzky'}
           </button>
         </div>
+
+        {ukazatNepritomnost && (
+          <div style={{ ...cardStyle, marginBottom: '20px' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1d1d1f' }}>Zapísať neprítomnosť</div>
+              <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>
+                Eviduje dôvod, prečo pracovník nebol v práci. Nepridáva odpracované hodiny.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '220px minmax(240px, 1fr)', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <label style={labelStyle}>Dátum</label>
+                <input
+                  type="date"
+                  value={novaNepritomnost.datum}
+                  onChange={e => setNovaNepritomnost({ ...novaNepritomnost, datum: e.target.value })}
+                  style={inputStyle as any}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Dôvod</label>
+                <input
+                  type="text"
+                  placeholder="Napr. svadba, dovolenka, lekár..."
+                  value={novaNepritomnost.dovod}
+                  onChange={e => setNovaNepritomnost({ ...novaNepritomnost, dovod: e.target.value })}
+                  style={inputStyle as any}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Pracovníci</label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                {dostupneMena.map(meno => {
+                  const vybrany = novaNepritomnost.mena.includes(meno)
+                  return (
+                    <button
+                      key={meno}
+                      type="button"
+                      onClick={() => {
+                        setNovaNepritomnost({
+                          ...novaNepritomnost,
+                          mena: vybrany
+                            ? novaNepritomnost.mena.filter(m => m !== meno)
+                            : [...novaNepritomnost.mena, meno]
+                        })
+                      }}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '18px',
+                        border: vybrany ? '1px solid #7c3aed' : '1px solid #d2d2d7',
+                        backgroundColor: vybrany ? '#f3e8ff' : '#f5f5f7',
+                        color: vybrany ? '#6d28d9' : '#1d1d1f',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: vybrany ? '700' : '500'
+                      }}
+                    >
+                      {meno}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {chybaNepritomnosti && (
+              <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', color: '#b42318', fontSize: '11px' }}>
+                {chybaNepritomnosti}
+              </div>
+            )}
+
+            <div style={{ marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={ulozitNepritomnost}
+                disabled={ukladaNepritomnost}
+                style={{
+                  ...buttonPrimaryStyle,
+                  opacity: ukladaNepritomnost ? 0.65 : 1,
+                  cursor: ukladaNepritomnost ? 'default' : 'pointer'
+                } as any}
+              >
+                {ukladaNepritomnost ? 'Ukladám...' : 'Uložiť neprítomnosť'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {ukazatFormular && (
           <div style={{...cardStyle, marginBottom: '20px'}}>
