@@ -194,14 +194,24 @@ export default function ZamestnanciPage() {
 
   async function pridatZamestnanca(e: React.FormEvent) {
     e.preventDefault()
-    if (!noveMeno.trim()) return
+    const meno = noveMeno.trim()
+    if (!meno) return
+
+    const existujeRovnakeMeno = zamestnanci.some(z =>
+      String(z.meno || '').trim().toLocaleLowerCase('sk') === meno.toLocaleLowerCase('sk')
+    )
+
+    if (existujeRovnakeMeno) {
+      alert('Pracovník s týmto menom už existuje.')
+      return
+    }
 
     setPridavaSa(true)
     const sadzbaCislo = parseFloat(novaSadzba) || 0
 
     const { error } = await supabase
       .from('zamestnanci')
-      .insert([{ meno: noveMeno.trim(), sadzba: sadzbaCislo }])
+      .insert([{ meno, sadzba: sadzbaCislo }])
     
     setPridavaSa(false)
 
@@ -216,10 +226,13 @@ export default function ZamestnanciPage() {
   }
 
   async function vymazatZamestnanca(id: string, meno: string) {
-    const pocetZaznamov = pocetDochadzkyPodlaMena[String(meno || '').trim()] || 0
-    const sprava = pocetZaznamov > 0
-      ? `Naozaj vymazať "${meno}"? V dochádzke zostane ${pocetZaznamov} historických záznamov s týmto menom.`
-      : `Naozaj vymazať "${meno}"? Tento pracovník nemá žiadne záznamy dochádzky.`
+    const klucMena = String(meno || '').trim()
+    const pocetZaznamov = pocetDochadzkyPodlaMena[klucMena] || 0
+    const pocetNepritomnosti = pocetNepritomnostiPodlaMena[klucMena] || 0
+    const maHistoriu = pocetZaznamov > 0 || pocetNepritomnosti > 0
+    const sprava = maHistoriu
+      ? `Naozaj vymazať "${meno}"? Historické dáta zostanú zachované: dochádzka ${pocetZaznamov}, neprítomnosti ${pocetNepritomnosti}.`
+      : `Naozaj vymazať "${meno}"? Tento pracovník nemá evidovanú dochádzku ani neprítomnosti.`
 
     if (!confirm(sprava)) return
     
@@ -456,7 +469,7 @@ export default function ZamestnanciPage() {
 
           .simple-mobile-table td.simple-mobile-cell {
             display: grid;
-            grid-template-columns: 82px minmax(0, 1fr);
+            grid-template-columns: 104px minmax(0, 1fr);
             gap: 10px;
             align-items: center;
             min-height: 44px;
@@ -524,7 +537,7 @@ export default function ZamestnanciPage() {
             Zamestnanci
           </h1>
           <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
-            Pracovníci, hodinové sadzby a základná správa tímu.
+            Pracovníci, sadzby, dochádzka, odpracované hodiny a neprítomnosti.
           </div>
         </div>
 
@@ -597,7 +610,7 @@ export default function ZamestnanciPage() {
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Prehľad pracovníkov</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Meno, hodinová sadzba a rýchla správa pracovníkov.</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '4px' }}>Kompletný prehľad pracovníkov, dochádzky, hodín a neprítomností.</div>
             </div>
             <span style={{ padding: '4px 9px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>
               {zamestnanciNaZobrazenie.length} / {zamestnanci.length}
@@ -605,7 +618,7 @@ export default function ZamestnanciPage() {
           </div>
 
           <div style={{ padding: '12px 18px', borderBottom: '1px solid #eeeeef', backgroundColor: '#fbfbfc' }}>
-            <div className="zamestnanci-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 180px auto', gap: '10px', alignItems: 'flex-end' }}>
+            <div className="zamestnanci-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 220px auto', gap: '10px', alignItems: 'flex-end' }}>
               <div>
                 <label style={labelStyle}>Vyhľadať pracovníka</label>
                 <input
@@ -655,7 +668,7 @@ export default function ZamestnanciPage() {
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Dochádzka</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Hodiny</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '130px' }}>Posledná práca</th>
-                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Neprítomnosť</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Neprítomnosti</th>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
                 </tr>
               </thead>
@@ -720,7 +733,7 @@ export default function ZamestnanciPage() {
                       <td className="simple-mobile-cell" data-label="Posledná práca" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '600' }}>
                         {formatujDatumAktivity(poslednaAktivitaPodlaMena[String(z.meno || '').trim()] || '')}
                       </td>
-                      <td className="simple-mobile-cell" data-label="Neprítomnosť" style={{ padding: '10px 12px' }}>
+                      <td className="simple-mobile-cell" data-label="Neprítomnosti" style={{ padding: '10px 12px' }}>
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
