@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import AdminNav from '../../components/AdminNav'
+import AdminSidebar from '../../components/AdminSidebar'
 import { adminStore } from '../../lib/store'
 
 export default function DashboardPage() {
@@ -754,14 +754,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
-      <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
-        
-        <AdminNav
-          active="dashboard"
-          onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-        />
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f5f5f7',
+      padding: '24px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      color: '#1d1d1f',
+      display: 'flex',
+      gap: '24px',
+      alignItems: 'flex-start'
+    }}>
+      <AdminSidebar
+        active="dashboard"
+        onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
+      />
 
+      <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{
           ...cardStyle,
           marginBottom: '16px',
