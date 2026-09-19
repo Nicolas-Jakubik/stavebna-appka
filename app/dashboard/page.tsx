@@ -1005,48 +1005,70 @@ export default function DashboardPage() {
           <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Odpracované hodiny</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{celkoveHodiny.toFixed(2)} h</h3>
-          </div>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>1. polovica · 1.–15.</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{prvaPolovicaHodiny.toFixed(2)} h</h3>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Fond / 1 pracovník: {fondPrvaPolovica.toFixed(1)} h</div>
-            {zobrazitRozdielOprotiFondu && (
-              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielPrvaPolovica >= 0 ? '#15803d' : '#b42318' }}>
-                Rozdiel: {rozdielPrvaPolovica >= 0 ? '+' : ''}{rozdielPrvaPolovica.toFixed(1)} h
+        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný výkon</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>
+                {nazovVybranehoMesiaca}{filterMeno ? ` · ${filterMeno}` : ' · všetci pracovníci'}
               </div>
-            )}
-          </div>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>2. polovica · 16.–koniec</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{druhaPolovicaHodiny.toFixed(2)} h</h3>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Fond / 1 pracovník: {fondDruhaPolovica.toFixed(1)} h</div>
-            {zobrazitRozdielOprotiFondu && (
-              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielDruhaPolovica >= 0 ? '#15803d' : '#b42318' }}>
-                Rozdiel: {rozdielDruhaPolovica >= 0 ? '+' : ''}{rozdielDruhaPolovica.toFixed(1)} h
+            </div>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '10px', color: '#86868b' }}>
+                Záznamy <strong style={{ color: '#1d1d1f' }}>{pocetZaznamov}</strong>
               </div>
-            )}
-          </div>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Fond mesiaca / 1 pracovník</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{fondMesiaca.toFixed(1)} h</h3>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '5px' }}>Po–Pi 11,5 h · So 10,5 h · Ne 0 h</div>
-            {zobrazitRozdielOprotiFondu && (
-              <div style={{ fontSize: '11px', marginTop: '6px', fontWeight: '600', color: rozdielOprotiFondu >= 0 ? '#15803d' : '#b42318' }}>
-                Rozdiel: {rozdielOprotiFondu >= 0 ? '+' : ''}{rozdielOprotiFondu.toFixed(1)} h
+              <div style={{ fontSize: '10px', color: '#86868b' }}>
+                {filterMeno ? 'Pracovník' : 'Najaktívnejší'} <strong style={{ color: '#1d1d1f' }}>{filterMeno || najaktivnejsi}</strong>
               </div>
-            )}
+            </div>
           </div>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>Záznamy</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{pocetZaznamov}</h3>
-          </div>
-          <div style={cardStyle}>
-            <p style={{...labelStyle, margin: '0 0 4px 0'}}>{filterMeno ? 'Pracovník' : 'Najaktívnejší'}</p>
-            <h3 style={{ margin: 0, fontSize: '24px', color: '#1d1d1f', fontWeight: '600' }}>{filterMeno || najaktivnejsi}</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))' }}>
+            <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Odpracované hodiny</div>
+              <div style={{ fontSize: '28px', lineHeight: 1.05, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.035em', marginTop: '7px' }}>
+                {celkoveHodiny.toFixed(2)} h
+              </div>
+              {zobrazitRozdielOprotiFondu && (
+                <div style={{ fontSize: '10px', marginTop: '7px', fontWeight: '650', color: rozdielOprotiFondu >= 0 ? '#15803d' : '#b42318' }}>
+                  {rozdielOprotiFondu >= 0 ? '+' : ''}{rozdielOprotiFondu.toFixed(1)} h oproti fondu
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>1.–15.</div>
+              <div style={{ fontSize: '24px', lineHeight: 1.05, color: '#1d1d1f', fontWeight: '700', letterSpacing: '-0.025em', marginTop: '7px' }}>
+                {prvaPolovicaHodiny.toFixed(2)} h
+              </div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '7px' }}>Fond / pracovník {fondPrvaPolovica.toFixed(1)} h</div>
+              {zobrazitRozdielOprotiFondu && (
+                <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: '650', color: rozdielPrvaPolovica >= 0 ? '#15803d' : '#b42318' }}>
+                  {rozdielPrvaPolovica >= 0 ? '+' : ''}{rozdielPrvaPolovica.toFixed(1)} h
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>16.–koniec</div>
+              <div style={{ fontSize: '24px', lineHeight: 1.05, color: '#1d1d1f', fontWeight: '700', letterSpacing: '-0.025em', marginTop: '7px' }}>
+                {druhaPolovicaHodiny.toFixed(2)} h
+              </div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '7px' }}>Fond / pracovník {fondDruhaPolovica.toFixed(1)} h</div>
+              {zobrazitRozdielOprotiFondu && (
+                <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: '650', color: rozdielDruhaPolovica >= 0 ? '#15803d' : '#b42318' }}>
+                  {rozdielDruhaPolovica >= 0 ? '+' : ''}{rozdielDruhaPolovica.toFixed(1)} h
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '18px 20px' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Fond mesiaca / pracovník</div>
+              <div style={{ fontSize: '24px', lineHeight: 1.05, color: '#1d1d1f', fontWeight: '700', letterSpacing: '-0.025em', marginTop: '7px' }}>
+                {fondMesiaca.toFixed(1)} h
+              </div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '7px' }}>Po–Pi 11,5 h · So 10,5 h · Ne 0 h</div>
+            </div>
           </div>
         </div>
 
