@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import AdminNav from '../../components/AdminNav'
+import AdminSidebar from '../../components/AdminSidebar'
 import { adminStore } from '../../lib/store'
 
 export default function ZakazkyPage() {
@@ -187,13 +187,33 @@ export default function ZakazkyPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
-      <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
-        
-        <AdminNav
-          active="zakazky"
-          onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-        />
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f5f5f7',
+      padding: '24px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      color: '#1d1d1f',
+      display: 'flex',
+      gap: '24px',
+      alignItems: 'flex-start'
+    }}>
+      <AdminSidebar
+        active="zakazky"
+        onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
+      />
+
+      <div style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '18px' }}>
+          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
+            Firemná administrácia
+          </div>
+          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
+            Stavby
+          </h1>
+          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
+            Správa aktívnych a dokončených stavieb.
+          </div>
+        </div>
 
         <div style={{...cardStyle, marginBottom: '24px'}}>
           <form onSubmit={pridatZakazku}>
