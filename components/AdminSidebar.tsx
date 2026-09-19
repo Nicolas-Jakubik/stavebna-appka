@@ -7,12 +7,18 @@ type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy'
 
 export default function AdminSidebar({
   active,
-  onLogout,
 }: {
   active: AdminSection
-  onLogout: () => void
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  async function odhlasit() {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' })
+    } finally {
+      window.location.assign('/admin-prihlasenie')
+    }
+  }
 
   const links: { href: string; label: string; key: AdminSection; short: string }[] = [
     { href: '/dashboard', label: 'Dochádzka', key: 'dashboard', short: 'D' },
@@ -195,7 +201,7 @@ export default function AdminSidebar({
           </div>
           <button
             type="button"
-            onClick={onLogout}
+            onClick={odhlasit}
             style={{
               width: '100%',
               border: '1px solid #e5e5e7',
