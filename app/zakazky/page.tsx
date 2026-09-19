@@ -212,7 +212,8 @@ export default function ZakazkyPage() {
             max-width: 100% !important;
           }
 
-          .simple-admin-form-grid {
+          .simple-admin-form-grid,
+          .stavby-summary-grid {
             grid-template-columns: 1fr !important;
           }
 
@@ -313,28 +314,53 @@ export default function ZakazkyPage() {
           </div>
         </div>
 
-        <div style={{...cardStyle, marginBottom: '24px'}}>
-          <form onSubmit={pridatZakazku}>
+        <div className="stavby-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Aktívne stavby</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{aktivneZakazky.length}</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Momentálne rozpracované zákazky</div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Dokončené</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#6e6e73', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{dokonceneZakazky.length}</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Uzavreté stavby v evidencii</div>
+          </div>
+
+          <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)', backgroundColor: '#f7fbff' }}>
+            <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Spolu v evidencii</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#1d1d1f', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{zakazky.length}</div>
+            <div style={{ fontSize: '10px', color: '#0071e3', marginTop: '8px', fontWeight: '650' }}>Aktívne + dokončené stavby</div>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+          <div style={{ padding: '15px 18px', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Pridať novú stavbu</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Nová stavba sa automaticky vytvorí ako aktívna.</div>
+          </div>
+
+          <form onSubmit={pridatZakazku} style={{ padding: '16px 18px 18px' }}>
             <div className="simple-admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ minWidth: 0 }}>
-                <label style={labelStyle}>Nová stavba</label>
+                <label style={labelStyle}>Názov stavby</label>
                 <input 
                   type="text" 
-                  placeholder="Názov (napr. Bytovka Bratislava)" 
+                  placeholder="Napr. Bytovka Bratislava" 
                   value={novyNazov} 
                   onChange={(e) => setNovyNazov(e.target.value)} 
                   required 
-                  style={{...inputStyle, fontSize: '13px'}}
+                  style={{ ...inputStyle, fontSize: '13px', backgroundColor: '#ffffff' }}
                 />
               </div>
               <button 
                 type="submit" 
                 disabled={pridavaSa} 
-                style={{ ...buttonPrimaryStyle, minWidth: '100px' } as any}
+                style={{ ...buttonPrimaryStyle, minWidth: '120px', minHeight: '38px', opacity: pridavaSa ? 0.65 : 1 } as any}
                 onMouseEnter={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0077ed')}
                 onMouseLeave={(e) => !pridavaSa && ((e.currentTarget as any).style.backgroundColor = '#0071e3')}
               >
-                {pridavaSa ? 'Pridávam...' : '+ Pridať'}
+                {pridavaSa ? 'Pridávam...' : '+ Pridať stavbu'}
               </button>
             </div>
           </form>
