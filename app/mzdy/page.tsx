@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import AdminNav from '../../components/AdminNav'
+import AdminSidebar from '../../components/AdminSidebar'
 import { adminStore } from '../../lib/store'
 
 export default function MzdyPage() {
@@ -243,11 +243,23 @@ export default function MzdyPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fbfbfd', padding: '24px 28px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#1d1d1f' }}>
-      
+    <div
+      className="admin-page-shell"
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#f5f5f7',
+        padding: '24px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        color: '#1d1d1f',
+        display: 'flex',
+        gap: '24px',
+        alignItems: 'flex-start'
+      }}
+    >
       <style>{`
         @media print {
           body { backgroundColor: white !important; color: black !important; padding: 0 !important; }
+          .admin-page-shell { display: block !important; padding: 0 !important; background: white !important; }
           .skryt-pri-tlaci { display: none !important; }
           .ukazat-iba-pri-tlaci { display: inline-block !important; }
           .hlavny-kontajner { boxShadow: none !important; padding: 20px !important; maxWidth: 100% !important; width: 100% !important; }
@@ -256,13 +268,24 @@ export default function MzdyPage() {
         .ukazat-iba-pri-tlaci { display: none; }
       `}</style>
 
-      <div className="hlavny-kontajner" style={{ width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
-        
-        <div className="skryt-pri-tlaci">
-          <AdminNav
-            active="mzdy"
-            onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-          />
+      <div className="skryt-pri-tlaci">
+        <AdminSidebar
+          active="mzdy"
+          onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
+        />
+      </div>
+
+      <div className="hlavny-kontajner" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+        <div className="skryt-pri-tlaci" style={{ marginBottom: '18px' }}>
+          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
+            Firemná administrácia
+          </div>
+          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
+            Výplaty
+          </h1>
+          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
+            Mesačné hodiny, mzdy a stav fakturácie podľa stavieb.
+          </div>
         </div>
 
         <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', borderBottom: '2px solid #1d1d1f', paddingBottom: '12px', marginBottom: '20px' }}>
