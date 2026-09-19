@@ -2,14 +2,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import AdminSidebar from '../../components/AdminSidebar'
-import { adminStore } from '../../lib/store'
 
 export default function DashboardPage() {
-  const [zadaneHeslo, setZadaneHeslo] = useState('')
-  const [jeOdomknute, setJeOdomknute] = useState(adminStore.jeOdomknute)
-  const [chybaHesla, setChybaHesla] = useState(false)
-  const SPRAVNE_HESLO = 'sef123'
-
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
   const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
@@ -173,15 +167,6 @@ export default function DashboardPage() {
       intervalySaPrekryvaju(zaznam.prichod, zaznam.odchod, z.prichod, z.odchod) &&
       !(z.zakazka === zaznam.zakazka && z.prichod === zaznam.prichod && z.odchod === zaznam.odchod)
     )
-  }
-
-  function skontrolovatHeslo(e: React.FormEvent) {
-    e.preventDefault()
-    if (zadaneHeslo === SPRAVNE_HESLO) {
-      adminStore.jeOdomknute = true
-      setJeOdomknute(true)
-      setChybaHesla(false)
-    } else setChybaHesla(true)
   }
 
   const nazvyMesiacov = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
@@ -571,9 +556,9 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { if (jeOdomknute) { nacitajFiltre(); nacitajKontrolneZaznamy(); nacitajNepritomnosti() } }, [jeOdomknute])
-  useEffect(() => { if (jeOdomknute) nacitajNezapisanychVcera() }, [jeOdomknute])
-  useEffect(() => { if (jeOdomknute) nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno, jeOdomknute])
+  useEffect(() => { nacitajFiltre(); nacitajKontrolneZaznamy(); nacitajNepritomnosti() }, [])
+  useEffect(() => { nacitajNezapisanychVcera() }, [])
+  useEffect(() => { nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno])
 
   const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
   const pocetZaznamov = zaznamy.length
@@ -733,37 +718,6 @@ export default function DashboardPage() {
     filterProblem === 'prekryv' ? 'Prekrývajúce sa časy' :
     filterProblem === 'podozrivy' ? 'Podozrivé časy' :
     ''
-
-  if (!jeOdomknute) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fbfbfd', padding: '20px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '320px' }}>
-          <div style={{ ...cardStyle, textAlign: 'center' }}>
-            <h2 style={{ color: '#1d1d1f', marginBottom: '20px', fontSize: '26px', fontWeight: '600', letterSpacing: '-0.003em', margin: '0 0 20px 0' }}>Dochádzka</h2>
-            <form onSubmit={skontrolovatHeslo}>
-              <input 
-                type="password" 
-                placeholder="Heslo" 
-                value={zadaneHeslo} 
-                onChange={e => setZadaneHeslo(e.target.value)} 
-                required 
-                style={{ ...inputStyle, marginBottom: '14px', textAlign: 'center' }}
-              />
-              {chybaHesla && <p style={{ color: '#ff3b30', fontSize: '11px', marginBottom: '12px' }}>Nesprávne heslo.</p>}
-              <button 
-                type="submit" 
-                style={{ ...buttonPrimaryStyle, width: '100%' } as any}
-                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
-                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
-              >
-                Vstúpiť
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="dashboard-shell" style={{
@@ -935,10 +889,7 @@ export default function DashboardPage() {
         }
       `}</style>
 
-      <AdminSidebar
-        active="dashboard"
-        onLogout={() => { adminStore.jeOdomknute = false; setJeOdomknute(false) }}
-      />
+      <AdminSidebar active="dashboard" />
 
       <div className="dashboard-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px' }}>
