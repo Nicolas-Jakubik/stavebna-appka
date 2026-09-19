@@ -234,6 +234,27 @@ export default function MzdyPage() {
     suma: suhrnPrvaPolovica.suma + suhrnDruhaPolovica.suma
   }
 
+  const pracovniciMesacne: Record<string, { prvaHodiny: number; druhaHodiny: number; sadzba: number }> = {}
+
+  mesacneZaznamy.forEach((z) => {
+    if (!pracovniciMesacne[z.meno]) {
+      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
+      pracovniciMesacne[z.meno] = {
+        prvaHodiny: 0,
+        druhaHodiny: 0,
+        sadzba: dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+      }
+    }
+
+    const den = Number(String(z.datum).slice(8, 10))
+    const hodiny = vypocitajHodiny(z.prichod, z.odchod)
+    if (den <= 15) pracovniciMesacne[z.meno].prvaHodiny += hodiny
+    else pracovniciMesacne[z.meno].druhaHodiny += hodiny
+  })
+
+  const pracovniciMesacneZoradeni = Object.entries(pracovniciMesacne)
+    .sort(([menoA], [menoB]) => menoA.localeCompare(menoB, 'sk'))
+
   const nezaplateneStavby: [string, number][] = []
   const poslaneFaStavby: [string, number][] = []
   const vyplateneStavby: [string, number][] = []
@@ -472,6 +493,53 @@ export default function MzdyPage() {
               <div style={{ marginTop: '7px', fontSize: '20px', fontWeight: '750', color: '#1d1d1f' }}>{suhrnCelyMesiac.hodiny.toFixed(2)} h</div>
               <div style={{ marginTop: '4px', fontSize: '15px', fontWeight: '750', color: '#0071e3' }}>{suhrnCelyMesiac.suma.toFixed(2)} €</div>
             </div>
+          </div>
+        </div>
+
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný prehľad pracovníkov</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Výplata 1 a Výplata 2 pri každom pracovníkovi · {nazovMesiacaBezPolovice}</div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '920px', fontSize: '11px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #e5e5e7' }}>
+                  <th style={{ padding: '10px 18px', textAlign: 'left', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Pracovník</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>1.–15. hodiny</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Výplata 1</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>16.–koniec hodiny</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Výplata 2</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Spolu hodiny</th>
+                  <th style={{ padding: '10px 18px', textAlign: 'right', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px' }}>Spolu €</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pracovniciMesacneZoradeni.length === 0 ? (
+                  <tr><td colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6' }}>Pre tento mesiac nie sú žiadne dáta.</td></tr>
+                ) : (
+                  pracovniciMesacneZoradeni.map(([meno, data]) => {
+                    const prvaSuma = data.prvaHodiny * data.sadzba
+                    const druhaSuma = data.druhaHodiny * data.sadzba
+                    const spoluHodiny = data.prvaHodiny + data.druhaHodiny
+                    const spoluSuma = prvaSuma + druhaSuma
+
+                    return (
+                      <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
+                        <td style={{ padding: '11px 18px', color: '#1d1d1f', fontWeight: '650' }}>{meno}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.prvaHodiny.toFixed(2)} h</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{prvaSuma.toFixed(2)} €</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f' }}>{data.druhaHodiny.toFixed(2)} h</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#0071e3', fontWeight: '650' }}>{druhaSuma.toFixed(2)} €</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: '#1d1d1f', fontWeight: '650' }}>{spoluHodiny.toFixed(2)} h</td>
+                        <td style={{ padding: '11px 18px', textAlign: 'right', color: '#1d1d1f', fontWeight: '750' }}>{spoluSuma.toFixed(2)} €</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
