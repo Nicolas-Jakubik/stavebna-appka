@@ -366,23 +366,184 @@ export default function Home() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px', fontFamily: '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div className="attendance-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', padding: '20px', fontFamily: '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
       <style>{`
+        * {
+          box-sizing: border-box;
+        }
+
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
           cursor: pointer;
           opacity: 0.6;
         }
+
         input[type="date"], input[type="time"] {
           -webkit-appearance: none;
           appearance: none;
+        }
+
+        .attendance-worker-chip {
+          min-height: 44px;
+          border: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        @media (max-width: 600px) {
+          .attendance-page {
+            justify-content: flex-start !important;
+            align-items: stretch !important;
+            padding:
+              max(10px, env(safe-area-inset-top))
+              max(10px, env(safe-area-inset-right))
+              max(20px, env(safe-area-inset-bottom))
+              max(10px, env(safe-area-inset-left)) !important;
+          }
+
+          .attendance-card,
+          .attendance-recent-card {
+            max-width: none !important;
+            border-radius: 18px !important;
+            box-shadow: none !important;
+          }
+
+          .attendance-card {
+            padding: 20px 16px !important;
+          }
+
+          .attendance-recent-card {
+            padding: 18px 16px !important;
+            margin-top: 10px !important;
+          }
+
+          .attendance-logo {
+            margin-bottom: 18px !important;
+          }
+
+          .attendance-logo img {
+            width: 126px !important;
+            height: auto !important;
+          }
+
+          .attendance-today {
+            margin-bottom: 20px !important;
+            padding: 14px !important;
+          }
+
+          .attendance-week-header {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+            gap: 5px !important;
+          }
+
+          .attendance-week-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          .attendance-week-day {
+            padding: 11px 12px !important;
+          }
+
+          .attendance-workers {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .attendance-worker-chip {
+            width: 100% !important;
+            min-height: 48px !important;
+            padding: 10px 8px !important;
+            border-radius: 12px !important;
+            font-size: 14px !important;
+            line-height: 1.25 !important;
+          }
+
+          .attendance-field {
+            min-height: 52px !important;
+            font-size: 16px !important;
+            margin-bottom: 16px !important;
+          }
+
+          .attendance-date-block {
+            margin-bottom: 16px !important;
+          }
+
+          .attendance-time-row {
+            gap: 10px !important;
+            margin-bottom: 8px !important;
+          }
+
+          .attendance-submit {
+            min-height: 52px !important;
+            margin-top: 12px !important;
+            border-radius: 14px !important;
+            font-size: 16px !important;
+          }
+
+          .attendance-status {
+            margin-top: 14px !important;
+            padding: 10px 12px !important;
+            border-radius: 12px !important;
+            background: #f5f5f7 !important;
+            line-height: 1.4 !important;
+          }
+
+          .attendance-modal-overlay {
+            align-items: flex-end !important;
+            padding:
+              12px
+              max(10px, env(safe-area-inset-right))
+              max(10px, env(safe-area-inset-bottom))
+              max(10px, env(safe-area-inset-left)) !important;
+          }
+
+          .attendance-modal-card {
+            max-width: none !important;
+            border-radius: 20px 20px 16px 16px !important;
+            padding: 22px 16px !important;
+          }
+
+          .attendance-modal-card button {
+            min-height: 50px !important;
+            font-size: 16px !important;
+          }
+
+          .attendance-recent-header {
+            align-items: flex-start !important;
+          }
+
+          .attendance-recent-item > div:first-child {
+            gap: 6px !important;
+            flex-direction: column !important;
+          }
+
+          .attendance-admin-link {
+            margin-top: 18px !important;
+            padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+            text-align: center !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .attendance-workers {
+            grid-template-columns: 1fr !important;
+          }
+
+          .attendance-time-row {
+            flex-direction: column !important;
+          }
         }
       `}</style>
 
       {/* --- MODAL --- */}
       {zobrazitPotvrdenie && (
-        <div style={{
+        <div className="attendance-modal-overlay" style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.4)',
@@ -394,7 +555,7 @@ export default function Home() {
           alignItems: 'center',
           padding: '20px'
         }}>
-          <div style={{
+          <div className="attendance-modal-card" style={{
             backgroundColor: '#ffffff',
             borderRadius: '20px',
             padding: '30px 24px',
@@ -455,13 +616,13 @@ export default function Home() {
       )}
       {/* --- KONIEC MODALU --- */}
 
-      <div style={{ width: '100%', maxWidth: '720px', backgroundColor: 'white', padding: '36px 44px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      <div className="attendance-card" style={{ width: '100%', maxWidth: '720px', backgroundColor: 'white', padding: '36px 44px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
         
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div className="attendance-logo" style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Image src="/logo.png" alt="Logo" width={150} height={60} style={{ objectFit: 'contain' }} />
         </div>
 
-        <div style={{
+        <div className="attendance-today" style={{
           marginBottom: '26px',
           padding: '14px 16px',
           borderRadius: '14px',
@@ -515,7 +676,7 @@ export default function Home() {
 
         {tyzdennyPrehlad.length > 0 && (
           <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', marginBottom: '10px' }}>
+            <div className="attendance-week-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px', marginBottom: '10px' }}>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Tento týždeň</div>
                 <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kontrola zápisov od pondelka do soboty</div>
@@ -525,7 +686,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+            <div className="attendance-week-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
               {tyzdennyPrehlad.map(den => {
                 const jeHotovy = den.stav === 'hotovy'
                 const jeNeuplny = den.stav === 'neuplny'
@@ -542,7 +703,7 @@ export default function Home() {
                 const okraj = jeHotovy ? '#bbf7d0' : jeNeuplny ? '#fed7aa' : jeBezZapisu ? '#fecaca' : '#e5e7eb'
 
                 return (
-                  <div key={den.datum} style={{ padding: '10px 12px', borderRadius: '12px', backgroundColor: pozadie, border: `1px solid ${okraj}` }}>
+                  <div className="attendance-week-day" key={den.datum} style={{ padding: '10px 12px', borderRadius: '12px', backgroundColor: pozadie, border: `1px solid ${okraj}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                       <div>
                         <div style={{ fontSize: '11px', color: '#1d1d1f', fontWeight: '650' }}>{den.den}</div>
@@ -569,13 +730,16 @@ export default function Home() {
             <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'block' }}>
               Zamestnanci (vyberte viacerých)
             </span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <div className="attendance-workers" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {zoznamZamestnancov.map((z, i) => {
                 const isSelected = vybraneMena.includes(z.meno)
                 return (
-                  <div 
+                  <button
+                    type="button"
+                    className="attendance-worker-chip"
                     key={i}
                     onClick={() => toggleZamestnanec(z.meno)}
+                    aria-pressed={isSelected}
                     style={{
                       padding: '8px 16px',
                       backgroundColor: isSelected ? '#0071e3' : '#f5f5f7',
@@ -590,7 +754,7 @@ export default function Home() {
                     }}
                   >
                     {z.meno}
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -600,7 +764,7 @@ export default function Home() {
             value={zakazka} 
             onChange={e => setZakazka(e.target.value)} 
             required 
-            style={{ ...inputStyle, color: zakazka ? '#000000' : '#9ca3af' }}
+            className="attendance-field" style={{ ...inputStyle, color: zakazka ? '#000000' : '#9ca3af' }}
           >
             <option value="" disabled>Vyberte zákazku zo zoznamu</option>
             {aktivneZakazky.map((z, i) => (
@@ -608,37 +772,37 @@ export default function Home() {
             ))}
           </select>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
+          <div className="attendance-date-block" style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
             <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dátum</span>
-            <input type="date" value={datum} onChange={e => setDatum(e.target.value)} style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+            <input type="date" value={datum} onChange={e => setDatum(e.target.value)} className="attendance-field" style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
           </div>
           
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
+          <div className="attendance-time-row" style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Príchod</span>
-              <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+              <input type="time" value={prichod} onChange={e => setPrichod(e.target.value)} required className="attendance-field" style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odchod</span>
-              <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
+              <input type="time" value={odchod} onChange={e => setOdchod(e.target.value)} required className="attendance-field" style={{ ...inputStyle, marginBottom: '0', color: '#000000' }} />
             </div>
           </div>
 
-          <button type="submit" style={{ marginTop: '10px', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
+          <button className="attendance-submit" type="submit" style={{ marginTop: '10px', padding: '14px', backgroundColor: '#0071e3', color: 'white', border: 'none', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'background-color 0.2s' }}>
             Skontrolovať záznam
           </button>
         </form>
 
         {status && (
-          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', fontWeight: '500', color: status.includes('✅') ? '#34c759' : '#ff3b30' }}>
+          <div className="attendance-status" style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', fontWeight: '500', color: status.includes('✅') ? '#34c759' : '#ff3b30' }}>
             {status}
           </div>
         )}
       </div>
 
       {posledneZapisy.length > 0 && (
-        <div style={{ width: '100%', maxWidth: '720px', marginTop: '18px', backgroundColor: '#ffffff', padding: '22px 24px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+        <div className="attendance-recent-card" style={{ width: '100%', maxWidth: '720px', marginTop: '18px', backgroundColor: '#ffffff', padding: '22px 24px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+          <div className="attendance-recent-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <div>
               <div style={{ fontSize: '15px', fontWeight: '600', color: '#1d1d1f' }}>Posledné zápisy</div>
               <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>Zápisy odoslané z tohto zariadenia počas tejto relácie.</div>
@@ -657,7 +821,7 @@ export default function Home() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {posledneZapisy.map(zapis => (
-              <div key={zapis.id} style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#f5f5f7', border: '1px solid #e5e5e5' }}>
+              <div className="attendance-recent-item" key={zapis.id} style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#f5f5f7', border: '1px solid #e5e5e5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#1d1d1f', lineHeight: '1.4' }}>{zapis.mena.join(', ')}</div>
@@ -675,7 +839,7 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ marginTop: '30px' }}>
+      <div className="attendance-admin-link" style={{ marginTop: '30px' }}>
         <Link href="/dashboard" style={{ color: '#d1d5db', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s' }}>Administrácia</Link>
       </div>
     </div>
