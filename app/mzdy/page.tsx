@@ -273,6 +273,10 @@ export default function MzdyPage() {
   }
 
   function spustitExport() {
+    if (filterPolovica === 'cely') {
+      alert('Pre PDF vyberte 1.–15. alebo 16.–koniec mesiaca.')
+      return
+    }
     window.print()
   }
 
@@ -519,7 +523,7 @@ export default function MzdyPage() {
           }
         }
 
-        @page { size: A4 landscape; margin: 12mm; }
+        @page { size: A4 portrait; margin: 14mm; }
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           html, body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
@@ -528,7 +532,8 @@ export default function MzdyPage() {
           .ukazat-iba-pri-tlaci { display: block !important; }
           span.ukazat-iba-pri-tlaci { display: inline-block !important; }
           .hlavny-kontajner { boxShadow: none !important; padding: 0 !important; maxWidth: 100% !important; width: 100% !important; }
-          .print-card { box-shadow: none !important; border: 1px solid #d2d2d7 !important; break-inside: avoid; }
+          .hlavny-kontajner > *:not(.pdf-vyplata) { display: none !important; }
+          .pdf-vyplata { display: block !important; }
           table { width: 100% !important; min-width: 0 !important; }
           thead { display: table-header-group; }
           tr { break-inside: avoid; page-break-inside: avoid; }
@@ -557,36 +562,44 @@ export default function MzdyPage() {
           </div>
         </div>
 
-        <div className="ukazat-iba-pri-tlaci" style={{ width: '100%', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px', borderBottom: '2px solid #1d1d1f', paddingBottom: '10px' }}>
-            <div>
-              <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · firemná uzávierka</div>
-              <h1 style={{ fontSize: '22px', margin: '3px 0 0 0', color: '#1d1d1f' }}>Výplaty a fakturácia</h1>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '11px', color: '#86868b' }}>
-              <div>{nazovMesiacaBezPolovice}</div>
-              <strong style={{ color: '#1d1d1f' }}>{nazovVyplatnehoObdobia}</strong>
-            </div>
+        <div className="pdf-vyplata ukazat-iba-pri-tlaci" style={{ width: '100%' }}>
+          <div style={{ borderBottom: '2px solid #1d1d1f', paddingBottom: '10px', marginBottom: '18px' }}>
+            <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · výplaty</div>
+            <h1 style={{ fontSize: '22px', margin: '4px 0 0 0', color: '#1d1d1f' }}>{nazovVyplatnehoObdobia}</h1>
+            <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>{nazovMesiacaBezPolovice}</div>
           </div>
 
-          <div className="print-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '12px', border: '1px solid #d2d2d7', borderRadius: '10px', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
-              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Pracovníci</div>
-              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{pocetPracovnikovVyplata}</div>
-            </div>
-            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
-              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Fond / pracovník</div>
-              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{fondVybranehoObdobia.toFixed(1)} h</div>
-            </div>
-            <div style={{ padding: '10px 12px', borderRight: '1px solid #d2d2d7' }}>
-              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Odpracované spolu</div>
-              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{celkoveOdpracovaneHodiny.toFixed(2)} h</div>
-            </div>
-            <div style={{ padding: '10px 12px' }}>
-              <div style={{ fontSize: '8px', color: '#86868b', textTransform: 'uppercase', fontWeight: '700' }}>Na výplatu spolu</div>
-              <div style={{ fontSize: '16px', fontWeight: '750', marginTop: '3px' }}>{celkovaSumaNaVyplatu.toFixed(2)} €</div>
-            </div>
-          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #d2d2d7' }}>
+                <th style={{ padding: '9px 8px', textAlign: 'left', fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pracovník</th>
+                <th style={{ padding: '9px 8px', textAlign: 'right', fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hodiny</th>
+                <th style={{ padding: '9px 8px', textAlign: 'right', fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zarobil</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(zamestnanciHodiny)
+                .sort(([menoA], [menoB]) => menoA.localeCompare(menoB, 'sk'))
+                .map(([meno, hodiny]) => {
+                  const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
+                  const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+                  const suma = hodiny * sadzba
+
+                  return (
+                    <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
+                      <td style={{ padding: '11px 8px', fontWeight: '650', color: '#1d1d1f' }}>{meno}</td>
+                      <td style={{ padding: '11px 8px', textAlign: 'right', color: '#1d1d1f' }}>{hodiny.toFixed(2)} h</td>
+                      <td style={{ padding: '11px 8px', textAlign: 'right', fontWeight: '750', color: '#1d1d1f' }}>{suma.toFixed(2)} €</td>
+                    </tr>
+                  )
+                })}
+              <tr style={{ borderTop: '2px solid #1d1d1f' }}>
+                <td style={{ padding: '12px 8px', fontWeight: '750' }}>Spolu</td>
+                <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '750' }}>{celkoveOdpracovaneHodiny.toFixed(2)} h</td>
+                <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '800' }}>{celkovaSumaNaVyplatu.toFixed(2)} €</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '20px' }}>
@@ -602,11 +615,23 @@ export default function MzdyPage() {
               </select>
               <button
                 onClick={spustitExport}
-                style={{ ...buttonPrimaryStyle, fontSize: '10px', padding: '8px 14px' } as any}
-                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
-                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
+                disabled={filterPolovica === 'cely'}
+                title={filterPolovica === 'cely' ? 'Vyberte 1.–15. alebo 16.–koniec mesiaca' : 'Vytlačiť jednoduchý prehľad výplaty do PDF'}
+                style={{
+                  ...buttonPrimaryStyle,
+                  fontSize: '10px',
+                  padding: '8px 14px',
+                  opacity: filterPolovica === 'cely' ? 0.45 : 1,
+                  cursor: filterPolovica === 'cely' ? 'not-allowed' : 'pointer'
+                } as any}
+                onMouseEnter={(e) => {
+                  if (filterPolovica !== 'cely') (e.currentTarget as any).style.backgroundColor = '#0077ed'
+                }}
+                onMouseLeave={(e) => {
+                  if (filterPolovica !== 'cely') (e.currentTarget as any).style.backgroundColor = '#0071e3'
+                }}
               >
-                PDF
+                {filterPolovica === 'prva' ? 'PDF 1.–15.' : filterPolovica === 'druha' ? 'PDF 16.–koniec' : 'PDF · vyber polovicu'}
               </button>
             </div>
           </div>
