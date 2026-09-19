@@ -71,6 +71,34 @@ export default function MzdyPage() {
   if (filterPolovica === 'prva') textPolovice = ' (1. polovica: 1. - 15. deň)';
   if (filterPolovica === 'druha') textPolovice = ' (2. polovica: 16. deň - koniec)';
   const aktualnyNazovMesiaca = (zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac) + textPolovice;
+  const nazovMesiacaBezPolovice = zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac
+
+  function vypocitajFondObdobia(mesiacText: string, odDna: number, doDna: number) {
+    const [rokText, mesiacCisloText] = mesiacText.split('-')
+    const rok = Number(rokText)
+    const mesiacCislo = Number(mesiacCisloText)
+    if (!rok || !mesiacCislo) return 0
+
+    const poslednyDen = new Date(Date.UTC(rok, mesiacCislo, 0)).getUTCDate()
+    const koniec = Math.min(doDna, poslednyDen)
+    let fond = 0
+
+    for (let den = odDna; den <= koniec; den++) {
+      const denVTyzdni = new Date(Date.UTC(rok, mesiacCislo - 1, den)).getUTCDay()
+      if (denVTyzdni === 0) continue
+      fond += denVTyzdni === 6 ? 10.5 : 11.5
+    }
+
+    return fond
+  }
+
+  const [rokFonduText, mesiacFonduText] = filterMesiac.split('-')
+  const pocetDniVoVybranomMesiaci = rokFonduText && mesiacFonduText
+    ? new Date(Date.UTC(Number(rokFonduText), Number(mesiacFonduText), 0)).getUTCDate()
+    : 31
+  const fondPrvaPolovica = vypocitajFondObdobia(filterMesiac, 1, 15)
+  const fondDruhaPolovica = vypocitajFondObdobia(filterMesiac, 16, pocetDniVoVybranomMesiaci)
+  const fondCelyMesiac = fondPrvaPolovica + fondDruhaPolovica
 
   useEffect(() => {
     const ulozeneStavy = localStorage.getItem('stavyStaviebAdmin')
@@ -293,31 +321,75 @@ export default function MzdyPage() {
           <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#86868b' }}>Obdobie: <strong>{aktualnyNazovMesiaca}</strong></p>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px', backgroundColor: '#f5f5f7', padding: '12px 12px', borderRadius: '10px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', fontSize: '12px' }}>
-            <span className="skryt-pri-tlaci" style={{ fontWeight: '600', color: '#1d1d1f' }}>Obdobie:</span>
-            <span className="ukazat-iba-pri-tlaci" style={{ fontWeight: '600' }}>Vybrané: {aktualnyNazovMesiaca}</span>
-            
-            <select value={filterMesiac} onChange={(e) => setFilterMesiac(e.target.value)} className="skryt-pri-tlaci" style={{...inputStyle, minWidth: '140px'} as any}>
-              {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
-            </select>
+        <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný prehľad</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Fond hodín na jedného pracovníka · sviatky sa počítajú ako bežný pracovný deň.</div>
+            </div>
 
-            <select value={filterPolovica} onChange={(e) => setFilterPolovica(e.target.value)} className="skryt-pri-tlaci" style={{...inputStyle, minWidth: '140px'} as any}>
-              <option value="cely">Celý mesiac</option>
-              <option value="prva">1. polovica (1.-15.)</option>
-              <option value="druha">2. polovica (16.-koniec)</option>
-            </select>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={filterMesiac} onChange={(e) => setFilterMesiac(e.target.value)} style={{...inputStyle, width: 'auto', minWidth: '148px', backgroundColor: '#ffffff'} as any}>
+                {zoznamMesiacov.map((m) => <option key={m.hodnota} value={m.hodnota}>{m.nazov}</option>)}
+              </select>
+              <button
+                onClick={spustitExport}
+                style={{ ...buttonPrimaryStyle, fontSize: '10px', padding: '8px 14px' } as any}
+                onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
+                onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
+              >
+                PDF
+              </button>
+            </div>
           </div>
-          
-          <button 
-            onClick={spustitExport} 
-            className="skryt-pri-tlaci" 
-            style={{ ...buttonPrimaryStyle, fontSize: '11px' } as any}
-            onMouseEnter={(e) => (e.currentTarget as any).style.backgroundColor = '#0077ed'}
-            onMouseLeave={(e) => (e.currentTarget as any).style.backgroundColor = '#0071e3'}
-          >
-            🖨️ PDF
-          </button>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', borderBottom: '1px solid #eeeeef' }}>
+            <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef', backgroundColor: filterPolovica === 'prva' ? '#f7fbff' : '#ffffff' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>1.–15.</div>
+              <div style={{ marginTop: '7px', fontSize: '26px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.03em' }}>{fondPrvaPolovica.toFixed(1)} h</div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '5px' }}>Fond 1. výplatného obdobia</div>
+            </div>
+            <div style={{ padding: '18px 20px', borderRight: '1px solid #eeeeef', backgroundColor: filterPolovica === 'druha' ? '#f7fbff' : '#ffffff' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>16.–koniec</div>
+              <div style={{ marginTop: '7px', fontSize: '26px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.03em' }}>{fondDruhaPolovica.toFixed(1)} h</div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '5px' }}>Fond 2. výplatného obdobia</div>
+            </div>
+            <div style={{ padding: '18px 20px', backgroundColor: filterPolovica === 'cely' ? '#f7fbff' : '#ffffff' }}>
+              <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Celý mesiac</div>
+              <div style={{ marginTop: '7px', fontSize: '26px', fontWeight: '750', color: '#0071e3', letterSpacing: '-0.03em' }}>{fondCelyMesiac.toFixed(1)} h</div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '5px' }}>{nazovMesiacaBezPolovice}</div>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '10px', color: '#86868b', fontWeight: '650', marginRight: '4px' }}>Zobraziť výplatu:</span>
+            {[
+              { key: 'cely', label: 'Celý mesiac' },
+              { key: 'prva', label: '1.–15.' },
+              { key: 'druha', label: '16.–koniec' }
+            ].map(obdobie => {
+              const aktivne = filterPolovica === obdobie.key
+              return (
+                <button
+                  key={obdobie.key}
+                  type="button"
+                  onClick={() => setFilterPolovica(obdobie.key)}
+                  style={{
+                    padding: '6px 11px',
+                    borderRadius: '9px',
+                    border: aktivne ? '1px solid #0071e3' : '1px solid #d2d2d7',
+                    backgroundColor: aktivne ? '#e8f3ff' : '#ffffff',
+                    color: aktivne ? '#0066cc' : '#6e6e73',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: aktivne ? '700' : '600'
+                  }}
+                >
+                  {obdobie.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <div style={{ marginBottom: '30px', pageBreakInside: 'avoid', ...cardStyle, overflowX: 'auto' }}>
