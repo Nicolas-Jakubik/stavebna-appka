@@ -451,7 +451,7 @@ export default function MzdyPage() {
         <div className="skryt-pri-tlaci" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef' }}>
             <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Porovnanie výplat v mesiaci</div>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia naraz · ${nazovMesiacaBezPolovice}</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Obe výplatné obdobia naraz · {nazovMesiacaBezPolovice}</div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))' }}>
