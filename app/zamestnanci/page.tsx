@@ -22,6 +22,7 @@ export default function ZamestnanciPage() {
   const [hladat, setHladat] = useState('')
   const [zoradenie, setZoradenie] = useState<'az' | 'za' | 'sadzba_desc' | 'sadzba_asc'>('az')
   const [pocetDochadzkyPodlaMena, setPocetDochadzkyPodlaMena] = useState<Record<string, number>>({})
+  const [hodinyPodlaMena, setHodinyPodlaMena] = useState<Record<string, number>>({})
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -94,6 +95,24 @@ export default function ZamestnanciPage() {
     }
   }
 
+  function vypocitajHodiny(prichod: string, odchod: string) {
+    if (!prichod || !odchod) return 0
+
+    const [pHod, pMin] = prichod.split(':').map(Number)
+    const [oHod, oMin] = odchod.split(':').map(Number)
+    let minutySpolu = (oHod * 60 + oMin) - (pHod * 60 + pMin)
+
+    if (minutySpolu < 0) minutySpolu += 24 * 60
+
+    let hodinySpolu = minutySpolu / 60
+    if (hodinySpolu > 5.5) hodinySpolu -= 0.5
+    return hodinySpolu
+  }
+
+  function formatujHodiny(hodiny: number) {
+    return Number.isInteger(hodiny) ? String(hodiny) : hodiny.toFixed(1)
+  }
+
   async function nacitajZamestnancov() {
     const [{ data: dataZamestnanci, error: chybaZamestnancov }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
       supabase
@@ -102,7 +121,7 @@ export default function ZamestnanciPage() {
         .order('meno', { ascending: true }),
       supabase
         .from('dochadzka')
-        .select('meno')
+        .select('meno, prichod, odchod')
     ])
 
     if (chybaZamestnancov) {
@@ -114,16 +133,24 @@ export default function ZamestnanciPage() {
     if (chybaDochadzky) {
       console.error("Chyba načítania dochádzky pracovníkov:", chybaDochadzky)
       setPocetDochadzkyPodlaMena({})
+      setHodinyPodlaMena({})
     } else {
       const pocty: Record<string, number> = {}
+      const hodiny: Record<string, number> = {}
 
       ;(dataDochadzka || []).forEach(zaznam => {
         const meno = String(zaznam.meno || '').trim()
         if (!meno) return
+
         pocty[meno] = (pocty[meno] || 0) + 1
+        hodiny[meno] = (hodiny[meno] || 0) + vypocitajHodiny(
+          String(zaznam.prichod || ''),
+          String(zaznam.odchod || '')
+        )
       })
 
       setPocetDochadzkyPodlaMena(pocty)
+      setHodinyPodlaMena(hodiny)
     }
   }
 
@@ -569,13 +596,14 @@ export default function ZamestnanciPage() {
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovník</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '140px' }}>Hodinová sadzba</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Dochádzka</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '110px' }}>Hodiny</th>
                   <th style={{ padding: '10px 18px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700', width: '180px', textAlign: 'right' }}>Akcia</th>
                 </tr>
               </thead>
               <tbody>
                 {zamestnanciNaZobrazenie.length === 0 ? (
                   <tr className="simple-empty-row">
-                    <td className="simple-empty-cell" colSpan={4} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
+                    <td className="simple-empty-cell" colSpan={5} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>
                       {hladat ? 'Žiadny pracovník nezodpovedá vyhľadávaniu.' : 'Zatiaľ nie je pridaný žiadny pracovník.'}
                     </td>
                   </tr>
@@ -626,6 +654,9 @@ export default function ZamestnanciPage() {
                         }}>
                           {pocetDochadzkyPodlaMena[String(z.meno || '').trim()] || 0}
                         </span>
+                      </td>
+                      <td className="simple-mobile-cell" data-label="Hodiny" style={{ padding: '10px 12px', color: '#1d1d1f', fontSize: '11px', fontWeight: '700' }}>
+                        {formatujHodiny(hodinyPodlaMena[String(z.meno || '').trim()] || 0)} h
                       </td>
                       <td className="simple-mobile-cell simple-mobile-actions" data-label="Akcia" style={{ padding: '10px 18px', textAlign: 'right' }}>
                         {upravovaneId === z.id ? (
