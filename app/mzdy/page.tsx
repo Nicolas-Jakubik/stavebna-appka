@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/adminSupabase'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
