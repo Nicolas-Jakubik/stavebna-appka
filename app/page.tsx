@@ -1,11 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
 import { adminStore } from '../lib/store'
+import RecorderGate from '../components/RecorderGate'
 
 export default function Home() {
+  return <RecorderGate><AttendanceForm /></RecorderGate>
+}
+
+function AttendanceForm() {
   // Zmena: Namiesto jedného mena ukladáme pole vybraných mien
   const [vybraneMena, setVybraneMena] = useState<string[]>([])
   const [zakazka, setZakazka] = useState('')
