@@ -52,11 +52,12 @@ test('recorder privileges, validation and server routes', async t => {
       assert.match(response.headers.get('set-cookie'), /SameSite=strict/i)
       assert.equal((await session.GET(req('GET','',undefined,{cookie:''}))).status,401)
     })
-    await t.test('no cookie, unrestricted dates, private fields and tables are blocked before fetch', async () => {
-      assert.equal((await route.GET(req('GET','',undefined,{cookie:''}),ctx('zamestnanci'))).status,401)
-      for(const table of ['secrets','__proto__','toString','rpc/function']) assert.equal((await route.GET(req(),ctx(table))).status,400)
-      for(const query of ['?select=sadzba','?select=*,zamestnanci(*)','?select=meno&or=(true)','?select=meno','?datum=gte.2020-01-01&datum=lte.2026-01-01']) assert.equal((await route.GET(req('GET',query),ctx('dochadzka'))).status,400)
-      assert.equal(calls.length,0)
+    await t.test('public access is allowed but unrestricted dates, private fields and tables are blocked', async () => {
+      assert.equal((await route.GET(req('GET','?select=meno',undefined,{cookie:''}),ctx('zamestnanci'))).status,200)
+      const callsAfterPublicRead = calls.length
+      for(const table of ['secrets','__proto__','toString','rpc/function']) assert.equal((await route.GET(req('GET','',undefined,{cookie:''}),ctx(table))).status,400)
+      for(const query of ['?select=sadzba','?select=*,zamestnanci(*)','?select=meno&or=(true)','?select=meno','?datum=gte.2020-01-01&datum=lte.2026-01-01']) assert.equal((await route.GET(req('GET',query,undefined,{cookie:''}),ctx('dochadzka'))).status,400)
+      assert.equal(calls.length,callsAfterPublicRead)
     })
     await t.test('read projection, active jobs and credentials are owned by server', async () => {
       assert.equal((await route.GET(req('GET','?select=meno',undefined,{apikey:'evil','accept-profile':'private'}),ctx('zamestnanci'))).status,200)
@@ -78,7 +79,7 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal((await route.POST(req('POST','',[entry],{origin:'https://evil.example'}),ctx('dochadzka'))).status,403)
       assert.equal((await route.POST(req('POST','',[entry]),ctx('zamestnanci'))).status,403)
       global.fetch = async (url,init) => { calls.push({url:String(url),init}); return new Response(null,{status:204}) }
-      assert.equal((await route.POST(req('POST','',[entry]),ctx('dochadzka'))).status,201)
+      assert.equal((await route.POST(req('POST','',[entry],{cookie:''}),ctx('dochadzka'))).status,201)
       assert.match(calls.at(-1).url,/\/rest\/v1\/rpc\/record_attendance_secure$/)
       assert.deepEqual(JSON.parse(calls.at(-1).init.body),{entries:[entry]})
       global.fetch = async () => Response.json({code:'23505',message:'overlap'},{status:409})
