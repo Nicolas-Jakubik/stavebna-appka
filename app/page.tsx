@@ -4,10 +4,9 @@ import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
 import { adminStore } from '../lib/store'
-import RecorderGate from '../components/RecorderGate'
 
 export default function Home() {
-  return <RecorderGate><AttendanceForm /></RecorderGate>
+  return <AttendanceForm />
 }
 
 function AttendanceForm() {
