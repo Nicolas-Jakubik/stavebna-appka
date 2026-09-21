@@ -22,6 +22,7 @@ type Finance = {
 type Expense = {
   zakazka_id: number | string
   suma: number | string
+  uhradene: boolean
 }
 
 function num(value: unknown) {
@@ -67,7 +68,7 @@ export default function FinanciePage() {
       ] = await Promise.all([
         supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
         supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane,prijate_platby'),
-        supabase.from('naklady_stavby').select('zakazka_id,suma'),
+        supabase.from('naklady_stavby').select('zakazka_id,suma,uhradene'),
       ])
 
       if (cancelled) return
@@ -94,10 +95,14 @@ export default function FinanciePage() {
   }, [financeRows])
 
   const costsByProject = useMemo(() => {
-    const map = new Map<string, number>()
+    const map = new Map<string, { total: number; paid: number }>()
     expenses.forEach(row => {
       const key = String(row.zakazka_id)
-      map.set(key, (map.get(key) || 0) + num(row.suma))
+      const current = map.get(key) || { total: 0, paid: 0 }
+      const amount = num(row.suma)
+      current.total += amount
+      if (row.uhradene !== false) current.paid += amount
+      map.set(key, current)
     })
     return map
   }, [expenses])
@@ -105,13 +110,16 @@ export default function FinanciePage() {
   const rows = useMemo(() => {
     return projects.map(project => {
       const finance = financeByProject.get(String(project.id))
-      const costs = costsByProject.get(String(project.id)) || 0
+      const projectCosts = costsByProject.get(String(project.id)) || { total: 0, paid: 0 }
+      const costs = projectCosts.total
+      const paidCosts = projectCosts.paid
+      const unpaidCosts = costs - paidCosts
       const price = num(finance?.cena_zakazky)
       const budget = num(finance?.budget_nakladov)
       const invoiced = num(finance?.vyfakturovane)
       const received = num(finance?.prijate_platby)
       const remaining = budget - costs
-      const cashflow = received - costs
+      const cashflow = received - paidCosts
       const usage = budget > 0 ? (costs / budget) * 100 : 0
 
       return {
@@ -122,6 +130,8 @@ export default function FinanciePage() {
         remaining,
         invoiced,
         received,
+        paidCosts,
+        unpaidCosts,
         cashflow,
         usage,
         hasFinance: Boolean(finance) || costs > 0,
@@ -146,6 +156,8 @@ export default function FinanciePage() {
       acc.price += row.price
       acc.budget += row.budget
       acc.costs += row.costs
+      acc.paidCosts += row.paidCosts
+      acc.unpaidCosts += row.unpaidCosts
       acc.invoiced += row.invoiced
       acc.received += row.received
       acc.cashflow += row.cashflow
@@ -155,6 +167,8 @@ export default function FinanciePage() {
       price: 0,
       budget: 0,
       costs: 0,
+      paidCosts: 0,
+      unpaidCosts: 0,
       invoiced: 0,
       received: 0,
       cashflow: 0,
@@ -292,7 +306,7 @@ export default function FinanciePage() {
               <div style={{ ...cardStyle, padding: '17px 18px', backgroundColor: totals.cashflow < 0 ? '#fffafa' : '#f7fbff' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálny cashflow</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(totals.cashflow)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté platby mínus evidované náklady</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté platby mínus zaplatené náklady</div>
               </div>
             </div>
 
@@ -363,7 +377,12 @@ export default function FinanciePage() {
                             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{row.stav || 'Aktívna'}</div>
                           </td>
                           <td data-label="Budget" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '650' }}>{euro(row.budget)}</td>
-                          <td data-label="Náklady" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '650' }}>{euro(row.costs)}</td>
+                          <td data-label="Náklady" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: '700' }}>{euro(row.costs)}</div>
+                            <div style={{ marginTop: '3px', color: row.unpaidCosts > 0 ? '#9a6700' : '#86868b', fontSize: '8px', fontWeight: '650' }}>
+                              {row.unpaidCosts > 0 ? `neuhradené ${euro(row.unpaidCosts)}` : `zaplatené ${euro(row.paidCosts)}`}
+                            </div>
+                          </td>
                           <td data-label="Zostáva" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '700', color: row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(row.remaining)}</td>
                           <td data-label="Vyfakturované" style={{ padding: '12px', whiteSpace: 'nowrap' }}>{euro(row.invoiced)}</td>
                           <td data-label="Prijaté" style={{ padding: '12px', whiteSpace: 'nowrap' }}>{euro(row.received)}</td>
@@ -401,7 +420,7 @@ export default function FinanciePage() {
             </div>
 
             <div style={{ marginTop: '10px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-              Súhrn používa rovnaké reálne finančné údaje ako detail stavby. Náklady pracovníkov a stav zaplatenia nákladov zostávajú v tejto fáze manuálne podľa pravidiel finančného modulu V1.
+              Súhrn používa rovnaké reálne finančné údaje ako detail stavby. Budget počíta všetky náklady, cashflow iba náklady označené ako uhradené.
             </div>
           </>
         )}

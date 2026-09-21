@@ -19,6 +19,7 @@ type ExpenseRow = {
   popis: string
   kategoria: Category
   suma: number | string
+  uhradene: boolean
   poznamka?: string | null
 }
 
@@ -192,6 +193,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     popis: '',
     kategoria: 'Materiál' as Category,
     suma: 0,
+    uhradene: true,
     poznamka: '',
   })
 
@@ -239,10 +241,16 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     [expenses]
   )
 
+  const paidCosts = useMemo(
+    () => expenses.filter(expense => expense.uhradene !== false).reduce((sum, expense) => sum + numberValue(expense.suma), 0),
+    [expenses]
+  )
+  const unpaidCosts = currentCosts - paidCosts
+
   const remainingBudget = values.budget - currentCosts
   const unpaid = values.vyfakturovane - values.prijate
   const expectedProfit = values.cena - values.budget
-  const currentCashflow = values.prijate - currentCosts
+  const currentCashflow = values.prijate - paidCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
   const budgetExceeded = values.budget > 0 && currentCosts > values.budget
 
@@ -302,6 +310,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       popis: '',
       kategoria: 'Materiál',
       suma: 0,
+      uhradene: true,
       poznamka: '',
     })
     setExpenseOpen(true)
@@ -314,6 +323,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       popis: expense.popis,
       kategoria: expense.kategoria,
       suma: numberValue(expense.suma),
+      uhradene: expense.uhradene !== false,
       poznamka: expense.poznamka || '',
     })
     setExpenseOpen(true)
@@ -338,6 +348,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       popis,
       kategoria: expenseForm.kategoria,
       suma,
+      uhradene: expenseForm.uhradene,
       poznamka: expenseForm.poznamka.trim() || null,
       updated_at: new Date().toISOString(),
     }
@@ -561,7 +572,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', paddingBottom: '10px', borderBottom: '1px solid #ededf0' }}>
               <span style={{ color: '#6e6e73', fontSize: '11px' }}>Zaplatené náklady</span>
-              <strong style={{ fontSize: '12px' }}>− {formatCurrency(currentCosts)}</strong>
+              <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidCosts)}</strong>
             </div>
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: currentCashflow < 0 ? '#fef2f2' : '#f2f8ff' }}>
               <div style={{ fontSize: '9px', textTransform: 'uppercase', color: '#86868b', letterSpacing: '0.05em', fontWeight: '700' }}>Aktuálny cashflow</div>
@@ -571,7 +582,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
             </div>
           </div>
           <div style={{ marginTop: '12px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-            V1 predpoklad: všetky zaevidované náklady sa považujú za zaplatené. Stav „uhradené / neuhradené“ doplníme neskôr.
+            Neuhradené náklady dodávateľom: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Do cashflow sa odpočítavajú iba náklady označené ako uhradené.
           </div>
         </div>
       </div>
@@ -602,14 +613,14 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
           <table className="finance-expense-table">
             <thead>
               <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
-                {['Dátum', 'Popis', 'Kategória', 'Suma', 'Akcie'].map(label => (
+                {['Dátum', 'Popis', 'Kategória', 'Suma', 'Stav', 'Akcie'].map(label => (
                   <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {expenses.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne náklady.</td></tr>
+                <tr><td colSpan={6} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne náklady.</td></tr>
               ) : expenses.map(expense => (
                 <tr key={expense.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(expense.datum)}</td>
@@ -621,6 +632,19 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
                     <span style={{ display: 'inline-flex', padding: '4px 7px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '9px', fontWeight: '700' }}>{expense.kategoria}</span>
                   </td>
                   <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(numberValue(expense.suma))}</td>
+                  <td data-label="Stav" style={{ padding: '11px 14px' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      padding: '4px 7px',
+                      borderRadius: '999px',
+                      backgroundColor: expense.uhradene !== false ? '#ecfdf5' : '#fff7ed',
+                      color: expense.uhradene !== false ? '#047857' : '#9a6700',
+                      fontSize: '9px',
+                      fontWeight: '750'
+                    }}>
+                      {expense.uhradene !== false ? 'Uhradené' : 'Neuhradené'}
+                    </span>
+                  </td>
                   <td data-label="Akcie" style={{ padding: '11px 14px' }}>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       <button type="button" onClick={() => openExpenseEdit(expense)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Upraviť</button>
@@ -697,6 +721,15 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
                   <label style={labelStyle}>Poznámka</label>
                   <input type="text" maxLength={500} placeholder="Voliteľné" value={expenseForm.poznamka} onChange={event => setExpenseForm(current => ({ ...current, poznamka: event.target.value }))} style={inputStyle} />
                 </div>
+                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '9px', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#f7f7f8', cursor: 'pointer', fontSize: '11px', fontWeight: '650' }}>
+                  <input
+                    type="checkbox"
+                    checked={expenseForm.uhradene}
+                    onChange={event => setExpenseForm(current => ({ ...current, uhradene: event.target.checked }))}
+                    style={{ width: '17px', height: '17px', accentColor: '#0071e3' }}
+                  />
+                  Náklad je už uhradený
+                </label>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
                 <button type="button" onClick={() => setExpenseOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
