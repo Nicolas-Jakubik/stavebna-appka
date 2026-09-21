@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '../../lib/adminSupabase'
 import AdminSidebar from '../../components/AdminSidebar'
 
@@ -650,6 +651,12 @@ export default function ZakazkyPage() {
                           </>
                         ) : (
                           <>
+                            <Link
+                              href={`/zakazky/${zak.id}`}
+                              style={{ color: '#1d1d1f', backgroundColor: '#ffffff', border: '1px solid #d2d2d7', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '6px 9px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                            >
+                              Detail
+                            </Link>
                             <button
                               type="button"
                               onClick={() => zacatUpravuNazvu(String(zak.id), zak.nazov)}
@@ -765,6 +772,12 @@ export default function ZakazkyPage() {
                           </>
                         ) : (
                           <>
+                            <Link
+                              href={`/zakazky/${zak.id}`}
+                              style={{ color: '#1d1d1f', backgroundColor: '#ffffff', border: '1px solid #d2d2d7', cursor: 'pointer', fontSize: '10px', fontWeight: '700', padding: '6px 9px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                            >
+                              Detail
+                            </Link>
                             <button
                               type="button"
                               onClick={() => zacatUpravuNazvu(String(zak.id), zak.nazov)}

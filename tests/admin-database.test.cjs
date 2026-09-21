@@ -73,6 +73,13 @@ test('admin gateway security and PostgREST compatibility', async t => {
       assert.equal(calls.at(-1).init.headers.get('accept-profile'), 'public')
       assert.equal(response.headers.get('apikey'), null)
     })
+    await t.test('finance tables are available only through the authenticated admin gateway', async () => {
+      for (const table of ['financie_stavby', 'naklady_stavby']) {
+        const response = await route.GET(req(), context(table))
+        assert.equal(response.status, 200)
+        assert.equal(new URL(calls.at(-1).url).pathname, `/rest/v1/${table}`)
+      }
+    })
     await t.test('authenticated insert, update and delete reach the correct table', async () => {
       for (const method of ['POST', 'PATCH', 'DELETE']) {
         const body = method === 'DELETE' ? undefined : '[{"meno":"Test"}]'
