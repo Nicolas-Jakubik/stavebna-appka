@@ -4,7 +4,7 @@ import Link from 'next/link'
 import RecorderLink from './RecorderLink'
 import { useState } from 'react'
 
-type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy'
+type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy' | 'financie'
 
 export default function AdminSidebar({
   active,
@@ -26,6 +26,7 @@ export default function AdminSidebar({
     { href: '/zakazky', label: 'Stavby', key: 'zakazky', short: 'S' },
     { href: '/zamestnanci', label: 'Zamestnanci', key: 'zamestnanci', short: 'Z' },
     { href: '/mzdy', label: 'Výplaty', key: 'mzdy', short: 'V' },
+    { href: '/financie', label: 'Financie', key: 'financie', short: 'F' },
   ]
 
   return (
