@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from './lib/adminSession'
 
-const ADMIN_PATHS = ['/dashboard', '/zakazky', '/zamestnanci', '/mzdy']
+const ADMIN_PATHS = ['/dashboard', '/zakazky', '/zamestnanci', '/mzdy', '/financie']
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
@@ -20,5 +20,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/zakazky/:path*', '/zamestnanci/:path*', '/mzdy/:path*'],
+  matcher: ['/dashboard/:path*', '/zakazky/:path*', '/zamestnanci/:path*', '/mzdy/:path*', '/financie/:path*'],
 }
