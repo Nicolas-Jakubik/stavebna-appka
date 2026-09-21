@@ -23,6 +23,21 @@ type ExpenseRow = {
   poznamka?: string | null
 }
 
+type PaymentRow = {
+  id: number | string
+  zakazka_id: number | string
+  datum: string
+  suma: number | string
+  popis: string
+  poznamka?: string | null
+}
+
+type ChartPoint = {
+  month: string
+  costs: number
+  payments: number
+}
+
 type Category = 'Pracovníci' | 'Materiál' | 'Subdodávatelia' | 'Mechanizácia' | 'Ostatné'
 
 const CATEGORIES: Category[] = ['Pracovníci', 'Materiál', 'Subdodávatelia', 'Mechanizácia', 'Ostatné']
@@ -31,7 +46,6 @@ const EMPTY_FINANCE = {
   cena_zakazky: 0,
   budget_nakladov: 0,
   vyfakturovane: 0,
-  prijate_platby: 0,
 }
 
 const cardStyle = {
@@ -122,34 +136,36 @@ function MetricCard({
   )
 }
 
-function FinanceMockChart() {
-  const data = [
-    { month: 'Jan', costs: 12000, payments: 0 },
-    { month: 'Feb', costs: 29000, payments: 25000 },
-    { month: 'Mar', costs: 42000, payments: 45000 },
-    { month: 'Apr', costs: 54000, payments: 65000 },
-    { month: 'Máj', costs: 65500, payments: 90000 },
-    { month: 'Jún', costs: 73500, payments: 110000 },
-  ]
-  const max = 120000
+function FinanceChart({ data }: { data: ChartPoint[] }) {
+  if (data.length === 0) {
+    return (
+      <div style={{ padding: '30px 12px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>
+        Graf sa zobrazí po pridaní prvého nákladu alebo platby od klienta.
+      </div>
+    )
+  }
+
+  const maxValue = Math.max(1, ...data.flatMap(point => [point.costs, point.payments]))
+  const roundedMax = Math.max(1000, Math.ceil(maxValue / 1000) * 1000)
   const left = 58
   const right = 655
   const top = 18
   const bottom = 194
-  const x = (index: number) => left + (index / (data.length - 1)) * (right - left)
-  const y = (value: number) => bottom - (value / max) * (bottom - top)
+  const denominator = Math.max(1, data.length - 1)
+  const x = (index: number) => data.length === 1 ? (left + right) / 2 : left + (index / denominator) * (right - left)
+  const y = (value: number) => bottom - (value / roundedMax) * (bottom - top)
   const path = (key: 'costs' | 'payments') =>
     data.map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(point[key])}`).join(' ')
-  const ticks = [0, 30000, 60000, 90000, 120000]
+  const ticks = [0, roundedMax * 0.25, roundedMax * 0.5, roundedMax * 0.75, roundedMax]
 
   return (
     <div>
       <div style={{ width: '100%', overflowX: 'auto' }}>
-        <svg viewBox="0 0 680 235" role="img" aria-label="Ukážkový graf kumulatívnych nákladov a prijatých platieb" style={{ width: '100%', minWidth: '560px', display: 'block' }}>
+        <svg viewBox="0 0 680 235" role="img" aria-label="Graf kumulatívnych nákladov a prijatých platieb" style={{ width: '100%', minWidth: '560px', display: 'block' }}>
           {ticks.map(tick => (
             <g key={tick}>
               <line x1={left} y1={y(tick)} x2={right} y2={y(tick)} stroke="#ededf0" strokeWidth="1" />
-              <text x="8" y={y(tick) + 4} fontSize="10" fill="#86868b">{tick === 0 ? '0 €' : `${tick / 1000}k €`}</text>
+              <text x="8" y={y(tick) + 4} fontSize="10" fill="#86868b">{formatCurrency(tick)}</text>
             </g>
           ))}
           <line x1={left} y1={top} x2={left} y2={bottom} stroke="#c7c7cc" strokeWidth="1" />
@@ -180,11 +196,14 @@ function FinanceMockChart() {
 export default function ProjectFinanceDashboard({ projectId }: { projectId: string }) {
   const [finance, setFinance] = useState<FinanceRow | null>(null)
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
+  const [payments, setPayments] = useState<PaymentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [financeOpen, setFinanceOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null)
+  const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
@@ -196,12 +215,22 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     uhradene: true,
     poznamka: '',
   })
+  const [paymentForm, setPaymentForm] = useState({
+    datum: today(),
+    suma: 0,
+    popis: 'Platba od klienta',
+    poznamka: '',
+  })
 
   async function loadFinance() {
     setLoading(true)
     setMessage('')
 
-    const [{ data: financeData, error: financeError }, { data: expenseData, error: expenseError }] = await Promise.all([
+    const [
+      { data: financeData, error: financeError },
+      { data: expenseData, error: expenseError },
+      { data: paymentData, error: paymentError },
+    ] = await Promise.all([
       supabase
         .from('financie_stavby')
         .select('*')
@@ -213,15 +242,22 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         .eq('zakazka_id', projectId)
         .order('datum', { ascending: false })
         .order('id', { ascending: false }),
+      supabase
+        .from('platby_stavby')
+        .select('*')
+        .eq('zakazka_id', projectId)
+        .order('datum', { ascending: false })
+        .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError) {
-      console.error('Chyba načítania financií:', financeError || expenseError)
+    if (financeError || expenseError || paymentError) {
+      console.error('Chyba načítania financií:', financeError || expenseError || paymentError)
       setMessage('Finančné údaje sa nepodarilo načítať.')
     }
 
     setFinance((financeData as FinanceRow | null) || null)
     setExpenses((expenseData as ExpenseRow[]) || [])
+    setPayments((paymentData as PaymentRow[]) || [])
     setLoading(false)
   }
 
@@ -229,12 +265,17 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     loadFinance()
   }, [projectId])
 
+  const receivedPayments = useMemo(
+    () => payments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
+    [payments]
+  )
+
   const values = useMemo(() => ({
     cena: numberValue(finance?.cena_zakazky),
     budget: numberValue(finance?.budget_nakladov),
     vyfakturovane: numberValue(finance?.vyfakturovane),
-    prijate: numberValue(finance?.prijate_platby),
-  }), [finance])
+    prijate: receivedPayments,
+  }), [finance, receivedPayments])
 
   const currentCosts = useMemo(
     () => expenses.reduce((sum, expense) => sum + numberValue(expense.suma), 0),
@@ -262,12 +303,57 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     return totals
   }, [expenses])
 
+  const chartData = useMemo<ChartPoint[]>(() => {
+    const months = new Set<string>()
+    expenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
+    payments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
+    const sorted = Array.from(months).sort()
+    if (sorted.length === 0) return []
+
+    const [startYear, startMonth] = sorted[0].split('-').map(Number)
+    const [endYear, endMonth] = sorted[sorted.length - 1].split('-').map(Number)
+    const monthKeys: string[] = []
+    let year = startYear
+    let month = startMonth
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      monthKeys.push(`${year}-${String(month).padStart(2, '0')}`)
+      month += 1
+      if (month === 13) {
+        month = 1
+        year += 1
+      }
+    }
+
+    const costsByMonth = new Map<string, number>()
+    const paymentsByMonth = new Map<string, number>()
+    expenses.forEach(expense => {
+      const key = expense.datum.slice(0, 7)
+      costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(expense.suma))
+    })
+    payments.forEach(payment => {
+      const key = payment.datum.slice(0, 7)
+      paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(payment.suma))
+    })
+
+    let cumulativeCosts = 0
+    let cumulativePayments = 0
+    return monthKeys.map(key => {
+      cumulativeCosts += costsByMonth.get(key) || 0
+      cumulativePayments += paymentsByMonth.get(key) || 0
+      const [y, m] = key.split('-').map(Number)
+      return {
+        month: new Date(y, m - 1, 1).toLocaleDateString('sk-SK', { month: 'short', year: '2-digit' }),
+        costs: cumulativeCosts,
+        payments: cumulativePayments,
+      }
+    })
+  }, [expenses, payments])
+
   function openFinanceEditor() {
     setFinanceForm({
       cena_zakazky: values.cena,
       budget_nakladov: values.budget,
       vyfakturovane: values.vyfakturovane,
-      prijate_platby: values.prijate,
     })
     setFinanceOpen(true)
   }
@@ -283,7 +369,6 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       cena_zakazky: Math.max(0, numberValue(financeForm.cena_zakazky)),
       budget_nakladov: Math.max(0, numberValue(financeForm.budget_nakladov)),
       vyfakturovane: Math.max(0, numberValue(financeForm.vyfakturovane)),
-      prijate_platby: Math.max(0, numberValue(financeForm.prijate_platby)),
       updated_at: new Date().toISOString(),
     }
 
@@ -369,6 +454,87 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     setExpenseOpen(false)
     setEditingExpense(null)
     setMessage(editingExpense ? 'Náklad bol upravený.' : 'Náklad bol pridaný.')
+    await loadFinance()
+  }
+
+  function openNewPayment() {
+    setEditingPayment(null)
+    setPaymentForm({
+      datum: today(),
+      suma: 0,
+      popis: 'Platba od klienta',
+      poznamka: '',
+    })
+    setPaymentOpen(true)
+  }
+
+  function openPaymentEdit(payment: PaymentRow) {
+    setEditingPayment(payment)
+    setPaymentForm({
+      datum: payment.datum,
+      suma: numberValue(payment.suma),
+      popis: payment.popis,
+      poznamka: payment.poznamka || '',
+    })
+    setPaymentOpen(true)
+  }
+
+  async function savePayment(event: FormEvent) {
+    event.preventDefault()
+    if (saving) return
+
+    const suma = numberValue(paymentForm.suma)
+    const popis = paymentForm.popis.trim()
+    if (!paymentForm.datum || !popis || suma <= 0) {
+      setMessage('Vyplňte dátum, popis a sumu platby vyššiu ako 0 €.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+    const payload = {
+      zakazka_id: Number(projectId),
+      datum: paymentForm.datum,
+      suma,
+      popis,
+      poznamka: paymentForm.poznamka.trim() || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const query = editingPayment
+      ? supabase.from('platby_stavby').update(payload).eq('id', editingPayment.id).eq('zakazka_id', projectId)
+      : supabase.from('platby_stavby').insert([payload])
+
+    const { error } = await query
+    setSaving(false)
+
+    if (error) {
+      console.error('Chyba uloženia platby:', error)
+      setMessage('Platbu sa nepodarilo uložiť.')
+      return
+    }
+
+    setPaymentOpen(false)
+    setEditingPayment(null)
+    setMessage(editingPayment ? 'Platba bola upravená.' : 'Platba bola pridaná.')
+    await loadFinance()
+  }
+
+  async function deletePayment(payment: PaymentRow) {
+    if (!confirm(`Naozaj odstrániť platbu „${payment.popis}“?`)) return
+    const { error } = await supabase
+      .from('platby_stavby')
+      .delete()
+      .eq('id', payment.id)
+      .eq('zakazka_id', projectId)
+
+    if (error) {
+      console.error('Chyba mazania platby:', error)
+      setMessage('Platbu sa nepodarilo odstrániť.')
+      return
+    }
+
+    setMessage('Platba bola odstránená.')
     await loadFinance()
   }
 
@@ -488,6 +654,9 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             Upraviť financie
           </button>
+          <button type="button" onClick={openNewPayment} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #b9d8f8', borderRadius: '10px', backgroundColor: '#eef6ff', color: '#0066cc', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
+            + Pridať platbu
+          </button>
           <button type="button" onClick={openNewExpense} style={{ minHeight: '38px', padding: '8px 14px', border: 'none', borderRadius: '10px', backgroundColor: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             + Pridať náklad
           </button>
@@ -506,7 +675,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`${expenses.length} evidovaných položiek`} />
         <MetricCard label="Zostáva z budgetu" value={formatCurrency(remainingBudget)} detail="Budget mínus aktuálne náklady" tone={remainingBudget < 0 ? 'negative' : 'default'} />
         <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail="Manuálne zadaná suma klientovi" />
-        <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail="Reálne prijaté od klienta" tone={values.prijate > 0 ? 'positive' : 'default'} />
+        <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`${payments.length} evidovaných platieb od klienta`} tone={values.prijate > 0 ? 'positive' : 'default'} />
         <MetricCard label="Neuhradené klientom" value={formatCurrency(unpaid)} detail="Vyfakturované mínus prijaté platby" tone={unpaid > 0 ? 'warning' : 'default'} />
         <MetricCard label="Predpokladaný zisk" value={formatCurrency(expectedProfit)} detail="Cena zákazky mínus budget" tone={expectedProfit < 0 ? 'negative' : 'positive'} />
       </div>
@@ -587,16 +756,58 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         </div>
       </div>
 
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Platby od klienta</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payments.length} platieb · spolu {formatCurrency(values.prijate)}</div>
+          </div>
+          <button type="button" onClick={openNewPayment} style={{ padding: '7px 11px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
+            + Pridať platbu
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table">
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Dátum', 'Popis', 'Suma', 'Akcie'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {payments.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne platby od klienta.</td></tr>
+              ) : payments.map(payment => (
+                <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
+                  <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
+                  <td data-label="Popis" style={{ padding: '11px 14px' }}>
+                    <div style={{ fontWeight: '650' }}>{payment.popis}</div>
+                    {payment.poznamka && <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payment.poznamka}</div>}
+                  </td>
+                  <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap', color: '#047857' }}>{formatCurrency(numberValue(payment.suma))}</td>
+                  <td data-label="Akcie" style={{ padding: '11px 14px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => openPaymentEdit(payment)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Upraviť</button>
+                      <button type="button" onClick={() => deletePayment(payment)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#f5f5f7', color: '#86868b', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div style={{ ...cardStyle, padding: '18px', marginTop: '14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vývoj financií stavby</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Budúci graf bude napojený na dátumy reálnych nákladov a platieb.</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Reálny kumulatívny vývoj podľa dátumov zaevidovaných nákladov a platieb klienta.</div>
           </div>
-          <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#fff7ed', color: '#9a6700', fontSize: '9px', fontWeight: '750' }}>UKÁŽKOVÉ DÁTA</span>
+          <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#ecfdf5', color: '#047857', fontSize: '9px', fontWeight: '750' }}>REÁLNE DÁTA</span>
         </div>
-        <div style={{ marginTop: '14px' }}><FinanceMockChart /></div>
-        <div style={{ marginTop: '10px', color: '#86868b', fontSize: '9px' }}>Tento graf sa nezapočítava do finančných kariet vyššie.</div>
+        <div style={{ marginTop: '14px' }}><FinanceChart data={chartData} /></div>
       </div>
 
       <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
@@ -669,7 +880,6 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
                   ['cena_zakazky', 'Cena zákazky'],
                   ['budget_nakladov', 'Budget nákladov'],
                   ['vyfakturovane', 'Vyfakturované'],
-                  ['prijate_platby', 'Prijaté platby'],
                 ].map(([key, label]) => (
                   <div key={key}>
                     <label style={labelStyle}>{label}</label>
@@ -687,6 +897,39 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
                 <button type="button" onClick={() => setFinanceOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
                 <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : 'Uložiť'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {paymentOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setPaymentOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingPayment ? 'Upraviť platbu' : 'Pridať platbu'} style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingPayment ? 'Upraviť platbu' : 'Pridať platbu od klienta'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Každá platba má vlastný dátum a vstupuje do reálneho cashflow aj grafu.</div>
+            <form onSubmit={savePayment}>
+              <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div>
+                  <label style={labelStyle}>Dátum</label>
+                  <input type="date" required value={paymentForm.datum} onChange={event => setPaymentForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Suma</label>
+                  <input type="number" min="0.01" step="0.01" required value={paymentForm.suma || ''} onChange={event => setPaymentForm(current => ({ ...current, suma: Number(event.target.value) }))} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Popis</label>
+                  <input type="text" required maxLength={300} value={paymentForm.popis} onChange={event => setPaymentForm(current => ({ ...current, popis: event.target.value }))} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Poznámka</label>
+                  <input type="text" maxLength={500} placeholder="Voliteľné" value={paymentForm.poznamka} onChange={event => setPaymentForm(current => ({ ...current, poznamka: event.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button type="button" onClick={() => setPaymentOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
+                <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : (editingPayment ? 'Uložiť zmenu' : 'Pridať platbu')}</button>
               </div>
             </form>
           </div>
