@@ -16,7 +16,11 @@ type Finance = {
   cena_zakazky: number | string
   budget_nakladov: number | string
   vyfakturovane: number | string
-  prijate_platby: number | string
+}
+
+type Payment = {
+  zakazka_id: number | string
+  suma: number | string
 }
 
 type Expense = {
@@ -49,6 +53,7 @@ export default function FinanciePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [financeRows, setFinanceRows] = useState<Finance[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -65,22 +70,25 @@ export default function FinanciePage() {
         { data: projectData, error: projectError },
         { data: financeData, error: financeError },
         { data: expenseData, error: expenseError },
+        { data: paymentData, error: paymentError },
       ] = await Promise.all([
         supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
-        supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane,prijate_platby'),
+        supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
         supabase.from('naklady_stavby').select('zakazka_id,suma,uhradene'),
+        supabase.from('platby_stavby').select('zakazka_id,suma'),
       ])
 
       if (cancelled) return
 
-      if (projectError || financeError || expenseError) {
-        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError)
+      if (projectError || financeError || expenseError || paymentError) {
+        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError || paymentError)
         setError('Finančný prehľad sa nepodarilo načítať.')
       }
 
       setProjects((projectData as Project[]) || [])
       setFinanceRows((financeData as Finance[]) || [])
       setExpenses((expenseData as Expense[]) || [])
+      setPayments((paymentData as Payment[]) || [])
       setLoading(false)
     }
 
@@ -107,6 +115,15 @@ export default function FinanciePage() {
     return map
   }, [expenses])
 
+  const paymentsByProject = useMemo(() => {
+    const map = new Map<string, number>()
+    payments.forEach(row => {
+      const key = String(row.zakazka_id)
+      map.set(key, (map.get(key) || 0) + num(row.suma))
+    })
+    return map
+  }, [payments])
+
   const rows = useMemo(() => {
     return projects.map(project => {
       const finance = financeByProject.get(String(project.id))
@@ -117,7 +134,7 @@ export default function FinanciePage() {
       const price = num(finance?.cena_zakazky)
       const budget = num(finance?.budget_nakladov)
       const invoiced = num(finance?.vyfakturovane)
-      const received = num(finance?.prijate_platby)
+      const received = paymentsByProject.get(String(project.id)) || 0
       const remaining = budget - costs
       const cashflow = received - paidCosts
       const usage = budget > 0 ? (costs / budget) * 100 : 0
@@ -134,10 +151,10 @@ export default function FinanciePage() {
         unpaidCosts,
         cashflow,
         usage,
-        hasFinance: Boolean(finance) || costs > 0,
+        hasFinance: Boolean(finance) || costs > 0 || received > 0,
       }
     })
-  }, [projects, financeByProject, costsByProject])
+  }, [projects, financeByProject, costsByProject, paymentsByProject])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('sk')

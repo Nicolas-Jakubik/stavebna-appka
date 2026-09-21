@@ -74,7 +74,7 @@ test('admin gateway security and PostgREST compatibility', async t => {
       assert.equal(response.headers.get('apikey'), null)
     })
     await t.test('finance tables are available only through the authenticated admin gateway', async () => {
-      for (const table of ['financie_stavby', 'naklady_stavby']) {
+      for (const table of ['financie_stavby', 'naklady_stavby', 'platby_stavby']) {
         const response = await route.GET(req(), context(table))
         assert.equal(response.status, 200)
         assert.equal(new URL(calls.at(-1).url).pathname, `/rest/v1/${table}`)
