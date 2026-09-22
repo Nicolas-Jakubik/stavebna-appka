@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
+import { bratislavaMonthKey } from '../../lib/dateKeys'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [mesacneZaznamy, setMesacneZaznamy] = useState<any[]>([])
-  const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
+  const [filterMesiac, setFilterMesiac] = useState(bratislavaMonthKey())
   const [filterPolovica, setFilterPolovica] = useState('cely') 
   
   const [databazoviZamestnanci, setDatabazoviZamestnancov] = useState<any[]>([])
