@@ -41,7 +41,10 @@ export function vypocitajNakladyPracovnikov(
       if (!meno || !zakazka || !datum) return null
 
       const hodiny = hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
-      const sadzba = sadzby.get(meno) || 0
+      const maSnapshot = zaznam.sadzba_snapshot !== undefined && zaznam.sadzba_snapshot !== null
+      const sadzba = maSnapshot
+        ? Math.max(0, numberValue(zaznam.sadzba_snapshot))
+        : (sadzby.get(meno) || 0)
 
       return {
         datum,
