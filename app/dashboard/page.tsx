@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
+import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function DashboardPage() {
@@ -178,17 +179,6 @@ export default function DashboardPage() {
       nazov: `${nazov} ${rok}`
     }))
   )
-
-  function vypocitajHodiny(prichod: string, odchod: string) {
-    if (!prichod || !odchod) return 0
-    const [pHod, pMin] = prichod.split(':').map(Number)
-    const [oHod, oMin] = odchod.split(':').map(Number)
-    let minutySpolu = (oHod * 60 + oMin) - (pHod * 60 + pMin)
-    if (minutySpolu < 0) minutySpolu += 24 * 60 
-    let hodinySpolu = minutySpolu / 60
-    if (hodinySpolu > 5.5) hodinySpolu -= 0.5
-    return hodinySpolu
-  }
 
   function jePodozrivyCas(prichod: string, odchod: string, hodiny: number) {
     if (!prichod || !odchod) return true
@@ -404,11 +394,22 @@ export default function DashboardPage() {
     nacitajKontrolneZaznamy()
   }
 
+  function vypocitajHodinyUpravovanehoZaznamu(id: string, prichod: string, odchod: string) {
+    const povodny = kontrolneZaznamy.find(z => String(z.id) === String(id))
+    if (!povodny) return vypocitajHodiny(prichod, odchod)
+
+    const upraveneZaznamy = kontrolneZaznamy.map(z =>
+      String(z.id) === String(id) ? { ...z, prichod, odchod } : z
+    )
+    const mapa = vytvorMapuCistychHodin(upraveneZaznamy)
+    return hodinyZaznamuZMapy({ ...povodny, prichod, odchod }, mapa)
+  }
+
   function zacatUpravu(id: string, prichod: string, odchod: string) {
     setUpravovaneId(id)
     setUpravovanePrichod(prichod)
     setUpravovaneOdchod(odchod)
-    setUpravovaneHodiny(vypocitajHodiny(prichod, odchod).toFixed(2))
+    setUpravovaneHodiny(vypocitajHodinyUpravovanehoZaznamu(id, prichod, odchod).toFixed(2))
     setChybaUpravaHodiny('')
   }
 
@@ -427,7 +428,10 @@ export default function DashboardPage() {
         const error = getTimeValidationError(upravovanePrichod, value)
         setChybaUpravaHodiny(error)
         if (!error) {
-          setUpravovaneHodiny(vypocitajHodiny(upravovanePrichod, value).toFixed(2))
+          const hodiny = upravovaneId
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, upravovanePrichod, value)
+            : vypocitajHodiny(upravovanePrichod, value)
+          setUpravovaneHodiny(hodiny.toFixed(2))
         }
       }
     } else {
@@ -436,7 +440,10 @@ export default function DashboardPage() {
         const error = getTimeValidationError(value, upravovaneOdchod)
         setChybaUpravaHodiny(error)
         if (!error) {
-          setUpravovaneHodiny(vypocitajHodiny(value, upravovaneOdchod).toFixed(2))
+          const hodiny = upravovaneId
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, value, upravovaneOdchod)
+            : vypocitajHodiny(value, upravovaneOdchod)
+          setUpravovaneHodiny(hodiny.toFixed(2))
         }
       }
     }
@@ -541,14 +548,17 @@ export default function DashboardPage() {
   useEffect(() => { nacitajNezapisanychVcera() }, [])
   useEffect(() => { nacitaj() }, [filterMesiac, filterDen, filterZakazka, filterMeno])
 
-  const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+  const mapaCistychHodin = vytvorMapuCistychHodin(kontrolneZaznamy)
+  const hodinyZaznamu = (z: any) => hodinyZaznamuZMapy(z, mapaCistychHodin)
+
+  const celkoveHodiny = zaznamy.reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
   const pocetZaznamov = zaznamy.length
   const prvaPolovicaHodiny = zaznamy
     .filter(z => Number(String(z.datum).split('-')[2]) <= 15)
-    .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+    .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
   const druhaPolovicaHodiny = zaznamy
     .filter(z => Number(String(z.datum).split('-')[2]) >= 16)
-    .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+    .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
   const fondPrvaPolovica = vypocitajFondObdobia(filterMesiac, 1, 15)
   const fondDruhaPolovica = vypocitajFondObdobia(filterMesiac, 16)
   const fondMesiaca = fondPrvaPolovica + fondDruhaPolovica
@@ -558,7 +568,7 @@ export default function DashboardPage() {
   const rozdielDruhaPolovica = druhaPolovicaHodiny - fondDruhaPolovica
   
   const zamestnanciHodiny: Record<string, number> = {}
-  zaznamy.forEach(z => { zamestnanciHodiny[z.meno] = (zamestnanciHodiny[z.meno] || 0) + vypocitajHodiny(z.prichod, z.odchod) })
+  zaznamy.forEach(z => { zamestnanciHodiny[z.meno] = (zamestnanciHodiny[z.meno] || 0) + hodinyZaznamu(z) })
   let najaktivnejsi = '-'; let maxHod = 0
   Object.entries(zamestnanciHodiny).forEach(([meno, h]) => { if (h > maxHod) { maxHod = h; najaktivnejsi = meno } })
 
@@ -569,10 +579,10 @@ export default function DashboardPage() {
     const zaznamyPracovnika = zaznamy.filter(z => z.meno === meno)
     const prva = zaznamyPracovnika
       .filter(z => Number(String(z.datum).split('-')[2]) <= 15)
-      .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+      .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
     const druha = zaznamyPracovnika
       .filter(z => Number(String(z.datum).split('-')[2]) >= 16)
-      .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+      .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
     const spolu = prva + druha
     return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
   })
@@ -692,8 +702,8 @@ export default function DashboardPage() {
     let hodnotaB: string | number = ''
 
     if (triedenie === 'hodiny') {
-      hodnotaA = vypocitajHodiny(a.prichod, a.odchod)
-      hodnotaB = vypocitajHodiny(b.prichod, b.odchod)
+      hodnotaA = hodinyZaznamu(a)
+      hodnotaB = hodinyZaznamu(b)
     } else {
       hodnotaA = String(a[triedenie] || '').toLocaleLowerCase('sk')
       hodnotaB = String(b[triedenie] || '').toLocaleLowerCase('sk')
@@ -1882,7 +1892,7 @@ export default function DashboardPage() {
                   <tr className="attendance-empty-row"><td className="attendance-empty-cell" colSpan={7} style={{ padding: '34px 14px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>{filterProblem === 'vsetko' ? 'Žiadne dáta.' : 'Žiadne záznamy pre vybraný kontrolný filter.'}</td></tr> 
                 ) : (
                   zoradeneZaznamy.map((z) => {
-                    const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : vypocitajHodiny(z.prichod, z.odchod)
+                    const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : hodinyZaznamu(z)
                     const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
                     const jeDuplicite = jePresnyDuplikat(z, z.id)

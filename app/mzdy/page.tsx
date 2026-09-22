@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
+import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
@@ -92,17 +93,6 @@ export default function MzdyPage() {
     if (ulozeneStavy) setStavyStavieb(JSON.parse(ulozeneStavy))
   }, [])
 
-  function vypocitajHodiny(prichod: string, odchod: string) {
-    if (!prichod || !odchod) return 0
-    const [pHod, pMin] = prichod.split(':').map(Number)
-    const [oHod, oMin] = odchod.split(':').map(Number)
-    let minutySpolu = (oHod * 60 + oMin) - (pHod * 60 + pMin)
-    if (minutySpolu < 0) minutySpolu += 24 * 60 
-    let hodinySpolu = minutySpolu / 60
-    if (hodinySpolu > 5.5) hodinySpolu -= 0.5
-    return hodinySpolu
-  }
-
   async function nacitaj() {
     let query = supabase.from('dochadzka').select('*')
     const [rok, mesiac] = filterMesiac.split('-')
@@ -154,11 +144,14 @@ export default function MzdyPage() {
     localStorage.setItem('stavyStaviebAdmin', JSON.stringify(noveStavy))
   }
 
+  const mapaCistychHodin = vytvorMapuCistychHodin(mesacneZaznamy)
+  const hodinyZaznamu = (z: any) => hodinyZaznamuZMapy(z, mapaCistychHodin)
+
   const zamestnanciHodiny: Record<string, number> = {}
   const stavbyData: Record<string, number> = {}
 
   zaznamy.forEach((z) => {
-    const hodiny = vypocitajHodiny(z.prichod, z.odchod)
+    const hodiny = hodinyZaznamu(z)
     
     if (!zamestnanciHodiny[z.meno]) zamestnanciHodiny[z.meno] = 0
     zamestnanciHodiny[z.meno] += hodiny
@@ -181,7 +174,7 @@ export default function MzdyPage() {
       const patriDoObdobia = prvaPolovica ? den <= 15 : den >= 16
       if (!patriDoObdobia) return suhrn
 
-      const hodiny = vypocitajHodiny(z.prichod, z.odchod)
+      const hodiny = hodinyZaznamu(z)
       const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
       const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
 
@@ -212,7 +205,7 @@ export default function MzdyPage() {
     }
 
     const den = Number(String(z.datum).slice(8, 10))
-    const hodiny = vypocitajHodiny(z.prichod, z.odchod)
+    const hodiny = hodinyZaznamu(z)
     if (den <= 15) pracovniciMesacne[z.meno].prvaHodiny += hodiny
     else pracovniciMesacne[z.meno].druhaHodiny += hodiny
   })

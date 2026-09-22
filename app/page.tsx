@@ -4,6 +4,7 @@ import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
 import { adminStore } from '../lib/store'
+import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 
 export default function Home() {
   return <AttendanceForm />
@@ -333,17 +334,10 @@ function AttendanceForm() {
   }
 
   function vypocitajTrvanie(odCasu: string, doCasu: string) {
-    if (!odCasu || !doCasu) return '0 h'
-    const [h1, m1] = odCasu.split(':').map(Number)
-    const [h2, m2] = doCasu.split(':').map(Number)
-    
-    let rozdielMinut = (h2 * 60 + m2) - (h1 * 60 + m1)
-    if (rozdielMinut < 0) rozdielMinut += 24 * 60
-    if (rozdielMinut > 5.5 * 60) rozdielMinut -= 30
-    
+    const rozdielMinut = vypocitajTrvanieUsekuMinuty(odCasu, doCasu)
     const hodiny = Math.floor(rozdielMinut / 60)
     const minuty = rozdielMinut % 60
-    
+
     if (minuty === 0) return `${hodiny} h`
     return `${hodiny} h ${minuty} m`
   }
@@ -592,11 +586,11 @@ function AttendanceForm() {
               </div>
               <div style={{ height: '1px', backgroundColor: '#d2d2d7', margin: '4px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
-                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Platený čas (na osobu):</span>
+                <span style={{ color: '#1d1d1f', fontWeight: '600' }}>Trvanie úseku (na osobu):</span>
                 <span style={{ fontWeight: '600', color: '#1d1d1f' }}>{vypocitajTrvanie(prichod, odchod)}</span>
               </div>
               <div style={{ fontSize: '11px', color: '#86868b', lineHeight: '1.4' }}>
-                Pri pracovnom čase nad 5,5 h je odpočítaná 30-minútová prestávka.
+                30-minútová prestávka sa v súčtoch odpočíta iba raz za pracovníka za deň, ak celkový denný čas presiahne 5,5 h.
               </div>
             </div>
 
