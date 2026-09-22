@@ -179,7 +179,7 @@ export default function ZamestnanciPage() {
 
     const { error } = await supabase
       .from('zamestnanci')
-      .insert([{ meno, sadzba: sadzbaCislo }])
+      .insert([{ meno, sadzba: sadzbaCislo, aktivny: true }])
     
     setPridavaSa(false)
 
@@ -193,24 +193,26 @@ export default function ZamestnanciPage() {
     }
   }
 
-  async function vymazatZamestnanca(id: string, meno: string) {
-    const klucMena = String(meno || '').trim()
-    const pocetZaznamov = pocetDochadzkyPodlaMena[klucMena] || 0
-    const pocetNepritomnosti = pocetNepritomnostiPodlaMena[klucMena] || 0
-    const maHistoriu = pocetZaznamov > 0 || pocetNepritomnosti > 0
-    const sprava = maHistoriu
-      ? `Naozaj vymazať "${meno}"? Historické dáta zostanú zachované: dochádzka ${pocetZaznamov}, neprítomnosti ${pocetNepritomnosti}.`
-      : `Naozaj vymazať "${meno}"? Tento pracovník nemá evidovanú dochádzku ani neprítomnosti.`
+  async function zmenitAktivituZamestnanca(id: string, meno: string, jeAktivny: boolean) {
+    const novaAktivita = !jeAktivny
+    const sprava = jeAktivny
+      ? `Archivovať pracovníka "${meno}"? Historická dochádzka, sadzby a finančné výpočty zostanú zachované, ale pracovník sa už nebude ponúkať na nové zápisy ani rátať medzi chýbajúcich.`
+      : `Obnoviť pracovníka "${meno}" medzi aktívnych?`
 
     if (!confirm(sprava)) return
-    
+
     const { error } = await supabase
       .from('zamestnanci')
-      .delete()
+      .update({ aktivny: novaAktivita })
       .eq('id', id)
 
-    if (error) console.error("Chyba mazania:", error)
-    else nacitajZamestnancov()
+    if (error) {
+      console.error('Chyba zmeny stavu pracovníka:', error)
+      alert('Stav pracovníka sa nepodarilo zmeniť.')
+      return
+    }
+
+    nacitajZamestnancov()
   }
 
   function zacatUpravu(id: string, aktualneMeno: string, aktualnaSadzba: string) {
@@ -260,6 +262,25 @@ export default function ZamestnanciPage() {
       return
     }
 
+    if (noveMeno !== povodneMeno.trim()) {
+      const { data: uhrady, error: chybaUhrad } = await supabase
+        .from('uhrady_pracovnikov')
+        .select('id')
+        .eq('meno', povodneMeno)
+        .limit(1)
+
+      if (chybaUhrad) {
+        console.error('Chyba kontroly úhrad pracovníka:', chybaUhrad)
+        alert('Meno sa nepodarilo bezpečne skontrolovať pred zmenou.')
+        return
+      }
+
+      if ((uhrady || []).length > 0) {
+        alert('Meno nie je možné zmeniť, pretože pracovník má evidované finančné úhrady. Sadzbu môžete upraviť bez zmeny mena.')
+        return
+      }
+    }
+
     const { error: chybaZamestnanca } = await supabase
       .from('zamestnanci')
       .update({ meno: noveMeno, sadzba: sadzbaCislo })
@@ -299,11 +320,12 @@ export default function ZamestnanciPage() {
     nacitajZamestnancov()
   }, [])
 
-  const priemernaSadzba = zamestnanci.length > 0
-    ? zamestnanci.reduce((sucet, zamestnanec) => sucet + (Number(zamestnanec.sadzba) || 0), 0) / zamestnanci.length
+  const aktivniZamestnanci = zamestnanci.filter(zamestnanec => zamestnanec.aktivny !== false)
+  const priemernaSadzba = aktivniZamestnanci.length > 0
+    ? aktivniZamestnanci.reduce((sucet, zamestnanec) => sucet + (Number(zamestnanec.sadzba) || 0), 0) / aktivniZamestnanci.length
     : 0
 
-  const najvyssiaSadzba = zamestnanci.reduce(
+  const najvyssiaSadzba = aktivniZamestnanci.reduce(
     (maximum, zamestnanec) => Math.max(maximum, Number(zamestnanec.sadzba) || 0),
     0
   )
@@ -315,6 +337,7 @@ export default function ZamestnanciPage() {
       String(zamestnanec.meno || '').toLocaleLowerCase('sk').includes(hladanyText)
     )
     .sort((a, b) => {
+      if ((a.aktivny !== false) !== (b.aktivny !== false)) return a.aktivny === false ? 1 : -1
       const menoA = String(a.meno || '').trim()
       const menoB = String(b.meno || '').trim()
 
@@ -484,8 +507,8 @@ export default function ZamestnanciPage() {
         <div className="zamestnanci-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
             <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovníci</div>
-            <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{zamestnanci.length}</div>
-            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Počet pracovníkov v evidencii</div>
+            <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{aktivniZamestnanci.length}</div>
+            <div style={{ fontSize: '10px', color: '#86868b', marginTop: '8px' }}>Aktívni pracovníci · archivovaní {zamestnanci.length - aktivniZamestnanci.length}</div>
           </div>
 
           <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
@@ -632,7 +655,12 @@ export default function ZamestnanciPage() {
                             style={{ ...inputStyle, maxWidth: '260px', fontSize: '12px', backgroundColor: '#ffffff' }}
                           />
                         ) : (
-                          z.meno
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                            <span>{z.meno}</span>
+                            {z.aktivny === false && (
+                              <span style={{ padding: '3px 6px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#86868b', fontSize: '8px', fontWeight: '750' }}>ARCHÍV</span>
+                            )}
+                          </span>
                         )}
                       </td>
                       <td className="simple-mobile-cell" data-label="Hodinová sadzba" style={{ padding: '10px 12px' }}>
@@ -716,14 +744,12 @@ export default function ZamestnanciPage() {
                             >
                               Upraviť
                             </button>
-                            <button 
+                            <button
                               type="button"
-                              onClick={() => vymazatZamestnanca(z.id, z.meno)}
-                              style={{ color: '#86868b', backgroundColor: '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
-                              onMouseEnter={(e) => { e.currentTarget.style.color = '#b42318'; e.currentTarget.style.backgroundColor = '#fef2f2' }}
-                              onMouseLeave={(e) => { e.currentTarget.style.color = '#86868b'; e.currentTarget.style.backgroundColor = '#f5f5f7' }}
+                              onClick={() => zmenitAktivituZamestnanca(z.id, z.meno, z.aktivny !== false)}
+                              style={{ color: z.aktivny === false ? '#047857' : '#86868b', backgroundColor: z.aktivny === false ? '#ecfdf5' : '#f5f5f7', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '6px 9px', borderRadius: '8px', transition: 'all 0.2s' }}
                             >
-                              Zmazať
+                              {z.aktivny === false ? 'Obnoviť' : 'Archivovať'}
                             </button>
                           </div>
                         )}
