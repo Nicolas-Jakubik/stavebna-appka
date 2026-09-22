@@ -7,6 +7,7 @@ import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../lib/financeB
 import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } from '../lib/supplierInvoices'
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 import { vypocitajZiskovost } from '../lib/profitability'
+import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
 
 type FinanceRow = {
   id?: number | string
@@ -490,6 +491,17 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const currentCashflow = values.prijate - paidCosts - paidLaborCosts - paidSupplierInvoiceCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
   const budgetExceeded = values.budget > 0 && currentCosts > values.budget
+
+  const supplierAlerts = useMemo(
+    () => vytvorUpozorneniaFaktur(supplierInvoices, today(), 7),
+    [supplierInvoices]
+  )
+  const clientAlerts = useMemo(
+    () => vytvorUpozorneniaFaktur(clientInvoices, today(), 7),
+    [clientInvoices]
+  )
+  const budgetAlert = values.budget > 0 && budgetPercent >= 90
+  const financeAlertCount = supplierAlerts.length + clientAlerts.length + (budgetAlert ? 1 : 0)
 
   const categoryTotals = useMemo(() => {
     const totals = Object.fromEntries(CATEGORIES.map(category => [category, 0])) as Record<Category, number>
@@ -1194,6 +1206,58 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
         <MetricCard label="Plánovaný zisk" value={formatCurrency(profitability.planovanyZisk)} detail={profitability.planovanaMarzaPercent === null ? 'Nastav cenu zákazky' : `Plánovaná marža ${profitability.planovanaMarzaPercent.toFixed(1)} %`} tone={profitability.planovanyZisk < 0 ? 'negative' : 'positive'} />
       </div>
+
+      {financeAlertCount > 0 && (
+        <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden', borderColor: (supplierAlerts.some(alert => alert.stav === 'po_splatnosti') || clientAlerts.some(alert => alert.stav === 'po_splatnosti') || budgetExceeded) ? '#f3b4ae' : '#f0d7a3' }}>
+          <div style={{ padding: '13px 16px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '750' }}>Finančné upozornenia</div>
+              <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Veci, ktoré si na tejto stavbe zaslúžia pozornosť.</div>
+            </div>
+            <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#fff7ed', color: '#9a6700', fontSize: '9px', fontWeight: '750' }}>{financeAlertCount}</span>
+          </div>
+
+          {supplierAlerts.map(alert => (
+            <div key={`supplier-alert-${alert.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '12px', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #ededf0' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700' }}>Dodávateľská FA {alert.cisloFaktury} · {alert.dodavatel || 'Dodávateľ'}</div>
+                <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{formatCurrency(alert.suma)} · splatnosť {formatDate(alert.datumSplatnosti)}</div>
+              </div>
+              <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '9px', fontWeight: '750', whiteSpace: 'nowrap' }}>
+                {alert.stav === 'po_splatnosti'
+                  ? `Po splatnosti ${Math.abs(alert.dniDoSplatnosti)} dní`
+                  : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `O ${alert.dniDoSplatnosti} dní`}
+              </div>
+            </div>
+          ))}
+
+          {clientAlerts.map(alert => (
+            <div key={`client-alert-${alert.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '12px', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #ededf0' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700' }}>Pohľadávka · FA {alert.cisloFaktury}</div>
+                <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{formatCurrency(alert.suma)} · splatnosť {formatDate(alert.datumSplatnosti)}</div>
+              </div>
+              <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '9px', fontWeight: '750', whiteSpace: 'nowrap' }}>
+                {alert.stav === 'po_splatnosti'
+                  ? `Klient mešká ${Math.abs(alert.dniDoSplatnosti)} dní`
+                  : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `O ${alert.dniDoSplatnosti} dní`}
+              </div>
+            </div>
+          ))}
+
+          {budgetAlert && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '12px', alignItems: 'center', padding: '10px 16px' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700' }}>Čerpanie budgetu</div>
+                <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{formatCurrency(currentCosts)} z {formatCurrency(values.budget)}</div>
+              </div>
+              <div style={{ color: budgetExceeded ? '#b42318' : '#9a6700', fontSize: '9px', fontWeight: '750', whiteSpace: 'nowrap' }}>
+                {budgetExceeded ? `Prekročené o ${formatCurrency(Math.abs(remainingBudget))}` : `${budgetPercent.toFixed(0)} % vyčerpané`}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ ...cardStyle, padding: '18px', marginTop: '14px' }}>
         <div>
