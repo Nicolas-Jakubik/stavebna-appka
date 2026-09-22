@@ -281,7 +281,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [paymentForm, setPaymentForm] = useState({
     datum: today(),
     suma: 0,
-    popis: 'Platba od klienta',
+    popis: 'Prijatá záloha',
     poznamka: '',
   })
   const [workerPaymentForm, setWorkerPaymentForm] = useState({
@@ -958,7 +958,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setPaymentForm({
       datum: today(),
       suma: 0,
-      popis: 'Platba od klienta',
+      popis: 'Prijatá záloha',
       poznamka: '',
     })
     setPaymentOpen(true)
@@ -1179,9 +1179,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <MetricCard label="Budget nákladov" value={formatCurrency(values.budget)} detail="Maximálny plánovaný náklad" />
         <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + faktúry ${formatCurrency(supplierInvoiceCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
         <MetricCard label="Zostáva z budgetu" value={formatCurrency(remainingBudget)} detail="Budget mínus aktuálne náklady" tone={remainingBudget < 0 ? 'negative' : 'default'} />
-        <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail="Manuálne zadaná suma klientovi" />
-        <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`${payments.length} evidovaných platieb od klienta`} tone={values.prijate > 0 ? 'positive' : 'default'} />
-        <MetricCard label="Neuhradené klientom" value={formatCurrency(unpaid)} detail="Vyfakturované mínus prijaté platby" tone={unpaid > 0 ? 'warning' : 'default'} />
+        <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail={clientInvoices.length > 0 ? `${clientInvoices.length} vystavených faktúr` : 'Zatiaľ bez vystavených faktúr'} />
+        <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`FA ${formatCurrency(clientInvoiceSummary.prijate)} + zálohy ${formatCurrency(otherReceivedPayments)}`} tone={values.prijate > 0 ? 'positive' : 'default'} />
+        <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
         <MetricCard label="Predpokladaný zisk" value={formatCurrency(expectedProfit)} detail="Cena zákazky mínus budget" tone={expectedProfit < 0 ? 'negative' : 'positive'} />
       </div>
 
@@ -1824,9 +1824,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
       {paymentOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setPaymentOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingPayment ? 'Upraviť platbu' : 'Pridať platbu'} style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
-            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingPayment ? 'Upraviť platbu' : 'Pridať platbu od klienta'}</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Každá platba má vlastný dátum a vstupuje do reálneho cashflow aj grafu.</div>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingPayment ? 'Upraviť zálohu' : 'Pridať zálohu'} style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingPayment ? 'Upraviť zálohu' : 'Pridať prijatú zálohu'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Použi na zálohu alebo inú platbu, ktorá nie je úhradou konkrétnej vystavenej faktúry.</div>
             <form onSubmit={savePayment}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
                 <div>
