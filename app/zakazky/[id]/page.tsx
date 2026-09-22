@@ -192,7 +192,7 @@ export default function ZakazkaDetailPage() {
               </div>
             </div>
 
-            {activeTab === 'financie' && <ProjectFinanceDashboard projectId={projectId} />}
+            {activeTab === 'financie' && <ProjectFinanceDashboard projectId={projectId} projectName={project.nazov} />}
 
             {activeTab === 'prehlad' && (
               <div style={{ backgroundColor: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '14px', padding: '24px' }}>

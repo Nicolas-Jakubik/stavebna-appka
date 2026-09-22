@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminSidebar from '../../components/AdminSidebar'
 import { supabase } from '../../lib/adminSupabase'
+import { vypocitajNakladyPracovnikov, zhrnNakladyPracovnikovPodlaZakazky } from '../../lib/laborCosts'
 
 type Project = {
   id: number | string
@@ -27,6 +28,20 @@ type Expense = {
   zakazka_id: number | string
   suma: number | string
   uhradene: boolean
+}
+
+type Attendance = {
+  id: number | string
+  meno: string
+  datum: string
+  zakazka: string
+  prichod: string
+  odchod: string
+}
+
+type Employee = {
+  meno: string
+  sadzba: number | string | null
 }
 
 function num(value: unknown) {
@@ -54,6 +69,8 @@ export default function FinanciePage() {
   const [financeRows, setFinanceRows] = useState<Finance[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
+  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -71,24 +88,30 @@ export default function FinanciePage() {
         { data: financeData, error: financeError },
         { data: expenseData, error: expenseError },
         { data: paymentData, error: paymentError },
+        { data: attendanceData, error: attendanceError },
+        { data: employeeData, error: employeeError },
       ] = await Promise.all([
         supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
         supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
         supabase.from('naklady_stavby').select('zakazka_id,suma,uhradene'),
         supabase.from('platby_stavby').select('zakazka_id,suma'),
+        supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod'),
+        supabase.from('zamestnanci').select('meno,sadzba'),
       ])
 
       if (cancelled) return
 
-      if (projectError || financeError || expenseError || paymentError) {
-        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError || paymentError)
-        setError('Finančný prehľad sa nepodarilo načítať.')
+      if (projectError || financeError || expenseError || paymentError || attendanceError || employeeError) {
+        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError || paymentError || attendanceError || employeeError)
+        setError('Finančný prehľad sa nepodarilo načítať kompletne.')
       }
 
       setProjects((projectData as Project[]) || [])
       setFinanceRows((financeData as Finance[]) || [])
       setExpenses((expenseData as Expense[]) || [])
       setPayments((paymentData as Payment[]) || [])
+      setAttendance((attendanceData as Attendance[]) || [])
+      setEmployees((employeeData as Employee[]) || [])
       setLoading(false)
     }
 
@@ -124,13 +147,26 @@ export default function FinanciePage() {
     return map
   }, [payments])
 
+  const laborEntries = useMemo(
+    () => vypocitajNakladyPracovnikov(attendance, employees),
+    [attendance, employees]
+  )
+
+  const laborByProject = useMemo(
+    () => zhrnNakladyPracovnikovPodlaZakazky(laborEntries),
+    [laborEntries]
+  )
+
   const rows = useMemo(() => {
     return projects.map(project => {
       const finance = financeByProject.get(String(project.id))
       const projectCosts = costsByProject.get(String(project.id)) || { total: 0, paid: 0 }
-      const costs = projectCosts.total
+      const labor = laborByProject.get(String(project.nazov || '').trim())
+      const manualCosts = projectCosts.total
+      const laborCosts = labor?.suma || 0
+      const costs = manualCosts + laborCosts
       const paidCosts = projectCosts.paid
-      const unpaidCosts = costs - paidCosts
+      const unpaidCosts = manualCosts - paidCosts
       const price = num(finance?.cena_zakazky)
       const budget = num(finance?.budget_nakladov)
       const invoiced = num(finance?.vyfakturovane)
@@ -144,6 +180,11 @@ export default function FinanciePage() {
         price,
         budget,
         costs,
+        manualCosts,
+        laborCosts,
+        laborHours: labor?.hodiny || 0,
+        laborWorkers: labor?.pracovnici.size || 0,
+        laborMissingRates: labor?.bezSadzby.size || 0,
         remaining,
         invoiced,
         received,
@@ -154,7 +195,7 @@ export default function FinanciePage() {
         hasFinance: Boolean(finance) || costs > 0 || received > 0,
       }
     })
-  }, [projects, financeByProject, costsByProject, paymentsByProject])
+  }, [projects, financeByProject, costsByProject, paymentsByProject, laborByProject])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('sk')
@@ -173,6 +214,7 @@ export default function FinanciePage() {
       acc.price += row.price
       acc.budget += row.budget
       acc.costs += row.costs
+      acc.laborCosts += row.laborCosts
       acc.paidCosts += row.paidCosts
       acc.unpaidCosts += row.unpaidCosts
       acc.invoiced += row.invoiced
@@ -184,6 +226,7 @@ export default function FinanciePage() {
       price: 0,
       budget: 0,
       costs: 0,
+      laborCosts: 0,
       paidCosts: 0,
       unpaidCosts: 0,
       invoiced: 0,
@@ -311,19 +354,19 @@ export default function FinanciePage() {
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálne náklady</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{euro(totals.costs)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Vyčerpanie celkového budgetu {totalUsage.toFixed(0)} %</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Vyčerpanie budgetu {totalUsage.toFixed(0)} % · pracovníci {euro(totals.laborCosts)}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Zostáva z budgetu</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totalRemaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(totalRemaining)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Súčet budgetov mínus zaevidované náklady</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Budget mínus ručné náklady a automatické mzdy</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px', backgroundColor: totals.cashflow < 0 ? '#fffafa' : '#f7fbff' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálny cashflow</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(totals.cashflow)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté platby mínus zaplatené náklady</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté platby mínus náklady označené ako uhradené</div>
               </div>
             </div>
 
@@ -396,9 +439,14 @@ export default function FinanciePage() {
                           <td data-label="Budget" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '650' }}>{euro(row.budget)}</td>
                           <td data-label="Náklady" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: '700' }}>{euro(row.costs)}</div>
-                            <div style={{ marginTop: '3px', color: row.unpaidCosts > 0 ? '#9a6700' : '#86868b', fontSize: '8px', fontWeight: '650' }}>
-                              {row.unpaidCosts > 0 ? `neuhradené ${euro(row.unpaidCosts)}` : `zaplatené ${euro(row.paidCosts)}`}
+                            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px', fontWeight: '650' }}>
+                              pracovníci {euro(row.laborCosts)} · ručné {euro(row.manualCosts)}
                             </div>
+                            {row.laborMissingRates > 0 && (
+                              <div style={{ marginTop: '3px', color: '#b42318', fontSize: '8px', fontWeight: '700' }}>
+                                {row.laborMissingRates} pracovník bez sadzby
+                              </div>
+                            )}
                           </td>
                           <td data-label="Zostáva" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '700', color: row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(row.remaining)}</td>
                           <td data-label="Vyfakturované" style={{ padding: '12px', whiteSpace: 'nowrap' }}>{euro(row.invoiced)}</td>
