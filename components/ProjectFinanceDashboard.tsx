@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/adminSupabase'
+import { vypocitajNakladyPracovnikov } from '../lib/laborCosts'
 
 type FinanceRow = {
   id?: number | string
@@ -30,6 +31,20 @@ type PaymentRow = {
   suma: number | string
   popis: string
   poznamka?: string | null
+}
+
+type AttendanceRow = {
+  id: number | string
+  meno: string
+  datum: string
+  zakazka: string
+  prichod: string
+  odchod: string
+}
+
+type EmployeeRow = {
+  meno: string
+  sadzba: number | string | null
 }
 
 type ChartPoint = {
@@ -193,10 +208,12 @@ function FinanceChart({ data }: { data: ChartPoint[] }) {
   )
 }
 
-export default function ProjectFinanceDashboard({ projectId }: { projectId: string }) {
+export default function ProjectFinanceDashboard({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [finance, setFinance] = useState<FinanceRow | null>(null)
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
+  const [attendance, setAttendance] = useState<AttendanceRow[]>([])
+  const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [financeOpen, setFinanceOpen] = useState(false)
@@ -230,6 +247,8 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       { data: financeData, error: financeError },
       { data: expenseData, error: expenseError },
       { data: paymentData, error: paymentError },
+      { data: attendanceData, error: attendanceError },
+      { data: employeeData, error: employeeError },
     ] = await Promise.all([
       supabase
         .from('financie_stavby')
@@ -248,16 +267,24 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         .eq('zakazka_id', projectId)
         .order('datum', { ascending: false })
         .order('id', { ascending: false }),
+      supabase
+        .from('dochadzka')
+        .select('id,meno,datum,zakazka,prichod,odchod'),
+      supabase
+        .from('zamestnanci')
+        .select('meno,sadzba'),
     ])
 
-    if (financeError || expenseError || paymentError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError)
-      setMessage('Finančné údaje sa nepodarilo načítať.')
+    if (financeError || expenseError || paymentError || attendanceError || employeeError) {
+      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError)
+      setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
     setFinance((financeData as FinanceRow | null) || null)
     setExpenses((expenseData as ExpenseRow[]) || [])
     setPayments((paymentData as PaymentRow[]) || [])
+    setAttendance((attendanceData as AttendanceRow[]) || [])
+    setEmployees((employeeData as EmployeeRow[]) || [])
     setLoading(false)
   }
 
@@ -277,16 +304,51 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     prijate: receivedPayments,
   }), [finance, receivedPayments])
 
-  const currentCosts = useMemo(
+  const laborEntries = useMemo(
+    () => vypocitajNakladyPracovnikov(attendance, employees)
+      .filter(entry => entry.zakazka === projectName.trim()),
+    [attendance, employees, projectName]
+  )
+
+  const laborCosts = useMemo(
+    () => laborEntries.reduce((sum, entry) => sum + entry.suma, 0),
+    [laborEntries]
+  )
+  const laborHours = useMemo(
+    () => laborEntries.reduce((sum, entry) => sum + entry.hodiny, 0),
+    [laborEntries]
+  )
+  const laborWorkers = useMemo(
+    () => new Set(laborEntries.map(entry => entry.meno)).size,
+    [laborEntries]
+  )
+  const laborMissingRates = useMemo(
+    () => Array.from(new Set(laborEntries.filter(entry => !entry.maSadzbu && entry.hodiny > 0).map(entry => entry.meno))),
+    [laborEntries]
+  )
+  const laborByWorker = useMemo(() => {
+    const map = new Map<string, { hodiny: number; suma: number; sadzba: number }>()
+    laborEntries.forEach(entry => {
+      const current = map.get(entry.meno) || { hodiny: 0, suma: 0, sadzba: entry.sadzba }
+      current.hodiny += entry.hodiny
+      current.suma += entry.suma
+      current.sadzba = entry.sadzba
+      map.set(entry.meno, current)
+    })
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'sk'))
+  }, [laborEntries])
+
+  const manualCosts = useMemo(
     () => expenses.reduce((sum, expense) => sum + numberValue(expense.suma), 0),
     [expenses]
   )
+  const currentCosts = manualCosts + laborCosts
 
   const paidCosts = useMemo(
     () => expenses.filter(expense => expense.uhradene !== false).reduce((sum, expense) => sum + numberValue(expense.suma), 0),
     [expenses]
   )
-  const unpaidCosts = currentCosts - paidCosts
+  const unpaidCosts = manualCosts - paidCosts
 
   const remainingBudget = values.budget - currentCosts
   const unpaid = values.vyfakturovane - values.prijate
@@ -300,13 +362,15 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
     expenses.forEach(expense => {
       totals[expense.kategoria] = (totals[expense.kategoria] || 0) + numberValue(expense.suma)
     })
+    totals['Pracovníci'] += laborCosts
     return totals
-  }, [expenses])
+  }, [expenses, laborCosts])
 
   const chartData = useMemo<ChartPoint[]>(() => {
     const months = new Set<string>()
     expenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
     payments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
+    laborEntries.forEach(entry => entry.datum && months.add(entry.datum.slice(0, 7)))
     const sorted = Array.from(months).sort()
     if (sorted.length === 0) return []
 
@@ -330,6 +394,10 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       const key = expense.datum.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(expense.suma))
     })
+    laborEntries.forEach(entry => {
+      const key = entry.datum.slice(0, 7)
+      costsByMonth.set(key, (costsByMonth.get(key) || 0) + entry.suma)
+    })
     payments.forEach(payment => {
       const key = payment.datum.slice(0, 7)
       paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(payment.suma))
@@ -347,7 +415,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         payments: cumulativePayments,
       }
     })
-  }, [expenses, payments])
+  }, [expenses, payments, laborEntries])
 
   function openFinanceEditor() {
     setFinanceForm({
@@ -648,7 +716,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       <div className="finance-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div>
           <div style={{ fontSize: '17px', fontWeight: '750', letterSpacing: '-0.02em' }}>Finančný prehľad stavby</div>
-          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Prvá funkčná verzia. Finančné údaje sa zadávajú manuálne.</div>
+          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Náklad pracovníkov sa počíta automaticky z dochádzky × hodinovej sadzby. Ostatné finančné údaje zadávaš manuálne.</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
@@ -672,7 +740,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
       <div className="finance-metrics-grid">
         <MetricCard label="Cena zákazky" value={formatCurrency(values.cena)} detail="Dohodnutá cena s klientom" />
         <MetricCard label="Budget nákladov" value={formatCurrency(values.budget)} detail="Maximálny plánovaný náklad" />
-        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`${expenses.length} evidovaných položiek`} />
+        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
         <MetricCard label="Zostáva z budgetu" value={formatCurrency(remainingBudget)} detail="Budget mínus aktuálne náklady" tone={remainingBudget < 0 ? 'negative' : 'default'} />
         <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail="Manuálne zadaná suma klientovi" />
         <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`${payments.length} evidovaných platieb od klienta`} tone={values.prijate > 0 ? 'positive' : 'default'} />
@@ -685,7 +753,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyčerpanie budgetu</div>
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>
-              Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)}
+              Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)} · z toho pracovníci {formatCurrency(laborCosts)}
             </div>
           </div>
           <div style={{ fontSize: '22px', fontWeight: '750', color: budgetExceeded ? '#b42318' : '#1d1d1f' }}>
@@ -726,8 +794,8 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
               )
             })}
           </div>
-          <div style={{ marginTop: '15px', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#f7f7f8', color: '#6e6e73', fontSize: '10px', lineHeight: 1.5 }}>
-            <strong style={{ color: '#1d1d1f' }}>Pracovníci:</strong> V tejto verzii sa náklad zadáva manuálne. Dátová štruktúra je pripravená tak, aby sme neskôr kategóriu napojili na dochádzku × hodinovú sadzbu bez zmeny existujúceho zapisovania hodín.
+          <div style={{ marginTop: '15px', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#f2f8ff', color: '#4b4b4f', fontSize: '10px', lineHeight: 1.5 }}>
+            <strong style={{ color: '#0066cc' }}>Pracovníci automaticky:</strong> {formatCurrency(laborCosts)} za {laborHours.toFixed(2)} h · {laborWorkers} pracovníkov. Výpočet používa rovnakú dennú prestávku ako dochádzka a mzdy.
           </div>
         </div>
 
@@ -740,7 +808,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
               <strong style={{ fontSize: '12px' }}>{formatCurrency(values.prijate)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', paddingBottom: '10px', borderBottom: '1px solid #ededf0' }}>
-              <span style={{ color: '#6e6e73', fontSize: '11px' }}>Zaplatené náklady</span>
+              <span style={{ color: '#6e6e73', fontSize: '11px' }}>Zaplatené ručné náklady</span>
               <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidCosts)}</strong>
             </div>
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: currentCashflow < 0 ? '#fef2f2' : '#f2f8ff' }}>
@@ -751,8 +819,46 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
             </div>
           </div>
           <div style={{ marginTop: '12px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-            Neuhradené náklady dodávateľom: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Do cashflow sa odpočítavajú iba náklady označené ako uhradené.
+            Neuhradené ručné náklady: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Automatický náklad pracovníkov {formatCurrency(laborCosts)} vstupuje do budgetu a nákladov, ale nie do cashflow, kým neevidujeme skutočnú úhradu mzdy.
           </div>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Automatické náklady pracovníkov</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{laborHours.toFixed(2)} h · {formatCurrency(laborCosts)} · vypočítané z dochádzky a sadzieb</div>
+          </div>
+          <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0066cc', fontSize: '9px', fontWeight: '750' }}>AUTOMATICKY</span>
+        </div>
+        {laborMissingRates.length > 0 && (
+          <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '650' }}>
+            Chýba hodinová sadzba: {laborMissingRates.join(', ')}. Ich hodiny sú započítané, ale náklad je zatiaľ 0 €.
+          </div>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table">
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Pracovník', 'Hodiny', 'Sadzba', 'Náklad'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {laborByWorker.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Na tejto stavbe zatiaľ nie sú evidované hodiny pracovníkov.</td></tr>
+              ) : laborByWorker.map(([meno, labor]) => (
+                <tr key={meno} style={{ borderBottom: '1px solid #ededf0' }}>
+                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>{meno}</td>
+                  <td data-label="Hodiny" style={{ padding: '11px 14px' }}>{labor.hodiny.toFixed(2)} h</td>
+                  <td data-label="Sadzba" style={{ padding: '11px 14px', color: labor.sadzba > 0 ? '#6e6e73' : '#b42318' }}>{labor.sadzba > 0 ? `${labor.sadzba.toFixed(2)} €/h` : 'Nenastavená'}</td>
+                  <td data-label="Náklad" style={{ padding: '11px 14px', fontWeight: '750' }}>{formatCurrency(labor.suma)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -803,7 +909,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vývoj financií stavby</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Reálny kumulatívny vývoj podľa dátumov zaevidovaných nákladov a platieb klienta.</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Kumulatívny vývoj ručných nákladov, automatických nákladov pracovníkov a platieb klienta.</div>
           </div>
           <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#ecfdf5', color: '#047857', fontSize: '9px', fontWeight: '750' }}>REÁLNE DÁTA</span>
         </div>
@@ -814,7 +920,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Zoznam nákladov</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expenses.length} položiek · spolu {formatCurrency(currentCosts)}</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expenses.length} ručných položiek · spolu {formatCurrency(manualCosts)}</div>
           </div>
           <button type="button" onClick={openNewExpense} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať náklad
@@ -873,7 +979,7 @@ export default function ProjectFinanceDashboard({ projectId }: { projectId: stri
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setFinanceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label="Upraviť financie" style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
             <div style={{ fontSize: '18px', fontWeight: '750' }}>Upraviť financie</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Zatiaľ ide o manuálne vstupy pre túto konkrétnu stavbu.</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Cena, budget a fakturácia sú manuálne. Náklady pracovníkov sa prepočítavajú automaticky z dochádzky.</div>
             <form onSubmit={saveFinance}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
                 {[
