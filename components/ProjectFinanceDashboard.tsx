@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov } from '../lib/laborCosts'
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../lib/financeBreakdown'
+import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } from '../lib/supplierInvoices'
 
 type FinanceRow = {
   id?: number | string
@@ -54,6 +55,20 @@ type WorkerPaymentRow = {
   meno: string
   datum: string
   suma: number | string
+  poznamka?: string | null
+}
+
+type SupplierInvoiceRow = {
+  id: number | string
+  zakazka_id: number | string
+  dodavatel: string
+  cislo_faktury: string
+  datum_vystavenia: string
+  datum_splatnosti: string
+  kategoria: Category
+  suma: number | string
+  uhradene: boolean
+  datum_uhrady?: string | null
   poznamka?: string | null
 }
 
@@ -225,15 +240,18 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [workerPayments, setWorkerPayments] = useState<WorkerPaymentRow[]>([])
+  const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [financeOpen, setFinanceOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [workerPaymentOpen, setWorkerPaymentOpen] = useState(false)
+  const [supplierInvoiceOpen, setSupplierInvoiceOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null)
   const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null)
   const [editingWorkerPayment, setEditingWorkerPayment] = useState<WorkerPaymentRow | null>(null)
+  const [editingSupplierInvoice, setEditingSupplierInvoice] = useState<SupplierInvoiceRow | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
@@ -257,6 +275,17 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     suma: 0,
     poznamka: '',
   })
+  const [supplierInvoiceForm, setSupplierInvoiceForm] = useState({
+    dodavatel: '',
+    cislo_faktury: '',
+    datum_vystavenia: today(),
+    datum_splatnosti: today(),
+    kategoria: 'Materiál' as Category,
+    suma: 0,
+    uhradene: false,
+    datum_uhrady: '',
+    poznamka: '',
+  })
 
   async function loadFinance() {
     setLoading(true)
@@ -269,6 +298,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       { data: attendanceData, error: attendanceError },
       { data: employeeData, error: employeeError },
       { data: workerPaymentData, error: workerPaymentError },
+      { data: supplierInvoiceData, error: supplierInvoiceError },
     ] = await Promise.all([
       supabase
         .from('financie_stavby')
@@ -299,10 +329,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .order('datum', { ascending: false })
         .order('id', { ascending: false }),
+      supabase
+        .from('faktury_dodavatelov')
+        .select('*')
+        .eq('zakazka_id', projectId)
+        .order('datum_splatnosti', { ascending: true })
+        .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError)
+    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError) {
+      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -312,6 +348,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setAttendance((attendanceData as AttendanceRow[]) || [])
     setEmployees((employeeData as EmployeeRow[]) || [])
     setWorkerPayments((workerPaymentData as WorkerPaymentRow[]) || [])
+    setSupplierInvoices((supplierInvoiceData as SupplierInvoiceRow[]) || [])
     setLoading(false)
   }
 
@@ -383,7 +420,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     () => expenses.reduce((sum, expense) => sum + numberValue(expense.suma), 0),
     [expenses]
   )
-  const currentCosts = manualCosts + laborCosts
+  const supplierInvoiceSummary = useMemo(
+    () => zhrnDodavatelskeFaktury(supplierInvoices, today()),
+    [supplierInvoices]
+  )
+  const supplierInvoiceCosts = supplierInvoiceSummary.spolu
+  const paidSupplierInvoiceCosts = supplierInvoiceSummary.uhradene
+  const currentCosts = manualCosts + laborCosts + supplierInvoiceCosts
 
   const paidCosts = useMemo(
     () => expenses.filter(expense => expense.uhradene !== false).reduce((sum, expense) => sum + numberValue(expense.suma), 0),
@@ -394,7 +437,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const remainingBudget = values.budget - currentCosts
   const unpaid = values.vyfakturovane - values.prijate
   const expectedProfit = values.cena - values.budget
-  const currentCashflow = values.prijate - paidCosts - paidLaborCosts
+  const currentCashflow = values.prijate - paidCosts - paidLaborCosts - paidSupplierInvoiceCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
   const budgetExceeded = values.budget > 0 && currentCosts > values.budget
 
@@ -403,18 +446,22 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     expenses.forEach(expense => {
       totals[expense.kategoria] = (totals[expense.kategoria] || 0) + numberValue(expense.suma)
     })
+    supplierInvoices.forEach(invoice => {
+      totals[invoice.kategoria] = (totals[invoice.kategoria] || 0) + numberValue(invoice.suma)
+    })
     totals['Pracovníci'] += laborCosts
     return totals
-  }, [expenses, laborCosts])
+  }, [expenses, supplierInvoices, laborCosts])
 
   const monthlyBreakdown = useMemo(
-    () => vytvorMesacnyRozpadNakladov(expenses, laborEntries),
-    [expenses, laborEntries]
+    () => vytvorMesacnyRozpadNakladov([...expenses, ...fakturyAkoNaklady(supplierInvoices)], laborEntries),
+    [expenses, supplierInvoices, laborEntries]
   )
 
   const chartData = useMemo<ChartPoint[]>(() => {
     const months = new Set<string>()
     expenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
+    supplierInvoices.forEach(invoice => invoice.datum_vystavenia && months.add(invoice.datum_vystavenia.slice(0, 7)))
     payments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
     laborEntries.forEach(entry => entry.datum && months.add(entry.datum.slice(0, 7)))
     const sorted = Array.from(months).sort()
@@ -440,6 +487,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       const key = expense.datum.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(expense.suma))
     })
+    supplierInvoices.forEach(invoice => {
+      const key = invoice.datum_vystavenia.slice(0, 7)
+      costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(invoice.suma))
+    })
     laborEntries.forEach(entry => {
       const key = entry.datum.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + entry.suma)
@@ -461,7 +512,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         payments: cumulativePayments,
       }
     })
-  }, [expenses, payments, laborEntries])
+  }, [expenses, supplierInvoices, payments, laborEntries])
 
   function openFinanceEditor() {
     setFinanceForm({
@@ -568,6 +619,108 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setExpenseOpen(false)
     setEditingExpense(null)
     setMessage(editingExpense ? 'Náklad bol upravený.' : 'Náklad bol pridaný.')
+    await loadFinance()
+  }
+
+  function openNewSupplierInvoice() {
+    setEditingSupplierInvoice(null)
+    setSupplierInvoiceForm({
+      dodavatel: '',
+      cislo_faktury: '',
+      datum_vystavenia: today(),
+      datum_splatnosti: today(),
+      kategoria: 'Materiál',
+      suma: 0,
+      uhradene: false,
+      datum_uhrady: '',
+      poznamka: '',
+    })
+    setSupplierInvoiceOpen(true)
+  }
+
+  function openSupplierInvoiceEdit(invoice: SupplierInvoiceRow) {
+    setEditingSupplierInvoice(invoice)
+    setSupplierInvoiceForm({
+      dodavatel: invoice.dodavatel,
+      cislo_faktury: invoice.cislo_faktury,
+      datum_vystavenia: invoice.datum_vystavenia,
+      datum_splatnosti: invoice.datum_splatnosti,
+      kategoria: invoice.kategoria,
+      suma: numberValue(invoice.suma),
+      uhradene: invoice.uhradene === true,
+      datum_uhrady: invoice.datum_uhrady || '',
+      poznamka: invoice.poznamka || '',
+    })
+    setSupplierInvoiceOpen(true)
+  }
+
+  async function saveSupplierInvoice(event: FormEvent) {
+    event.preventDefault()
+    if (saving) return
+
+    const dodavatel = supplierInvoiceForm.dodavatel.trim()
+    const cisloFaktury = supplierInvoiceForm.cislo_faktury.trim()
+    const suma = numberValue(supplierInvoiceForm.suma)
+
+    if (!dodavatel || !cisloFaktury || !supplierInvoiceForm.datum_vystavenia || !supplierInvoiceForm.datum_splatnosti || suma <= 0) {
+      setMessage('Vyplňte dodávateľa, číslo faktúry, dátumy a sumu vyššiu ako 0 €.')
+      return
+    }
+    if (supplierInvoiceForm.datum_splatnosti < supplierInvoiceForm.datum_vystavenia) {
+      setMessage('Dátum splatnosti nemôže byť pred dátumom vystavenia.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+    const payload = {
+      zakazka_id: Number(projectId),
+      dodavatel,
+      cislo_faktury: cisloFaktury,
+      datum_vystavenia: supplierInvoiceForm.datum_vystavenia,
+      datum_splatnosti: supplierInvoiceForm.datum_splatnosti,
+      kategoria: supplierInvoiceForm.kategoria,
+      suma,
+      uhradene: supplierInvoiceForm.uhradene,
+      datum_uhrady: supplierInvoiceForm.uhradene ? (supplierInvoiceForm.datum_uhrady || today()) : null,
+      poznamka: supplierInvoiceForm.poznamka.trim() || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const query = editingSupplierInvoice
+      ? supabase.from('faktury_dodavatelov').update(payload).eq('id', editingSupplierInvoice.id).eq('zakazka_id', projectId)
+      : supabase.from('faktury_dodavatelov').insert([payload])
+
+    const { error } = await query
+    setSaving(false)
+
+    if (error) {
+      console.error('Chyba uloženia dodávateľskej faktúry:', error)
+      setMessage('Dodávateľskú faktúru sa nepodarilo uložiť.')
+      return
+    }
+
+    setSupplierInvoiceOpen(false)
+    setEditingSupplierInvoice(null)
+    setMessage(editingSupplierInvoice ? 'Dodávateľská faktúra bola upravená.' : 'Dodávateľská faktúra bola pridaná.')
+    await loadFinance()
+  }
+
+  async function deleteSupplierInvoice(invoice: SupplierInvoiceRow) {
+    if (!confirm(`Naozaj odstrániť faktúru ${invoice.cislo_faktury} od ${invoice.dodavatel}?`)) return
+    const { error } = await supabase
+      .from('faktury_dodavatelov')
+      .delete()
+      .eq('id', invoice.id)
+      .eq('zakazka_id', projectId)
+
+    if (error) {
+      console.error('Chyba mazania dodávateľskej faktúry:', error)
+      setMessage('Dodávateľskú faktúru sa nepodarilo odstrániť.')
+      return
+    }
+
+    setMessage('Dodávateľská faktúra bola odstránená.')
     await loadFinance()
   }
 
@@ -857,6 +1010,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             Upraviť financie
           </button>
+          <button type="button" onClick={openNewSupplierInvoice} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
+            + Faktúra dodávateľa
+          </button>
           <button type="button" onClick={() => openNewWorkerPayment()} disabled={laborByWorker.length === 0} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: laborByWorker.length === 0 ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: '700', opacity: laborByWorker.length === 0 ? .5 : 1 }}>
             + Vyplatiť pracovníka
           </button>
@@ -878,7 +1034,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div className="finance-metrics-grid">
         <MetricCard label="Cena zákazky" value={formatCurrency(values.cena)} detail="Dohodnutá cena s klientom" />
         <MetricCard label="Budget nákladov" value={formatCurrency(values.budget)} detail="Maximálny plánovaný náklad" />
-        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
+        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + faktúry ${formatCurrency(supplierInvoiceCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
         <MetricCard label="Zostáva z budgetu" value={formatCurrency(remainingBudget)} detail="Budget mínus aktuálne náklady" tone={remainingBudget < 0 ? 'negative' : 'default'} />
         <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail="Manuálne zadaná suma klientovi" />
         <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`${payments.length} evidovaných platieb od klienta`} tone={values.prijate > 0 ? 'positive' : 'default'} />
@@ -891,7 +1047,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyčerpanie budgetu</div>
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>
-              Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)} · z toho pracovníci {formatCurrency(laborCosts)}
+              Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)} · faktúry {formatCurrency(supplierInvoiceCosts)} · pracovníci {formatCurrency(laborCosts)}
             </div>
           </div>
           <div style={{ fontSize: '22px', fontWeight: '750', color: budgetExceeded ? '#b42318' : '#1d1d1f' }}>
@@ -950,6 +1106,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidCosts)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', paddingBottom: '10px', borderBottom: '1px solid #ededf0' }}>
+              <span style={{ color: '#6e6e73', fontSize: '11px' }}>Uhradené faktúry dodávateľov</span>
+              <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidSupplierInvoiceCosts)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', paddingBottom: '10px', borderBottom: '1px solid #ededf0' }}>
               <span style={{ color: '#6e6e73', fontSize: '11px' }}>Vyplatené pracovníkom</span>
               <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidLaborCosts)}</strong>
             </div>
@@ -961,7 +1121,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             </div>
           </div>
           <div style={{ marginTop: '12px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-            Neuhradené ručné náklady: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Pracovníci: náklad <strong>{formatCurrency(laborCosts)}</strong>, vyplatené <strong>{formatCurrency(paidLaborCosts)}</strong>, zostáva <strong style={{ color: outstandingLaborCosts > 0 ? '#9a6700' : '#047857' }}>{formatCurrency(outstandingLaborCosts)}</strong>.
+            Neuhradené ručné náklady: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Neuhradené faktúry: <strong style={{ color: supplierInvoiceSummary.neuhradene > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(supplierInvoiceSummary.neuhradene)}</strong>. Pracovníci: náklad <strong>{formatCurrency(laborCosts)}</strong>, vyplatené <strong>{formatCurrency(paidLaborCosts)}</strong>, zostáva <strong style={{ color: outstandingLaborCosts > 0 ? '#9a6700' : '#047857' }}>{formatCurrency(outstandingLaborCosts)}</strong>.
           </div>
         </div>
       </div>
@@ -1098,6 +1258,67 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Faktúry od dodávateľov</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>
+              {supplierInvoices.length} faktúr · spolu {formatCurrency(supplierInvoiceCosts)} · neuhradené {formatCurrency(supplierInvoiceSummary.neuhradene)}
+            </div>
+          </div>
+          <button type="button" onClick={openNewSupplierInvoice} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
+            + Pridať faktúru
+          </button>
+        </div>
+        {supplierInvoiceSummary.pocetPoSplatnosti > 0 && (
+          <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '700' }}>
+            Po splatnosti: {supplierInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(supplierInvoiceSummary.poSplatnosti)}
+          </div>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table" style={{ minWidth: '900px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Dodávateľ', 'Číslo FA', 'Vystavená', 'Splatnosť', 'Kategória', 'Suma', 'Stav', 'Akcie'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {supplierInvoices.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne faktúry od dodávateľov.</td></tr>
+              ) : supplierInvoices.map(invoice => {
+                const status = stavDodavatelskejFaktury(invoice, today())
+                return (
+                  <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
+                    <td data-label="Dodávateľ" style={{ padding: '11px 14px', fontWeight: '650' }}>{invoice.dodavatel}</td>
+                    <td data-label="Číslo FA" style={{ padding: '11px 14px' }}>{invoice.cislo_faktury}</td>
+                    <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
+                    <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
+                    <td data-label="Kategória" style={{ padding: '11px 14px' }}><span style={{ display: 'inline-flex', padding: '4px 7px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '9px', fontWeight: '700' }}>{invoice.kategoria}</span></td>
+                    <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(numberValue(invoice.suma))}</td>
+                    <td data-label="Stav" style={{ padding: '11px 14px' }}>
+                      <span style={{
+                        display: 'inline-flex', padding: '4px 7px', borderRadius: '999px',
+                        backgroundColor: status === 'Uhradená' ? '#ecfdf5' : status === 'Po splatnosti' ? '#fef2f2' : '#fff7ed',
+                        color: status === 'Uhradená' ? '#047857' : status === 'Po splatnosti' ? '#b42318' : '#9a6700',
+                        fontSize: '9px', fontWeight: '750'
+                      }}>{status}</span>
+                    </td>
+                    <td data-label="Akcie" style={{ padding: '11px 14px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => openSupplierInvoiceEdit(invoice)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Upraviť</button>
+                        <button type="button" onClick={() => deleteSupplierInvoice(invoice)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#f5f5f7', color: '#86868b', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Náklady podľa mesiacov a kategórií</div>
             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Automatické mzdy + ručne evidované náklady v jednom mesačnom prehľade.</div>
           </div>
@@ -1145,8 +1366,8 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: '750' }}>Zoznam nákladov</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expenses.length} ručných položiek · spolu {formatCurrency(manualCosts)}</div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Ostatné ručné náklady</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expenses.length} položiek mimo dodávateľských faktúr · spolu {formatCurrency(manualCosts)}</div>
           </div>
           <button type="button" onClick={openNewExpense} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať náklad
@@ -1200,6 +1421,68 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           </table>
         </div>
       </div>
+
+      {supplierInvoiceOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setSupplierInvoiceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingSupplierInvoice ? 'Upraviť faktúru dodávateľa' : 'Pridať faktúru dodávateľa'} style={{ width: 'min(680px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingSupplierInvoice ? 'Upraviť faktúru dodávateľa' : 'Pridať faktúru dodávateľa'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra vstúpi do nákladov stavby. Do cashflow sa odpočíta až po označení ako uhradená.</div>
+            <form onSubmit={saveSupplierInvoice}>
+              <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div>
+                  <label style={labelStyle}>Dodávateľ</label>
+                  <input type="text" required maxLength={200} value={supplierInvoiceForm.dodavatel} onChange={event => setSupplierInvoiceForm(current => ({ ...current, dodavatel: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Číslo faktúry</label>
+                  <input type="text" required maxLength={120} value={supplierInvoiceForm.cislo_faktury} onChange={event => setSupplierInvoiceForm(current => ({ ...current, cislo_faktury: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum vystavenia</label>
+                  <input type="date" required value={supplierInvoiceForm.datum_vystavenia} onChange={event => setSupplierInvoiceForm(current => ({ ...current, datum_vystavenia: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum splatnosti</label>
+                  <input type="date" required min={supplierInvoiceForm.datum_vystavenia} value={supplierInvoiceForm.datum_splatnosti} onChange={event => setSupplierInvoiceForm(current => ({ ...current, datum_splatnosti: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Kategória</label>
+                  <select value={supplierInvoiceForm.kategoria} onChange={event => setSupplierInvoiceForm(current => ({ ...current, kategoria: event.target.value as Category }))} style={inputStyle}>
+                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Suma</label>
+                  <input type="number" min="0.01" step="0.01" required value={supplierInvoiceForm.suma || ''} onChange={event => setSupplierInvoiceForm(current => ({ ...current, suma: Number(event.target.value) }))} style={inputStyle} />
+                </div>
+                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '9px', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#f7f7f8', cursor: 'pointer', fontSize: '11px', fontWeight: '650' }}>
+                  <input
+                    type="checkbox"
+                    checked={supplierInvoiceForm.uhradene}
+                    onChange={event => setSupplierInvoiceForm(current => ({ ...current, uhradene: event.target.checked, datum_uhrady: event.target.checked ? (current.datum_uhrady || today()) : '' }))}
+                    style={{ width: '17px', height: '17px', accentColor: '#0071e3' }}
+                  />
+                  Faktúra je uhradená
+                </label>
+                {supplierInvoiceForm.uhradene && (
+                  <div>
+                    <label style={labelStyle}>Dátum úhrady</label>
+                    <input type="date" required value={supplierInvoiceForm.datum_uhrady} onChange={event => setSupplierInvoiceForm(current => ({ ...current, datum_uhrady: event.target.value }))} style={inputStyle} />
+                  </div>
+                )}
+                <div style={{ gridColumn: supplierInvoiceForm.uhradene ? 'auto' : '1 / -1' }}>
+                  <label style={labelStyle}>Poznámka</label>
+                  <input type="text" maxLength={500} placeholder="Voliteľné" value={supplierInvoiceForm.poznamka} onChange={event => setSupplierInvoiceForm(current => ({ ...current, poznamka: event.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button type="button" onClick={() => setSupplierInvoiceOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
+                <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : (editingSupplierInvoice ? 'Uložiť zmenu' : 'Pridať faktúru')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {workerPaymentOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setWorkerPaymentOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
