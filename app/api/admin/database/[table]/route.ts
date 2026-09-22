@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
 
 export const dynamic = 'force-dynamic'
-const TABLES = new Set(['dochadzka', 'zamestnanci', 'zoznam_zakaziek', 'nepritomnosti', 'financie_stavby', 'naklady_stavby', 'platby_stavby', 'uhrady_pracovnikov', 'faktury_dodavatelov'])
+const TABLES = new Set(['dochadzka', 'zamestnanci', 'zoznam_zakaziek', 'nepritomnosti', 'financie_stavby', 'naklady_stavby', 'platby_stavby', 'uhrady_pracovnikov', 'faktury_dodavatelov', 'faktury_klientov'])
 const MAX_BODY_BYTES = 256 * 1024
 type Context = { params: Promise<{ table: string }> }
 
