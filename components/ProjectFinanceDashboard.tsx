@@ -5,6 +5,7 @@ import { supabase } from '../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov } from '../lib/laborCosts'
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../lib/financeBreakdown'
 import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } from '../lib/supplierInvoices'
+import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 
 type FinanceRow = {
   id?: number | string
@@ -72,6 +73,18 @@ type SupplierInvoiceRow = {
   poznamka?: string | null
 }
 
+type ClientInvoiceRow = {
+  id: number | string
+  zakazka_id: number | string
+  cislo_faktury: string
+  datum_vystavenia: string
+  datum_splatnosti: string
+  suma: number | string
+  uhradene: boolean
+  datum_uhrady?: string | null
+  poznamka?: string | null
+}
+
 type ChartPoint = {
   month: string
   costs: number
@@ -85,7 +98,6 @@ const CATEGORIES: Category[] = ['Pracovníci', 'Materiál', 'Subdodávatelia', '
 const EMPTY_FINANCE = {
   cena_zakazky: 0,
   budget_nakladov: 0,
-  vyfakturovane: 0,
 }
 
 const cardStyle = {
@@ -241,6 +253,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
   const [workerPayments, setWorkerPayments] = useState<WorkerPaymentRow[]>([])
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([])
+  const [clientInvoices, setClientInvoices] = useState<ClientInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [financeOpen, setFinanceOpen] = useState(false)
@@ -248,10 +261,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [workerPaymentOpen, setWorkerPaymentOpen] = useState(false)
   const [supplierInvoiceOpen, setSupplierInvoiceOpen] = useState(false)
+  const [clientInvoiceOpen, setClientInvoiceOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null)
   const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null)
   const [editingWorkerPayment, setEditingWorkerPayment] = useState<WorkerPaymentRow | null>(null)
   const [editingSupplierInvoice, setEditingSupplierInvoice] = useState<SupplierInvoiceRow | null>(null)
+  const [editingClientInvoice, setEditingClientInvoice] = useState<ClientInvoiceRow | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
@@ -286,6 +301,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     datum_uhrady: '',
     poznamka: '',
   })
+  const [clientInvoiceForm, setClientInvoiceForm] = useState({
+    cislo_faktury: '',
+    datum_vystavenia: today(),
+    datum_splatnosti: today(),
+    suma: 0,
+    uhradene: false,
+    datum_uhrady: '',
+    poznamka: '',
+  })
 
   async function loadFinance() {
     setLoading(true)
@@ -299,6 +323,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       { data: employeeData, error: employeeError },
       { data: workerPaymentData, error: workerPaymentError },
       { data: supplierInvoiceData, error: supplierInvoiceError },
+      { data: clientInvoiceData, error: clientInvoiceError },
     ] = await Promise.all([
       supabase
         .from('financie_stavby')
@@ -335,10 +360,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .order('datum_splatnosti', { ascending: true })
         .order('id', { ascending: false }),
+      supabase
+        .from('faktury_klientov')
+        .select('*')
+        .eq('zakazka_id', projectId)
+        .order('datum_vystavenia', { ascending: false })
+        .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError)
+    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
+      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -349,6 +380,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setEmployees((employeeData as EmployeeRow[]) || [])
     setWorkerPayments((workerPaymentData as WorkerPaymentRow[]) || [])
     setSupplierInvoices((supplierInvoiceData as SupplierInvoiceRow[]) || [])
+    setClientInvoices((clientInvoiceData as ClientInvoiceRow[]) || [])
     setLoading(false)
   }
 
@@ -356,17 +388,23 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     loadFinance()
   }, [projectId])
 
-  const receivedPayments = useMemo(
+  const otherReceivedPayments = useMemo(
     () => payments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
     [payments]
   )
 
+  const clientInvoiceSummary = useMemo(
+    () => zhrnKlientskeFaktury(clientInvoices, today()),
+    [clientInvoices]
+  )
+
+  const legacyInvoiced = numberValue(finance?.vyfakturovane)
   const values = useMemo(() => ({
     cena: numberValue(finance?.cena_zakazky),
     budget: numberValue(finance?.budget_nakladov),
-    vyfakturovane: numberValue(finance?.vyfakturovane),
-    prijate: receivedPayments,
-  }), [finance, receivedPayments])
+    vyfakturovane: clientInvoices.length > 0 ? clientInvoiceSummary.vyfakturovane : legacyInvoiced,
+    prijate: clientInvoiceSummary.prijate + otherReceivedPayments,
+  }), [finance, clientInvoices.length, clientInvoiceSummary, legacyInvoiced, otherReceivedPayments])
 
   const laborEntries = useMemo(
     () => vypocitajNakladyPracovnikov(attendance, employees)
@@ -435,7 +473,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const unpaidCosts = manualCosts - paidCosts
 
   const remainingBudget = values.budget - currentCosts
-  const unpaid = values.vyfakturovane - values.prijate
+  const unpaid = clientInvoices.length > 0
+    ? clientInvoiceSummary.pohladavky
+    : Math.max(0, values.vyfakturovane - otherReceivedPayments)
   const expectedProfit = values.cena - values.budget
   const currentCashflow = values.prijate - paidCosts - paidLaborCosts - paidSupplierInvoiceCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
@@ -463,6 +503,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     expenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
     supplierInvoices.forEach(invoice => invoice.datum_vystavenia && months.add(invoice.datum_vystavenia.slice(0, 7)))
     payments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
+    clientInvoices.forEach(invoice => invoice.uhradene && invoice.datum_uhrady && months.add(invoice.datum_uhrady.slice(0, 7)))
     laborEntries.forEach(entry => entry.datum && months.add(entry.datum.slice(0, 7)))
     const sorted = Array.from(months).sort()
     if (sorted.length === 0) return []
@@ -499,6 +540,11 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       const key = payment.datum.slice(0, 7)
       paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(payment.suma))
     })
+    clientInvoices.forEach(invoice => {
+      if (!invoice.uhradene || !invoice.datum_uhrady) return
+      const key = invoice.datum_uhrady.slice(0, 7)
+      paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(invoice.suma))
+    })
 
     let cumulativeCosts = 0
     let cumulativePayments = 0
@@ -512,13 +558,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         payments: cumulativePayments,
       }
     })
-  }, [expenses, supplierInvoices, payments, laborEntries])
+  }, [expenses, supplierInvoices, payments, clientInvoices, laborEntries])
 
   function openFinanceEditor() {
     setFinanceForm({
       cena_zakazky: values.cena,
       budget_nakladov: values.budget,
-      vyfakturovane: values.vyfakturovane,
     })
     setFinanceOpen(true)
   }
@@ -533,7 +578,6 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       zakazka_id: Number(projectId),
       cena_zakazky: Math.max(0, numberValue(financeForm.cena_zakazky)),
       budget_nakladov: Math.max(0, numberValue(financeForm.budget_nakladov)),
-      vyfakturovane: Math.max(0, numberValue(financeForm.vyfakturovane)),
       updated_at: new Date().toISOString(),
     }
 
@@ -619,6 +663,102 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setExpenseOpen(false)
     setEditingExpense(null)
     setMessage(editingExpense ? 'Náklad bol upravený.' : 'Náklad bol pridaný.')
+    await loadFinance()
+  }
+
+  function openNewClientInvoice() {
+    setEditingClientInvoice(null)
+    setClientInvoiceForm({
+      cislo_faktury: '',
+      datum_vystavenia: today(),
+      datum_splatnosti: today(),
+      suma: 0,
+      uhradene: false,
+      datum_uhrady: '',
+      poznamka: '',
+    })
+    setClientInvoiceOpen(true)
+  }
+
+  function openClientInvoiceEdit(invoice: ClientInvoiceRow) {
+    setEditingClientInvoice(invoice)
+    setClientInvoiceForm({
+      cislo_faktury: invoice.cislo_faktury,
+      datum_vystavenia: invoice.datum_vystavenia,
+      datum_splatnosti: invoice.datum_splatnosti,
+      suma: numberValue(invoice.suma),
+      uhradene: invoice.uhradene === true,
+      datum_uhrady: invoice.datum_uhrady || '',
+      poznamka: invoice.poznamka || '',
+    })
+    setClientInvoiceOpen(true)
+  }
+
+  async function saveClientInvoice(event: FormEvent) {
+    event.preventDefault()
+    if (saving) return
+
+    const cisloFaktury = clientInvoiceForm.cislo_faktury.trim()
+    const suma = numberValue(clientInvoiceForm.suma)
+    if (!cisloFaktury || !clientInvoiceForm.datum_vystavenia || !clientInvoiceForm.datum_splatnosti || suma <= 0) {
+      setMessage('Vyplňte číslo faktúry, dátumy a sumu vyššiu ako 0 €.')
+      return
+    }
+    if (clientInvoiceForm.datum_splatnosti < clientInvoiceForm.datum_vystavenia) {
+      setMessage('Dátum splatnosti nemôže byť pred dátumom vystavenia.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+    const payload = {
+      zakazka_id: Number(projectId),
+      cislo_faktury: cisloFaktury,
+      datum_vystavenia: clientInvoiceForm.datum_vystavenia,
+      datum_splatnosti: clientInvoiceForm.datum_splatnosti,
+      suma,
+      uhradene: clientInvoiceForm.uhradene,
+      datum_uhrady: clientInvoiceForm.uhradene ? (clientInvoiceForm.datum_uhrady || today()) : null,
+      poznamka: clientInvoiceForm.poznamka.trim() || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const query = editingClientInvoice
+      ? supabase.from('faktury_klientov').update(payload).eq('id', editingClientInvoice.id).eq('zakazka_id', projectId)
+      : supabase.from('faktury_klientov').insert([payload])
+
+    const { error } = await query
+    setSaving(false)
+
+    if (error) {
+      console.error('Chyba uloženia faktúry klientovi:', error)
+      setMessage((error as { code?: string }).code === '23505'
+        ? 'Faktúra s týmto číslom už existuje.'
+        : 'Faktúru klientovi sa nepodarilo uložiť.')
+      return
+    }
+
+    setClientInvoiceOpen(false)
+    setEditingClientInvoice(null)
+    setMessage(editingClientInvoice ? 'Faktúra klientovi bola upravená.' : 'Faktúra klientovi bola pridaná.')
+    await loadFinance()
+  }
+
+  async function deleteClientInvoice(invoice: ClientInvoiceRow) {
+    if (!confirm(`Naozaj odstrániť vystavenú faktúru ${invoice.cislo_faktury}?`)) return
+    const { error } = await supabase
+      .from('faktury_klientov')
+      .delete()
+      .eq('id', invoice.id)
+      .eq('zakazka_id', projectId)
+
+    if (error) {
+      console.error('Chyba mazania faktúry klientovi:', error)
+      setMessage('Faktúru klientovi sa nepodarilo odstrániť.')
+      return
+    }
+
+    setMessage('Faktúra klientovi bola odstránená.')
     await loadFinance()
   }
 
@@ -1004,11 +1144,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div className="finance-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div>
           <div style={{ fontSize: '17px', fontWeight: '750', letterSpacing: '-0.02em' }}>Finančný prehľad stavby</div>
-          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Náklad pracovníkov sa počíta automaticky z dochádzky × hodinovej sadzby. Ostatné finančné údaje zadávaš manuálne.</div>
+          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Mzdy sa počítajú automaticky z dochádzky. Vyfakturované a prijaté platby sa počítajú z vystavených faktúr klientovi a prípadných záloh.</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             Upraviť financie
+          </button>
+          <button type="button" onClick={openNewClientInvoice} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #b9d8f8', borderRadius: '10px', backgroundColor: '#eef6ff', color: '#0066cc', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
+            + Faktúra klientovi
           </button>
           <button type="button" onClick={openNewSupplierInvoice} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             + Faktúra dodávateľa
@@ -1017,7 +1160,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             + Vyplatiť pracovníka
           </button>
           <button type="button" onClick={openNewPayment} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #b9d8f8', borderRadius: '10px', backgroundColor: '#eef6ff', color: '#0066cc', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
-            + Pridať platbu
+            + Prijatá záloha
           </button>
           <button type="button" onClick={openNewExpense} style={{ minHeight: '38px', padding: '8px 14px', border: 'none', borderRadius: '10px', backgroundColor: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             + Pridať náklad
@@ -1215,11 +1358,71 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: '750' }}>Platby od klienta</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payments.length} platieb · spolu {formatCurrency(values.prijate)}</div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Faktúry klientovi</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>
+              {clientInvoices.length} faktúr · vyfakturované {formatCurrency(clientInvoiceSummary.vyfakturovane)} · prijaté {formatCurrency(clientInvoiceSummary.prijate)} · pohľadávky {formatCurrency(clientInvoiceSummary.pohladavky)}
+            </div>
+          </div>
+          <button type="button" onClick={openNewClientInvoice} style={{ padding: '7px 11px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
+            + Pridať faktúru
+          </button>
+        </div>
+        {clientInvoiceSummary.pocetPoSplatnosti > 0 && (
+          <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '700' }}>
+            Pohľadávky po splatnosti: {clientInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(clientInvoiceSummary.poSplatnosti)}
+          </div>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table" style={{ minWidth: '820px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Číslo FA', 'Vystavená', 'Splatnosť', 'Suma', 'Stav', 'Úhrada', 'Akcie'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {clientInvoices.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie je zaevidovaná žiadna vystavená faktúra klientovi.</td></tr>
+              ) : clientInvoices.map(invoice => {
+                const status = stavKlientskejFaktury(invoice, today())
+                return (
+                  <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
+                    <td data-label="Číslo FA" style={{ padding: '11px 14px', fontWeight: '700' }}>{invoice.cislo_faktury}</td>
+                    <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
+                    <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
+                    <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(numberValue(invoice.suma))}</td>
+                    <td data-label="Stav" style={{ padding: '11px 14px' }}>
+                      <span style={{
+                        display: 'inline-flex', padding: '4px 7px', borderRadius: '999px',
+                        backgroundColor: status === 'Uhradená' ? '#ecfdf5' : status === 'Po splatnosti' ? '#fef2f2' : '#fff7ed',
+                        color: status === 'Uhradená' ? '#047857' : status === 'Po splatnosti' ? '#b42318' : '#9a6700',
+                        fontSize: '9px', fontWeight: '750'
+                      }}>{status}</span>
+                    </td>
+                    <td data-label="Úhrada" style={{ padding: '11px 14px', color: '#6e6e73' }}>{invoice.datum_uhrady ? formatDate(invoice.datum_uhrady) : '—'}</td>
+                    <td data-label="Akcie" style={{ padding: '11px 14px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => openClientInvoiceEdit(invoice)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Upraviť</button>
+                        <button type="button" onClick={() => deleteClientInvoice(invoice)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#f5f5f7', color: '#86868b', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Iné prijaté platby / zálohy</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payments.length} platieb · spolu {formatCurrency(otherReceivedPayments)}</div>
           </div>
           <button type="button" onClick={openNewPayment} style={{ padding: '7px 11px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
-            + Pridať platbu
+            + Pridať zálohu
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -1422,6 +1625,58 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         </div>
       </div>
 
+      {clientInvoiceOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setClientInvoiceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingClientInvoice ? 'Upraviť faktúru klientovi' : 'Pridať faktúru klientovi'} style={{ width: 'min(680px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingClientInvoice ? 'Upraviť faktúru klientovi' : 'Pridať faktúru klientovi'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra automaticky zvýši vyfakturovanú sumu. Po označení ako uhradená sa jej suma započíta medzi prijaté platby a do cashflow.</div>
+            <form onSubmit={saveClientInvoice}>
+              <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div>
+                  <label style={labelStyle}>Číslo faktúry</label>
+                  <input type="text" required maxLength={120} value={clientInvoiceForm.cislo_faktury} onChange={event => setClientInvoiceForm(current => ({ ...current, cislo_faktury: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Suma</label>
+                  <input type="number" min="0.01" step="0.01" required value={clientInvoiceForm.suma || ''} onChange={event => setClientInvoiceForm(current => ({ ...current, suma: Number(event.target.value) }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum vystavenia</label>
+                  <input type="date" required value={clientInvoiceForm.datum_vystavenia} onChange={event => setClientInvoiceForm(current => ({ ...current, datum_vystavenia: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum splatnosti</label>
+                  <input type="date" required min={clientInvoiceForm.datum_vystavenia} value={clientInvoiceForm.datum_splatnosti} onChange={event => setClientInvoiceForm(current => ({ ...current, datum_splatnosti: event.target.value }))} style={inputStyle} />
+                </div>
+                <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '9px', padding: '11px 12px', borderRadius: '10px', backgroundColor: '#f7f7f8', cursor: 'pointer', fontSize: '11px', fontWeight: '650' }}>
+                  <input
+                    type="checkbox"
+                    checked={clientInvoiceForm.uhradene}
+                    onChange={event => setClientInvoiceForm(current => ({ ...current, uhradene: event.target.checked, datum_uhrady: event.target.checked ? (current.datum_uhrady || today()) : '' }))}
+                    style={{ width: '17px', height: '17px', accentColor: '#0071e3' }}
+                  />
+                  Faktúra je uhradená
+                </label>
+                {clientInvoiceForm.uhradene && (
+                  <div>
+                    <label style={labelStyle}>Dátum úhrady</label>
+                    <input type="date" required value={clientInvoiceForm.datum_uhrady} onChange={event => setClientInvoiceForm(current => ({ ...current, datum_uhrady: event.target.value }))} style={inputStyle} />
+                  </div>
+                )}
+                <div style={{ gridColumn: clientInvoiceForm.uhradene ? 'auto' : '1 / -1' }}>
+                  <label style={labelStyle}>Poznámka</label>
+                  <input type="text" maxLength={500} placeholder="Voliteľné" value={clientInvoiceForm.poznamka} onChange={event => setClientInvoiceForm(current => ({ ...current, poznamka: event.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button type="button" onClick={() => setClientInvoiceOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
+                <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : (editingClientInvoice ? 'Uložiť zmenu' : 'Pridať faktúru')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {supplierInvoiceOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setSupplierInvoiceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingSupplierInvoice ? 'Upraviť faktúru dodávateľa' : 'Pridať faktúru dodávateľa'} style={{ width: 'min(680px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
@@ -1538,13 +1793,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setFinanceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label="Upraviť financie" style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
             <div style={{ fontSize: '18px', fontWeight: '750' }}>Upraviť financie</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Cena, budget a fakturácia sú manuálne. Náklady pracovníkov sa prepočítavajú automaticky z dochádzky.</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Cena zákazky a budget sú manuálne. Vyfakturované a prijaté sa počítajú z faktúr klientovi.</div>
             <form onSubmit={saveFinance}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
                 {[
                   ['cena_zakazky', 'Cena zákazky'],
                   ['budget_nakladov', 'Budget nákladov'],
-                  ['vyfakturovane', 'Vyfakturované'],
                 ].map(([key, label]) => (
                   <div key={key}>
                     <label style={labelStyle}>{label}</label>
