@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
+import { vypocitajFondObdobia } from '../../lib/workFund'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function DashboardPage() {
@@ -226,26 +227,6 @@ export default function DashboardPage() {
     setFilterMesiac(datumText.slice(0, 7))
     setFilterDen(datumText)
     setFilterPolovica('cely')
-  }
-
-  function vypocitajFondObdobia(mesiac: string, odDna = 1, doDna?: number) {
-    const [rokText, mesiacText] = mesiac.split('-')
-    const rok = Number(rokText)
-    const mesiacIndex = Number(mesiacText) - 1
-
-    if (!Number.isInteger(rok) || mesiacIndex < 0 || mesiacIndex > 11) return 0
-
-    const pocetDni = new Date(Date.UTC(rok, mesiacIndex + 1, 0)).getUTCDate()
-    const poslednyDen = Math.min(doDna ?? pocetDni, pocetDni)
-    let fond = 0
-
-    for (let den = Math.max(1, odDna); den <= poslednyDen; den++) {
-      const denVTyzdni = new Date(Date.UTC(rok, mesiacIndex, den)).getUTCDay()
-      if (denVTyzdni === 0) continue
-      fond += denVTyzdni === 6 ? 10.5 : 11.5
-    }
-
-    return fond
   }
 
   function vypocitajFondMesiaca(mesiac: string) {

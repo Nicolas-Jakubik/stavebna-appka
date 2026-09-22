@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
+import { vypocitajFondObdobia } from '../../lib/workFund'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
@@ -67,25 +68,6 @@ export default function MzdyPage() {
   if (filterPolovica === 'druha') textPolovice = ' (2. polovica: 16. deň - koniec)';
   const aktualnyNazovMesiaca = (zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac) + textPolovice;
   const nazovMesiacaBezPolovice = zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac
-
-  function vypocitajFondObdobia(mesiacText: string, odDna: number, doDna: number) {
-    const [rokText, mesiacCisloText] = mesiacText.split('-')
-    const rok = Number(rokText)
-    const mesiacCislo = Number(mesiacCisloText)
-    if (!rok || !mesiacCislo) return 0
-
-    const poslednyDen = new Date(Date.UTC(rok, mesiacCislo, 0)).getUTCDate()
-    const koniec = Math.min(doDna, poslednyDen)
-    let fond = 0
-
-    for (let den = odDna; den <= koniec; den++) {
-      const denVTyzdni = new Date(Date.UTC(rok, mesiacCislo - 1, den)).getUTCDay()
-      if (denVTyzdni === 0) continue
-      fond += denVTyzdni === 6 ? 10.5 : 11.5
-    }
-
-    return fond
-  }
 
   const [rokFonduText, mesiacFonduText] = filterMesiac.split('-')
   const pocetDniVoVybranomMesiaci = rokFonduText && mesiacFonduText
