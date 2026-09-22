@@ -8,6 +8,7 @@ import { vypocitajNakladyPracovnikov, zhrnNakladyPracovnikovPodlaZakazky } from 
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../../lib/financeBreakdown'
 import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierInvoices'
 import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
+import { vypocitajZiskovost } from '../../lib/profitability'
 
 type Project = {
   id: number | string
@@ -255,6 +256,13 @@ export default function FinanciePage() {
       const remaining = budget - costs
       const cashflow = received - paidCosts - paidLabor - supplierSummary.uhradene
       const usage = budget > 0 ? (costs / budget) * 100 : 0
+      const profitability = vypocitajZiskovost({
+        cenaZakazky: price,
+        budgetNakladov: budget,
+        aktualneNaklady: costs,
+        vyfakturovane: invoiced,
+        prijate: received,
+      })
 
       return {
         ...project,
@@ -283,6 +291,10 @@ export default function FinanciePage() {
         unpaidCosts,
         cashflow,
         usage,
+        plannedProfit: profitability.planovanyZisk,
+        plannedMargin: profitability.planovanaMarzaPercent,
+        currentReserve: profitability.aktualnaRezerva,
+        budgetVariance: profitability.odchylkaOdBudgetu,
         hasFinance: Boolean(finance) || costs > 0 || received > 0,
       }
     })
@@ -318,6 +330,8 @@ export default function FinanciePage() {
       acc.receivables += row.receivables
       acc.overdueClientReceivables += row.overdueClientReceivables
       acc.cashflow += row.cashflow
+      acc.plannedProfit += row.plannedProfit
+      acc.currentReserve += row.currentReserve
       if (row.hasFinance) acc.withFinance += 1
       return acc
     }, {
@@ -337,12 +351,21 @@ export default function FinanciePage() {
       receivables: 0,
       overdueClientReceivables: 0,
       cashflow: 0,
+      plannedProfit: 0,
+      currentReserve: 0,
       withFinance: 0,
     })
   }, [rows])
 
   const totalRemaining = totals.budget - totals.costs
   const totalUsage = totals.budget > 0 ? (totals.costs / totals.budget) * 100 : 0
+  const portfolioProfitability = vypocitajZiskovost({
+    cenaZakazky: totals.price,
+    budgetNakladov: totals.budget,
+    aktualneNaklady: totals.costs,
+    vyfakturovane: totals.invoiced,
+    prijate: totals.received,
+  })
 
   return (
     <div className="finances-shell" style={{
@@ -475,6 +498,33 @@ export default function FinanciePage() {
               </div>
             </div>
 
+            <div style={{ ...cardStyle, padding: '17px 18px', marginBottom: '14px' }}>
+              <div style={{ fontSize: '14px', fontWeight: '750' }}>Ziskovosť všetkých stavieb</div>
+              <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Prehľad podľa nastavenej ceny zákaziek, budgetov a aktuálne zaevidovaných nákladov.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginTop: '14px' }} className="finances-summary-grid">
+                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Plánovaný zisk</div>
+                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: portfolioProfitability.planovanyZisk < 0 ? '#b42318' : '#047857' }}>{euro(portfolioProfitability.planovanyZisk)}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{portfolioProfitability.planovanaMarzaPercent === null ? '—' : `marža ${portfolioProfitability.planovanaMarzaPercent.toFixed(1)} %`}</div>
+                </div>
+                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Aktuálna rezerva do ceny</div>
+                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: portfolioProfitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{euro(portfolioProfitability.aktualnaRezerva)}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>cena − aktuálne náklady</div>
+                </div>
+                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Fakturácia</div>
+                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750' }}>{portfolioProfitability.fakturacnyProgressPercent === null ? '—' : `${portfolioProfitability.fakturacnyProgressPercent.toFixed(0)} %`}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(totals.invoiced)} z {euro(totals.price)}</div>
+                </div>
+                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Inkaso</div>
+                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750' }}>{portfolioProfitability.inkasnyProgressPercent === null ? '—' : `${portfolioProfitability.inkasnyProgressPercent.toFixed(0)} %`}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(totals.received)} prijaté</div>
+                </div>
+              </div>
+            </div>
+
             <div style={{ ...cardStyle, padding: '14px 16px', marginBottom: '14px' }}>
               <div className="finances-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) auto', gap: '12px', alignItems: 'end' }}>
                 <div>
@@ -561,14 +611,14 @@ export default function FinanciePage() {
                 <table className="finances-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
-                      {['Stavba', 'Budget', 'Náklady', 'Zostáva', 'Vyfakturované', 'Prijaté', 'Cashflow', 'Budget %', ''].map(label => (
+                      {['Stavba', 'Budget', 'Náklady', 'Zostáva', 'Vyfakturované', 'Prijaté', 'Plán. zisk', 'Cashflow', 'Budget %', ''].map(label => (
                         <th key={label || 'action'} style={{ padding: '10px 12px', color: '#86868b', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '.045em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredRows.length === 0 ? (
-                      <tr><td colSpan={9} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Žiadna stavba nezodpovedá filtru.</td></tr>
+                      <tr><td colSpan={10} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Žiadna stavba nezodpovedá filtru.</td></tr>
                     ) : filteredRows.map(row => {
                       const budgetExceeded = row.budget > 0 && row.costs > row.budget
                       return (
@@ -607,6 +657,10 @@ export default function FinanciePage() {
                             )}
                           </td>
                           <td data-label="Prijaté" style={{ padding: '12px', whiteSpace: 'nowrap' }}>{euro(row.received)}</td>
+                          <td data-label="Plán. zisk" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: '750', color: row.plannedProfit < 0 ? '#b42318' : '#047857' }}>{euro(row.plannedProfit)}</div>
+                            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>{row.plannedMargin === null ? '—' : `${row.plannedMargin.toFixed(1)} % marža`}</div>
+                          </td>
                           <td data-label="Cashflow" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '750', color: row.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(row.cashflow)}</td>
                           <td data-label="Budget %" style={{ padding: '12px', minWidth: '108px' }}>
                             {row.budget > 0 ? (
