@@ -617,6 +617,17 @@ export default function DashboardPage() {
       .filter(n => n.datum === datum)
       .sort((a, b) => String(a.meno).localeCompare(String(b.meno), 'sk'))
 
+    const menaNepritomnych = new Set(
+      nepritomnostiDna.map(n => n.meno).filter(Boolean)
+    )
+    const menaVPraci = new Set(mena)
+    const jeBuduciDen = datum > datumDoLocalString(new Date())
+    const nezapisani = jeBuduciDen
+      ? []
+      : dostupneMena
+          .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
+          .sort((a, b) => String(a).localeCompare(String(b), 'sk'))
+
     const skupinyMapa = new Map<string, any[]>()
     nepritomnostiDna.forEach(n => {
       const aktualne = skupinyMapa.get(n.dovod) || []
@@ -635,8 +646,10 @@ export default function DashboardPage() {
       denVTyzdni: nazvyDni[denVTyzdni],
       pocet: mena.length,
       mena,
-      pocetNepritomnych: new Set(nepritomnostiDna.map(n => n.meno)).size,
-      skupinyNepritomnosti
+      pocetNepritomnych: menaNepritomnych.size,
+      skupinyNepritomnosti,
+      pocetNezapisanych: nezapisani.length,
+      nezapisani
     }
   })
 
@@ -1278,17 +1291,22 @@ export default function DashboardPage() {
                 <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: '#f3e8ff', border: '1px solid #ddd6fe' }}></span>
                 Neprítomnosť
               </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: '#fff1f2', border: '1px solid #fecdd3' }}></span>
+                Nezapísaný
+              </span>
             </div>
           </div>
 
           <div style={{ maxHeight: '440px', overflowY: 'auto', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px', fontSize: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1180px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#ffffff' }}>
                 <tr style={{ textAlign: 'left', backgroundColor: '#fafafa', borderBottom: '1px solid #e5e5e5' }}>
                   <th style={{ padding: '10px 20px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Deň</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650', textAlign: 'center', width: '110px' }}>V práci</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Pracovníci</th>
                   <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Neprítomní</th>
+                  <th style={{ padding: '10px 12px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '650' }}>Nezapísaní</th>
                   <th style={{ padding: '10px 20px', width: '80px' }}></th>
                 </tr>
               </thead>
@@ -1389,8 +1407,36 @@ export default function DashboardPage() {
                         )}
                       </td>
 
+                      <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
+                        {den.pocetNezapisanych === 0 ? (
+                          <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {den.nezapisani.map((meno: string) => (
+                              <span
+                                key={meno}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '4px 7px',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#fff1f2',
+                                  border: '1px solid #fecdd3',
+                                  color: '#be123c',
+                                  fontSize: '10px',
+                                  fontWeight: '650',
+                                  lineHeight: '1.35'
+                                }}
+                              >
+                                {meno}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
                       <td style={{ padding: '11px 20px', textAlign: 'right' }}>
-                        {(den.pocet > 0 || den.pocetNepritomnych > 0) && (
+                        {(den.pocet > 0 || den.pocetNepritomnych > 0 || den.pocetNezapisanych > 0) && (
                           <button
                             type="button"
                             onClick={() => {
