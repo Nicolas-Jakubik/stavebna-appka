@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/adminSupabase'
+import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function ZakazkyPage() {
@@ -77,17 +78,6 @@ export default function ZakazkyPage() {
     transition: 'all 0.2s',
   }
 
-  function vypocitajHodiny(prichod: string, odchod: string) {
-    if (!prichod || !odchod) return 0
-    const [pHod, pMin] = prichod.split(':').map(Number)
-    const [oHod, oMin] = odchod.split(':').map(Number)
-    let minutySpolu = (oHod * 60 + oMin) - (pHod * 60 + pMin)
-    if (minutySpolu < 0) minutySpolu += 24 * 60
-    let hodinySpolu = minutySpolu / 60
-    if (hodinySpolu > 5.5) hodinySpolu -= 0.5
-    return hodinySpolu
-  }
-
   function formatujHodiny(hodiny: number) {
     return Number.isInteger(hodiny) ? String(hodiny) : hodiny.toFixed(1)
   }
@@ -100,7 +90,7 @@ export default function ZakazkyPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('zakazka, datum, prichod, odchod')
+        .select('id, meno, zakazka, datum, prichod, odchod')
     ])
 
     if (chybaZakazky) {
@@ -118,16 +108,14 @@ export default function ZakazkyPage() {
       const pocty: Record<string, number> = {}
       const hodiny: Record<string, number> = {}
       const poslednaAktivita: Record<string, string> = {}
+      const mapaCistychHodin = vytvorMapuCistychHodin(dataDochadzka || [])
 
       ;(dataDochadzka || []).forEach(zaznam => {
         const nazov = String(zaznam.zakazka || '').trim()
         if (!nazov) return
 
         pocty[nazov] = (pocty[nazov] || 0) + 1
-        hodiny[nazov] = (hodiny[nazov] || 0) + vypocitajHodiny(
-          String(zaznam.prichod || ''),
-          String(zaznam.odchod || '')
-        )
+        hodiny[nazov] = (hodiny[nazov] || 0) + hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
 
         const datum = String(zaznam.datum || '')
         if (datum && (!poslednaAktivita[nazov] || datum > poslednaAktivita[nazov])) {
