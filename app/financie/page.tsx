@@ -9,6 +9,7 @@ import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../../lib/finan
 import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierInvoices'
 import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
 import { vypocitajZiskovost } from '../../lib/profitability'
+import { vytvorUpozorneniaFaktur } from '../../lib/financeAlerts'
 
 type Project = {
   id: number | string
@@ -57,7 +58,10 @@ type WorkerPayment = {
 }
 
 type SupplierInvoice = {
+  id: number | string
   zakazka_id: number | string
+  dodavatel: string
+  cislo_faktury: string
   datum_vystavenia: string
   datum_splatnosti: string
   kategoria: string
@@ -66,7 +70,9 @@ type SupplierInvoice = {
 }
 
 type ClientInvoice = {
+  id: number | string
   zakazka_id: number | string
+  cislo_faktury: string
   datum_vystavenia: string
   datum_splatnosti: string
   suma: number | string
@@ -133,8 +139,8 @@ export default function FinanciePage() {
         supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod'),
         supabase.from('zamestnanci').select('meno,sadzba'),
         supabase.from('uhrady_pracovnikov').select('zakazka_id,meno,suma'),
-        supabase.from('faktury_dodavatelov').select('zakazka_id,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
-        supabase.from('faktury_klientov').select('zakazka_id,datum_vystavenia,datum_splatnosti,suma,uhradene'),
+        supabase.from('faktury_dodavatelov').select('id,zakazka_id,dodavatel,cislo_faktury,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
+        supabase.from('faktury_klientov').select('id,zakazka_id,cislo_faktury,datum_vystavenia,datum_splatnosti,suma,uhradene'),
       ])
 
       if (cancelled) return
@@ -367,6 +373,43 @@ export default function FinanciePage() {
     prijate: totals.received,
   })
 
+  const todayKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Bratislava',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+
+  const projectNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    projects.forEach(project => map.set(String(project.id), project.nazov))
+    return map
+  }, [projects])
+
+  const supplierAlerts = useMemo(
+    () => vytvorUpozorneniaFaktur(supplierInvoices, todayKey, 7),
+    [supplierInvoices, todayKey]
+  )
+
+  const clientAlerts = useMemo(
+    () => vytvorUpozorneniaFaktur(clientInvoices, todayKey, 7),
+    [clientInvoices, todayKey]
+  )
+
+  const budgetAlerts = useMemo(
+    () => rows
+      .filter(row => row.budget > 0 && row.usage >= 90)
+      .sort((a, b) => b.usage - a.usage),
+    [rows]
+  )
+
+  const urgentAlertsCount =
+    supplierAlerts.filter(alert => alert.stav === 'po_splatnosti').length +
+    clientAlerts.filter(alert => alert.stav === 'po_splatnosti').length +
+    budgetAlerts.filter(row => row.usage >= 100).length
+
+  const allFinanceAlertsCount = supplierAlerts.length + clientAlerts.length + budgetAlerts.length
+
   return (
     <div className="finances-shell" style={{
       minHeight: '100vh',
@@ -496,6 +539,76 @@ export default function FinanciePage() {
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(totals.cashflow)}</div>
                 <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté {euro(totals.received)} · pohľadávky {euro(totals.receivables)} · po splatnosti {euro(totals.overdueClientReceivables)}</div>
               </div>
+            </div>
+
+            <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: '14px', borderColor: urgentAlertsCount > 0 ? '#f3b4ae' : 'rgba(0,0,0,.08)' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '750' }}>Finančné upozornenia</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Faktúry po splatnosti, splatné do 7 dní a stavby s čerpaním budgetu od 90 %.</div>
+                </div>
+                <span style={{
+                  padding: '5px 9px',
+                  borderRadius: '999px',
+                  backgroundColor: urgentAlertsCount > 0 ? '#fef2f2' : allFinanceAlertsCount > 0 ? '#fff7ed' : '#ecfdf5',
+                  color: urgentAlertsCount > 0 ? '#b42318' : allFinanceAlertsCount > 0 ? '#9a6700' : '#047857',
+                  fontSize: '9px',
+                  fontWeight: '750',
+                }}>
+                  {allFinanceAlertsCount === 0 ? 'BEZ UPOZORNENÍ' : `${allFinanceAlertsCount} upozornení`}
+                </span>
+              </div>
+
+              {allFinanceAlertsCount === 0 ? (
+                <div style={{ padding: '20px 18px', color: '#047857', fontSize: '11px', fontWeight: '650' }}>
+                  Momentálne nie je nič po splatnosti, nič nespadá do najbližších 7 dní a žiadna stavba nie je nad 90 % budgetu.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 0 }}>
+                  {supplierAlerts.map(alert => (
+                    <Link key={`supplier-${alert.id}`} href={`/zakazky/${alert.zakazkaId}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{projectNameById.get(alert.zakazkaId) || 'Neznáma stavba'} · dodávateľská FA {alert.cisloFaktury}</div>
+                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{alert.dodavatel || 'Dodávateľ'} · {euro(alert.suma)}</div>
+                      </div>
+                      <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
+                        {alert.stav === 'po_splatnosti'
+                          ? `Po splatnosti ${Math.abs(alert.dniDoSplatnosti)} dní`
+                          : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `Splatná o ${alert.dniDoSplatnosti} dní`}
+                      </div>
+                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
+                    </Link>
+                  ))}
+
+                  {clientAlerts.map(alert => (
+                    <Link key={`client-${alert.id}`} href={`/zakazky/${alert.zakazkaId}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{projectNameById.get(alert.zakazkaId) || 'Neznáma stavba'} · pohľadávka FA {alert.cisloFaktury}</div>
+                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(alert.suma)}</div>
+                      </div>
+                      <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
+                        {alert.stav === 'po_splatnosti'
+                          ? `Klient mešká ${Math.abs(alert.dniDoSplatnosti)} dní`
+                          : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `Splatnosť o ${alert.dniDoSplatnosti} dní`}
+                      </div>
+                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
+                    </Link>
+                  ))}
+
+                  {budgetAlerts.map(row => (
+                    <Link key={`budget-${row.id}`} href={`/zakazky/${row.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{row.nazov} · budget</div>
+                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(row.costs)} z {euro(row.budget)}</div>
+                      </div>
+                      <div style={{ color: row.usage >= 100 ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
+                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
+                      </div>
+                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ ...cardStyle, padding: '17px 18px', marginBottom: '14px' }}>
