@@ -2,6 +2,9 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const ts = require('typescript')
+// Supabase initializes its Realtime client even though these tests only exercise HTTP paths.
+// Node 20 has no native WebSocket, so provide a harmless constructor for initialization.
+if (!global.WebSocket) global.WebSocket = class TestWebSocket {}
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, filename)
 const { NextRequest } = require('next/server')
 const tokenLib = require('../lib/recorderSession.ts')

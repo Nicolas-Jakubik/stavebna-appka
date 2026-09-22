@@ -18,7 +18,10 @@ export function recorderReadQuery(table: string, input: URLSearchParams) {
   const requested = input.get('select')?.split(',').map(s => s.trim()) || []
   if (requested.some(col => !columns.split(',').includes(col))) return null
   const output = new URLSearchParams({ select: columns, limit: '1000' })
-  if (table === 'zamestnanci') output.set('order', 'meno.asc')
+  if (table === 'zamestnanci') {
+    output.set('order', 'meno.asc')
+    output.set('aktivny', 'eq.true')
+  }
   if (table === 'zoznam_zakaziek') { output.set('order', 'nazov.asc'); output.set('stav', 'eq.Aktívna') }
   if (table === 'dochadzka' || table === 'nepritomnosti') {
     const dates = input.getAll('datum')

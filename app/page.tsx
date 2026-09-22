@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
+import { bratislavaDateKey } from '../lib/dateKeys'
 
 export default function Home() {
   return <AttendanceForm />
@@ -40,7 +41,7 @@ function AttendanceForm() {
 
   useEffect(() => {
     adminStore.jeOdomknute = false
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(bratislavaDateKey())
 
     try {
       const ulozene = sessionStorage.getItem('posledne-zapisy-dochadzky')
@@ -72,8 +73,8 @@ function AttendanceForm() {
   }, [])
 
   async function nacitajKontroluZapisov() {
-    const dnesDatum = new Date()
-    const dnes = datumDoLocalString(dnesDatum)
+    const dnes = bratislavaDateKey()
+    const dnesDatum = new Date(`${dnes}T12:00:00`)
     const denTyzdna = dnesDatum.getDay()
     const pondelok = new Date(dnesDatum)
     pondelok.setHours(12, 0, 0, 0)
@@ -230,7 +231,7 @@ function AttendanceForm() {
     setOdosiela(true)
     setStatus('Kontrolujem a odosielam...')
     
-    const datumNaUlozenie = datum || datumDoLocalString(new Date())
+    const datumNaUlozenie = datum || bratislavaDateKey()
 
     // Konflikt overíme znova tesne pred uložením, aby sme znížili riziko duplikátu.
     const konflikt = await najdiKonflikt(datumNaUlozenie)
@@ -270,7 +271,7 @@ function AttendanceForm() {
       prichod,
       odchod,
       trvanie: vypocitajTrvanie(prichod, odchod),
-      casZapisu: new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
+      casZapisu: new Date().toLocaleTimeString('sk-SK', { timeZone: 'Europe/Bratislava', hour: '2-digit', minute: '2-digit' })
     }
 
     const aktualizovane = [novyZapis, ...posledneZapisy].slice(0, 5)
@@ -286,7 +287,7 @@ function AttendanceForm() {
     setZakazka('')
     setPrichod('')
     setOdchod('')
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(bratislavaDateKey())
     setOdosiela(false)
     
     setTimeout(() => {
@@ -343,7 +344,7 @@ function AttendanceForm() {
   }
 
   function formatujDatum(d: string) {
-    const datumPreFormat = d || new Date().toISOString().split('T')[0]
+    const datumPreFormat = d || bratislavaDateKey()
     const [rok, mesiac, den] = datumPreFormat.split('-')
     return `${den}. ${mesiac}. ${rok}`
   }

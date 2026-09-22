@@ -65,3 +65,14 @@ test('pracovnik bez sadzby sa oznaci a nevytvori falosny naklad', () => {
   assert.equal(polozky[0].maSadzbu, false)
   assert.equal(mapa.get('A').bezSadzby.has('Adam'), true)
 })
+
+
+test('historicky naklad pouzije sadzbu ulozenu pri zapise a nie novu aktualnu sadzbu', () => {
+  const zaznamy = [
+    { id: 1, meno: 'Adam', datum: '2026-09-22', zakazka: 'A', prichod: '07:00', odchod: '12:00', sadzba_snapshot: 10 },
+  ]
+  const polozky = vypocitajNakladyPracovnikov(zaznamy, [{ meno: 'Adam', sadzba: 15 }])
+
+  assert.equal(polozky[0].sadzba, 10)
+  assert.equal(polozky[0].suma, 50)
+})

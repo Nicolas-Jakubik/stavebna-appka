@@ -2,6 +2,9 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const ts = require('typescript')
+// Supabase initializes its Realtime client even though these tests only exercise HTTP paths.
+// Node 20 has no native WebSocket, so provide a harmless constructor for initialization.
+if (!global.WebSocket) global.WebSocket = class TestWebSocket {}
 
 // Load the real TypeScript handler without adding a test-runner dependency.
 require.extensions['.ts'] = (module, filename) => {
