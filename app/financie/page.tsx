@@ -259,7 +259,7 @@ export default function FinanciePage() {
       const receivables = projectClientInvoiceCount > 0 ? clientSummary.pohladavky : Math.max(0, invoiced - otherReceived)
       const paidLabor = workerPaymentsByProject.get(String(project.id)) || 0
       const laborOutstanding = Math.max(0, laborCosts - paidLabor)
-      const remaining = budget - costs
+      const remaining = budget > 0 ? budget - costs : null
       const cashflow = received - paidCosts - paidLabor - supplierSummary.uhradene
       const usage = budget > 0 ? (costs / budget) * 100 : 0
       const profitability = vypocitajZiskovost({
@@ -301,6 +301,8 @@ export default function FinanciePage() {
         plannedMargin: profitability.planovanaMarzaPercent,
         currentReserve: profitability.aktualnaRezerva,
         budgetVariance: profitability.odchylkaOdBudgetu,
+        hasBudget: budget > 0,
+        hasPrice: price > 0,
         hasFinance: Boolean(finance) || costs > 0 || received > 0,
       }
     })
@@ -338,6 +340,10 @@ export default function FinanciePage() {
       acc.cashflow += row.cashflow
       acc.plannedProfit += row.plannedProfit
       acc.currentReserve += row.currentReserve
+      if (row.budget > 0) acc.budgetedCosts += row.costs
+      else if (row.costs > 0) acc.withoutBudget += 1
+      if (row.price > 0) acc.pricedCosts += row.costs
+      else if (row.costs > 0) acc.withoutPrice += 1
       if (row.hasFinance) acc.withFinance += 1
       return acc
     }, {
@@ -359,16 +365,20 @@ export default function FinanciePage() {
       cashflow: 0,
       plannedProfit: 0,
       currentReserve: 0,
+      budgetedCosts: 0,
+      pricedCosts: 0,
+      withoutBudget: 0,
+      withoutPrice: 0,
       withFinance: 0,
     })
   }, [rows])
 
-  const totalRemaining = totals.budget - totals.costs
-  const totalUsage = totals.budget > 0 ? (totals.costs / totals.budget) * 100 : 0
+  const totalRemaining = totals.budget > 0 ? totals.budget - totals.budgetedCosts : null
+  const totalUsage = totals.budget > 0 ? (totals.budgetedCosts / totals.budget) * 100 : 0
   const portfolioProfitability = vypocitajZiskovost({
     cenaZakazky: totals.price,
     budgetNakladov: totals.budget,
-    aktualneNaklady: totals.costs,
+    aktualneNaklady: totals.pricedCosts,
     vyfakturovane: totals.invoiced,
     prijate: totals.received,
   })
@@ -403,12 +413,17 @@ export default function FinanciePage() {
     [rows]
   )
 
+  const setupAlerts = useMemo(
+    () => rows.filter(row => row.costs > 0 && (!row.hasBudget || !row.hasPrice)),
+    [rows]
+  )
+
   const urgentAlertsCount =
     supplierAlerts.filter(alert => alert.stav === 'po_splatnosti').length +
     clientAlerts.filter(alert => alert.stav === 'po_splatnosti').length +
     budgetAlerts.filter(row => row.usage >= 100).length
 
-  const allFinanceAlertsCount = supplierAlerts.length + clientAlerts.length + budgetAlerts.length
+  const allFinanceAlertsCount = supplierAlerts.length + clientAlerts.length + budgetAlerts.length + setupAlerts.length
 
   return (
     <div className="finances-shell" style={{
@@ -525,13 +540,13 @@ export default function FinanciePage() {
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálne náklady</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{euro(totals.costs)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Vyčerpanie {totalUsage.toFixed(0)} % · faktúry {euro(totals.supplierCosts)} · pracovníci {euro(totals.laborCosts)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.budget > 0 ? `Vyčerpanie ${totalUsage.toFixed(0)} % · ` : ''}faktúry {euro(totals.supplierCosts)} · pracovníci {euro(totals.laborCosts)}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Zostáva z budgetu</div>
-                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totalRemaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(totalRemaining)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Budget mínus ručné náklady, dodávateľské faktúry a automatické mzdy</div>
+                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totalRemaining !== null && totalRemaining < 0 ? '#b42318' : '#1d1d1f' }}>{totalRemaining === null ? '—' : euro(totalRemaining)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.budget > 0 ? `Počíta sa iba zo stavieb s nastaveným budgetom${totals.withoutBudget > 0 ? ` · ${totals.withoutBudget} bez budgetu` : ''}` : 'Budget zatiaľ nie je nastavený na žiadnej stavbe'}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px', backgroundColor: totals.cashflow < 0 ? '#fffafa' : '#f7fbff' }}>
@@ -561,7 +576,7 @@ export default function FinanciePage() {
 
               {allFinanceAlertsCount === 0 ? (
                 <div style={{ padding: '20px 18px', color: '#047857', fontSize: '11px', fontWeight: '650' }}>
-                  Momentálne nie je nič po splatnosti, nič nespadá do najbližších 7 dní a žiadna stavba nie je nad 90 % budgetu.
+                  Momentálne nie je nič po splatnosti, nič nespadá do najbližších 7 dní, žiadna stavba nie je nad 90 % budgetu a finančný setup je kompletný.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: 0 }}>
@@ -595,6 +610,19 @@ export default function FinanciePage() {
                     </Link>
                   ))}
 
+                  {setupAlerts.map(row => (
+                    <Link key={`setup-${row.id}`} href={`/zakazky/${row.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{row.nazov} · chýba finančný setup</div>
+                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Evidované náklady {euro(row.costs)}</div>
+                      </div>
+                      <div style={{ color: '#9a6700', fontSize: '10px', fontWeight: '700' }}>
+                        {!row.hasPrice && !row.hasBudget ? 'Chýba cena aj budget' : !row.hasPrice ? 'Chýba cena zákazky' : 'Chýba budget'}
+                      </div>
+                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Doplniť →</div>
+                    </Link>
+                  ))}
+
                   {budgetAlerts.map(row => (
                     <Link key={`budget-${row.id}`} href={`/zakazky/${row.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
                       <div>
@@ -602,7 +630,7 @@ export default function FinanciePage() {
                         <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(row.costs)} z {euro(row.budget)}</div>
                       </div>
                       <div style={{ color: row.usage >= 100 ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
+                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining ?? 0))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
                       </div>
                       <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
                     </Link>
@@ -622,8 +650,8 @@ export default function FinanciePage() {
                 </div>
                 <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
                   <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Aktuálna rezerva do ceny</div>
-                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: portfolioProfitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{euro(portfolioProfitability.aktualnaRezerva)}</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>cena − aktuálne náklady</div>
+                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: totals.price > 0 && portfolioProfitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{totals.price > 0 ? euro(portfolioProfitability.aktualnaRezerva) : '—'}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{totals.price > 0 ? `cena − náklady na ocenených stavbách${totals.withoutPrice > 0 ? ` · ${totals.withoutPrice} bez ceny` : ''}` : 'Cena zákaziek zatiaľ nie je nastavená'}</div>
                 </div>
                 <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
                   <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Fakturácia</div>
@@ -757,7 +785,7 @@ export default function FinanciePage() {
                               </div>
                             )}
                           </td>
-                          <td data-label="Zostáva" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '700', color: row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(row.remaining)}</td>
+                          <td data-label="Zostáva" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '700', color: row.remaining !== null && row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{row.remaining === null ? <span style={{ color: '#a1a1a6' }}>Nenastavený</span> : euro(row.remaining)}</td>
                           <td data-label="Vyfakturované" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                             <div>{euro(row.invoiced)}</div>
                             <div style={{ marginTop: '3px', color: row.receivables > 0 ? '#9a6700' : '#86868b', fontSize: '8px', fontWeight: '650' }}>
@@ -771,8 +799,8 @@ export default function FinanciePage() {
                           </td>
                           <td data-label="Prijaté" style={{ padding: '12px', whiteSpace: 'nowrap' }}>{euro(row.received)}</td>
                           <td data-label="Plán. zisk" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontWeight: '750', color: row.plannedProfit < 0 ? '#b42318' : '#047857' }}>{euro(row.plannedProfit)}</div>
-                            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>{row.plannedMargin === null ? '—' : `${row.plannedMargin.toFixed(1)} % marža`}</div>
+                            <div style={{ fontWeight: '750', color: row.hasPrice && row.hasBudget && row.plannedProfit < 0 ? '#b42318' : row.hasPrice && row.hasBudget ? '#047857' : '#a1a1a6' }}>{row.hasPrice && row.hasBudget ? euro(row.plannedProfit) : 'Nenastavené'}</div>
+                            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>{row.hasPrice && row.hasBudget && row.plannedMargin !== null ? `${row.plannedMargin.toFixed(1)} % marža` : 'chýba cena alebo budget'}</div>
                           </td>
                           <td data-label="Cashflow" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '750', color: row.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(row.cashflow)}</td>
                           <td data-label="Budget %" style={{ padding: '12px', minWidth: '108px' }}>

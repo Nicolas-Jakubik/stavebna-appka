@@ -501,7 +501,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     [clientInvoices]
   )
   const budgetAlert = values.budget > 0 && budgetPercent >= 90
-  const financeAlertCount = supplierAlerts.length + clientAlerts.length + (budgetAlert ? 1 : 0)
+  const missingPrice = values.cena <= 0 && currentCosts > 0
+  const missingBudget = values.budget <= 0 && currentCosts > 0
+  const financeSetupAlert = missingPrice || missingBudget
+  const financeAlertCount = supplierAlerts.length + clientAlerts.length + (budgetAlert ? 1 : 0) + (financeSetupAlert ? 1 : 0)
 
   const categoryTotals = useMemo(() => {
     const totals = Object.fromEntries(CATEGORIES.map(category => [category, 0])) as Record<Category, number>
@@ -1197,14 +1200,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       )}
 
       <div className="finance-metrics-grid">
-        <MetricCard label="Cena zákazky" value={formatCurrency(values.cena)} detail="Dohodnutá cena s klientom" />
-        <MetricCard label="Budget nákladov" value={formatCurrency(values.budget)} detail="Maximálny plánovaný náklad" />
+        <MetricCard label="Cena zákazky" value={values.cena > 0 ? formatCurrency(values.cena) : '—'} detail={values.cena > 0 ? 'Dohodnutá cena s klientom' : 'Cena zákazky nie je nastavená'} />
+        <MetricCard label="Budget nákladov" value={values.budget > 0 ? formatCurrency(values.budget) : '—'} detail={values.budget > 0 ? 'Maximálny plánovaný náklad' : 'Budget nákladov nie je nastavený'} />
         <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + faktúry ${formatCurrency(supplierInvoiceCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
-        <MetricCard label="Zostáva z budgetu" value={formatCurrency(remainingBudget)} detail="Budget mínus aktuálne náklady" tone={remainingBudget < 0 ? 'negative' : 'default'} />
+        <MetricCard label="Zostáva z budgetu" value={values.budget > 0 ? formatCurrency(remainingBudget) : '—'} detail={values.budget > 0 ? 'Budget mínus aktuálne náklady' : 'Najprv nastav budget'} tone={values.budget > 0 && remainingBudget < 0 ? 'negative' : 'default'} />
         <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail={clientInvoices.length > 0 ? `${clientInvoices.length} vystavených faktúr` : 'Zatiaľ bez vystavených faktúr'} />
         <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`FA ${formatCurrency(clientInvoiceSummary.prijate)} + zálohy ${formatCurrency(otherReceivedPayments)}`} tone={values.prijate > 0 ? 'positive' : 'default'} />
         <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
-        <MetricCard label="Plánovaný zisk" value={formatCurrency(profitability.planovanyZisk)} detail={profitability.planovanaMarzaPercent === null ? 'Nastav cenu zákazky' : `Plánovaná marža ${profitability.planovanaMarzaPercent.toFixed(1)} %`} tone={profitability.planovanyZisk < 0 ? 'negative' : 'positive'} />
+        <MetricCard label="Plánovaný zisk" value={values.cena > 0 && values.budget > 0 ? formatCurrency(profitability.planovanyZisk) : '—'} detail={values.cena <= 0 || values.budget <= 0 ? 'Nastav cenu zákazky aj budget' : `Plánovaná marža ${profitability.planovanaMarzaPercent?.toFixed(1)} %`} tone={values.cena > 0 && values.budget > 0 ? (profitability.planovanyZisk < 0 ? 'negative' : 'positive') : 'default'} />
       </div>
 
       {financeAlertCount > 0 && (
@@ -1216,6 +1219,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             </div>
             <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#fff7ed', color: '#9a6700', fontSize: '9px', fontWeight: '750' }}>{financeAlertCount}</span>
           </div>
+
+          {financeSetupAlert && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '12px', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #ededf0' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700' }}>Chýba finančný setup</div>
+                <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Náklady už existujú ({formatCurrency(currentCosts)}), ale {!values.cena && !values.budget ? 'cena zákazky ani budget nie sú nastavené' : !values.cena ? 'cena zákazky nie je nastavená' : 'budget nie je nastavený'}.</div>
+              </div>
+              <button type="button" onClick={openFinanceEditor} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#fff7ed', color: '#9a6700', cursor: 'pointer', fontSize: '9px', fontWeight: '750' }}>Doplniť</button>
+            </div>
+          )}
 
           {supplierAlerts.map(alert => (
             <div key={`supplier-alert-${alert.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '12px', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #ededf0' }}>
@@ -1267,18 +1280,18 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div className="finance-metrics-grid" style={{ marginTop: '15px' }}>
           <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
             <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Plánovaný zisk</div>
-            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.planovanyZisk < 0 ? '#b42318' : '#047857' }}>{formatCurrency(profitability.planovanyZisk)}</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{profitability.planovanaMarzaPercent === null ? '—' : `marža ${profitability.planovanaMarzaPercent.toFixed(1)} %`}</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: values.cena > 0 && values.budget > 0 && profitability.planovanyZisk < 0 ? '#b42318' : values.cena > 0 && values.budget > 0 ? '#047857' : '#a1a1a6' }}>{values.cena > 0 && values.budget > 0 ? formatCurrency(profitability.planovanyZisk) : '—'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{values.cena > 0 && values.budget > 0 && profitability.planovanaMarzaPercent !== null ? `marža ${profitability.planovanaMarzaPercent.toFixed(1)} %` : 'chýba cena alebo budget'}</div>
           </div>
           <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
             <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Aktuálna rezerva do ceny</div>
-            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{formatCurrency(profitability.aktualnaRezerva)}</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>cena zákazky − doterajšie náklady</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: values.cena > 0 && profitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{values.cena > 0 ? formatCurrency(profitability.aktualnaRezerva) : '—'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{values.cena > 0 ? 'cena zákazky − doterajšie náklady' : 'cena zákazky nie je nastavená'}</div>
           </div>
           <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: profitability.odchylkaOdBudgetu < 0 ? '#fff5f5' : '#f7f7f8' }}>
             <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Rezerva budgetu</div>
-            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.odchylkaOdBudgetu < 0 ? '#b42318' : '#1d1d1f' }}>{formatCurrency(profitability.odchylkaOdBudgetu)}</div>
-            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{profitability.odchylkaOdBudgetuPercent === null ? '—' : `${profitability.odchylkaOdBudgetuPercent.toFixed(1)} % budgetu zostáva`}</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: values.budget > 0 && profitability.odchylkaOdBudgetu < 0 ? '#b42318' : '#1d1d1f' }}>{values.budget > 0 ? formatCurrency(profitability.odchylkaOdBudgetu) : '—'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{values.budget > 0 && profitability.odchylkaOdBudgetuPercent !== null ? `${profitability.odchylkaOdBudgetuPercent.toFixed(1)} % budgetu zostáva` : 'budget nie je nastavený'}</div>
           </div>
           <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
             <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Fakturácia / inkaso</div>
@@ -1293,7 +1306,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyčerpanie budgetu</div>
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>
-              Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)} · faktúry {formatCurrency(supplierInvoiceCosts)} · pracovníci {formatCurrency(laborCosts)}
+              {values.budget > 0
+                ? <>Aktuálne náklady {formatCurrency(currentCosts)} z budgetu {formatCurrency(values.budget)} · faktúry {formatCurrency(supplierInvoiceCosts)} · pracovníci {formatCurrency(laborCosts)}</>
+                : <>Aktuálne náklady {formatCurrency(currentCosts)} · budget ešte nie je nastavený</>}
             </div>
           </div>
           <div style={{ fontSize: '22px', fontWeight: '750', color: budgetExceeded ? '#b42318' : '#1d1d1f' }}>
