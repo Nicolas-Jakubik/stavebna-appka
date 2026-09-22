@@ -343,7 +343,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod'),
+        .select('id,meno,datum,zakazka,prichod,odchod,sadzba_snapshot'),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
