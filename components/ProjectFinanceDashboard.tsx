@@ -8,6 +8,7 @@ import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } 
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 import { vypocitajZiskovost } from '../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
+import { bratislavaDateKey } from '../lib/dateKeys'
 
 type FinanceRow = {
   id?: number | string
@@ -153,11 +154,7 @@ function formatDate(value: string) {
 }
 
 function today() {
-  const date = new Date()
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return bratislavaDateKey()
 }
 
 function MetricCard({
@@ -927,6 +924,17 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     const suma = numberValue(workerPaymentForm.suma)
     if (!meno || !workerPaymentForm.datum || suma <= 0) {
       setMessage('Vyberte pracovníka, dátum a sumu vyššiu ako 0 €.')
+      return
+    }
+
+    const povodnaSumaPriRovnakomPracovnikovi =
+      editingWorkerPayment && editingWorkerPayment.meno === meno
+        ? numberValue(editingWorkerPayment.suma)
+        : 0
+    const maximalnaUhrada = getWorkerOutstanding(meno) + povodnaSumaPriRovnakomPracovnikovi
+
+    if (suma > maximalnaUhrada + 0.005) {
+      setMessage(`Úhrada je vyššia ako evidovaný zostatok pracovníka. Maximálne môžete uložiť ${formatCurrency(maximalnaUhrada)}.`)
       return
     }
 
