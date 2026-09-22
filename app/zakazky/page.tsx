@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
+import { bratislavaDateKey } from '../../lib/dateKeys'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function ZakazkyPage() {
@@ -135,7 +136,7 @@ export default function ZakazkyPage() {
     if (!cistyNazov) return
 
     setPridavaSa(true)
-    const dnesnyDatum = new Date().toISOString().split('T')[0]
+    const dnesnyDatum = bratislavaDateKey()
     const { error } = await supabase
       .from('zoznam_zakaziek')
       .insert([{ nazov: cistyNazov, stav: 'Aktívna', datum_pridania: dnesnyDatum }])
@@ -226,12 +227,64 @@ export default function ZakazkyPage() {
 
   async function vymazatZakazku(id: string, nazov: string) {
     const pocetZaznamov = pocetDochadzkyPodlaZakazky[nazov] || 0
-    const sprava = pocetZaznamov > 0
-      ? `Naozaj vymazať stavbu „${nazov}“? V dochádzke zostane ${pocetZaznamov} historických záznamov s týmto názvom.`
-      : `Naozaj vymazať stavbu „${nazov}“? Táto stavba nemá žiadne záznamy dochádzky.`
+    if (pocetZaznamov > 0) {
+      alert(`Stavbu „${nazov}“ nie je možné vymazať, pretože má ${pocetZaznamov} historických záznamov dochádzky. Označte ju radšej ako Dokončená.`)
+      return
+    }
 
-    if (!confirm(sprava)) return
-    
+    const [
+      financeResult,
+      expenseResult,
+      paymentResult,
+      workerPaymentResult,
+      supplierInvoiceResult,
+      clientInvoiceResult,
+    ] = await Promise.all([
+      supabase.from('financie_stavby').select('cena_zakazky,budget_nakladov,vyfakturovane,prijate_platby').eq('zakazka_id', id).maybeSingle(),
+      supabase.from('naklady_stavby').select('id').eq('zakazka_id', id).limit(1),
+      supabase.from('platby_stavby').select('id').eq('zakazka_id', id).limit(1),
+      supabase.from('uhrady_pracovnikov').select('id').eq('zakazka_id', id).limit(1),
+      supabase.from('faktury_dodavatelov').select('id').eq('zakazka_id', id).limit(1),
+      supabase.from('faktury_klientov').select('id').eq('zakazka_id', id).limit(1),
+    ])
+
+    const kontrolaChyba =
+      financeResult.error ||
+      expenseResult.error ||
+      paymentResult.error ||
+      workerPaymentResult.error ||
+      supplierInvoiceResult.error ||
+      clientInvoiceResult.error
+
+    if (kontrolaChyba) {
+      console.error('Chyba kontroly histórie stavby pred vymazaním:', kontrolaChyba)
+      alert('Stavbu sa nepodarilo bezpečne skontrolovať pred vymazaním. Nebola vymazaná.')
+      return
+    }
+
+    const finance = financeResult.data
+    const maFinancnyZaklad = Boolean(finance) && [
+      finance.cena_zakazky,
+      finance.budget_nakladov,
+      finance.vyfakturovane,
+      finance.prijate_platby,
+    ].some(value => Number(value) !== 0)
+
+    const maFinancnuHistoriu =
+      maFinancnyZaklad ||
+      (expenseResult.data || []).length > 0 ||
+      (paymentResult.data || []).length > 0 ||
+      (workerPaymentResult.data || []).length > 0 ||
+      (supplierInvoiceResult.data || []).length > 0 ||
+      (clientInvoiceResult.data || []).length > 0
+
+    if (maFinancnuHistoriu) {
+      alert(`Stavbu „${nazov}“ nie je možné vymazať, pretože obsahuje finančné údaje. Označte ju radšej ako Dokončená.`)
+      return
+    }
+
+    if (!confirm(`Naozaj vymazať prázdnu stavbu „${nazov}“?`)) return
+
     const { error } = await supabase
       .from('zoznam_zakaziek')
       .delete()
@@ -239,6 +292,7 @@ export default function ZakazkyPage() {
 
     if (error) {
       console.error("Chyba mazania:", error)
+      alert('Stavbu sa nepodarilo vymazať.')
     } else {
       nacitajZakazky()
     }
