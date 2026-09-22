@@ -232,6 +232,13 @@ export default function DashboardPage() {
     const datum = datumDoLocalString(vcera)
     setDatumKontroly(datum)
 
+    // Nedeľa nie je pracovný deň. V pondelok preto nevarujeme, že v nedeľu nikto nebol zapísaný.
+    if (vcera.getDay() === 0) {
+      setNezapisaniVcera([])
+      setNacitavaKontrola(false)
+      return
+    }
+
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
       supabase.from('dochadzka').select('meno').eq('datum', datum),
@@ -467,6 +474,10 @@ export default function DashboardPage() {
       setChybaUpravaHodiny('Tento zápis už existuje: rovnaký pracovník, deň, stavba, príchod aj odchod.')
       return
     }
+    if (maPrekryvajuciSaCas(upraveny, id)) {
+      setChybaUpravaHodiny('Tento čas sa prekrýva s iným zápisom pracovníka v rovnaký deň.')
+      return
+    }
 
     const { error: supabaseError } = await supabase
       .from('dochadzka')
@@ -526,17 +537,35 @@ export default function DashboardPage() {
     }
 
     const kluce = new Set<string>()
+    const noveKontrolneZaznamy: any[] = []
     for (const zaznam of dataNaVlozenie) {
       const kluc = `${zaznam.datum}|${zaznam.meno}|${zaznam.zakazka}|${zaznam.prichod}|${zaznam.odchod}`.toLowerCase()
       if (kluce.has(kluc) || jePresnyDuplikat(zaznam)) {
         alert(`Duplikát: ${zaznam.meno} už má rovnaký zápis ${zaznam.datum} na stavbe ${zaznam.zakazka} (${zaznam.prichod}–${zaznam.odchod}).`)
         return
       }
+
+      const prekryvSExistujucim = maPrekryvajuciSaCas(zaznam)
+      const prekryvVNovych = noveKontrolneZaznamy.some(predosly =>
+        predosly.datum === zaznam.datum &&
+        predosly.meno === zaznam.meno &&
+        intervalySaPrekryvaju(zaznam.prichod, zaznam.odchod, predosly.prichod, predosly.odchod)
+      )
+      if (prekryvSExistujucim || prekryvVNovych) {
+        alert(`Prekryv času: ${zaznam.meno} už má v deň ${zaznam.datum} pracovný úsek, ktorý sa prekrýva s ${zaznam.prichod}–${zaznam.odchod}.`)
+        return
+      }
+
       kluce.add(kluc)
+      noveKontrolneZaznamy.push(zaznam)
     }
 
     const { error } = await supabase.from('dochadzka').insert(dataNaVlozenie)
-    if (error) alert('Chyba: ' + error.message)
+    if (error) {
+      alert(error.code === '23505'
+        ? 'Zápis sa prekrýva s existujúcou dochádzkou pracovníka. Obnovte prehľad a skontrolujte časy.'
+        : 'Chyba: ' + error.message)
+    }
     else {
       setUkazatFormular(false)
       setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
@@ -612,8 +641,10 @@ export default function DashboardPage() {
       nepritomnostiDna.map(n => n.meno).filter(Boolean)
     )
     const menaVPraci = new Set(mena)
+    const denVTyzdniIndex = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
+    const jeNedela = denVTyzdniIndex === 0
     const jeBuduciDen = datum > datumDoLocalString(new Date())
-    const nezapisani = jeBuduciDen
+    const nezapisani = jeBuduciDen || jeNedela
       ? []
       : dostupneMena
           .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
@@ -630,11 +661,10 @@ export default function DashboardPage() {
       polozky
     }))
 
-    const denVTyzdni = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     return {
       datum,
       den,
-      denVTyzdni: nazvyDni[denVTyzdni],
+      denVTyzdni: nazvyDni[denVTyzdniIndex],
       pocet: mena.length,
       mena,
       pocetNepritomnych: menaNepritomnych.size,
