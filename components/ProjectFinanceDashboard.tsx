@@ -47,6 +47,15 @@ type EmployeeRow = {
   sadzba: number | string | null
 }
 
+type WorkerPaymentRow = {
+  id: number | string
+  zakazka_id: number | string
+  meno: string
+  datum: string
+  suma: number | string
+  poznamka?: string | null
+}
+
 type ChartPoint = {
   month: string
   costs: number
@@ -214,13 +223,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
   const [employees, setEmployees] = useState<EmployeeRow[]>([])
+  const [workerPayments, setWorkerPayments] = useState<WorkerPaymentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [financeOpen, setFinanceOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [workerPaymentOpen, setWorkerPaymentOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null)
   const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null)
+  const [editingWorkerPayment, setEditingWorkerPayment] = useState<WorkerPaymentRow | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
@@ -238,6 +250,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     popis: 'Platba od klienta',
     poznamka: '',
   })
+  const [workerPaymentForm, setWorkerPaymentForm] = useState({
+    meno: '',
+    datum: today(),
+    suma: 0,
+    poznamka: '',
+  })
 
   async function loadFinance() {
     setLoading(true)
@@ -249,6 +267,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       { data: paymentData, error: paymentError },
       { data: attendanceData, error: attendanceError },
       { data: employeeData, error: employeeError },
+      { data: workerPaymentData, error: workerPaymentError },
     ] = await Promise.all([
       supabase
         .from('financie_stavby')
@@ -273,10 +292,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
+      supabase
+        .from('uhrady_pracovnikov')
+        .select('*')
+        .eq('zakazka_id', projectId)
+        .order('datum', { ascending: false })
+        .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError || paymentError || attendanceError || employeeError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError)
+    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError) {
+      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -285,6 +310,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setPayments((paymentData as PaymentRow[]) || [])
     setAttendance((attendanceData as AttendanceRow[]) || [])
     setEmployees((employeeData as EmployeeRow[]) || [])
+    setWorkerPayments((workerPaymentData as WorkerPaymentRow[]) || [])
     setLoading(false)
   }
 
@@ -338,6 +364,20 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'sk'))
   }, [laborEntries])
 
+  const paidLaborByWorker = useMemo(() => {
+    const map = new Map<string, number>()
+    workerPayments.forEach(payment => {
+      map.set(payment.meno, (map.get(payment.meno) || 0) + numberValue(payment.suma))
+    })
+    return map
+  }, [workerPayments])
+
+  const paidLaborCosts = useMemo(
+    () => workerPayments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
+    [workerPayments]
+  )
+  const outstandingLaborCosts = Math.max(0, laborCosts - paidLaborCosts)
+
   const manualCosts = useMemo(
     () => expenses.reduce((sum, expense) => sum + numberValue(expense.suma), 0),
     [expenses]
@@ -353,7 +393,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const remainingBudget = values.budget - currentCosts
   const unpaid = values.vyfakturovane - values.prijate
   const expectedProfit = values.cena - values.budget
-  const currentCashflow = values.prijate - paidCosts
+  const currentCashflow = values.prijate - paidCosts - paidLaborCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
   const budgetExceeded = values.budget > 0 && currentCosts > values.budget
 
@@ -522,6 +562,95 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setExpenseOpen(false)
     setEditingExpense(null)
     setMessage(editingExpense ? 'Náklad bol upravený.' : 'Náklad bol pridaný.')
+    await loadFinance()
+  }
+
+  function getWorkerOutstanding(meno: string) {
+    const labor = laborByWorker.find(([workerName]) => workerName === meno)?.[1]
+    const accrued = labor?.suma || 0
+    const paid = paidLaborByWorker.get(meno) || 0
+    return Math.max(0, accrued - paid)
+  }
+
+  function openNewWorkerPayment(meno?: string) {
+    const selectedName = meno || laborByWorker.find(([workerName]) => getWorkerOutstanding(workerName) > 0)?.[0] || laborByWorker[0]?.[0] || ''
+    setEditingWorkerPayment(null)
+    setWorkerPaymentForm({
+      meno: selectedName,
+      datum: today(),
+      suma: selectedName ? getWorkerOutstanding(selectedName) : 0,
+      poznamka: '',
+    })
+    setWorkerPaymentOpen(true)
+  }
+
+  function openWorkerPaymentEdit(payment: WorkerPaymentRow) {
+    setEditingWorkerPayment(payment)
+    setWorkerPaymentForm({
+      meno: payment.meno,
+      datum: payment.datum,
+      suma: numberValue(payment.suma),
+      poznamka: payment.poznamka || '',
+    })
+    setWorkerPaymentOpen(true)
+  }
+
+  async function saveWorkerPayment(event: FormEvent) {
+    event.preventDefault()
+    if (saving) return
+
+    const meno = workerPaymentForm.meno.trim()
+    const suma = numberValue(workerPaymentForm.suma)
+    if (!meno || !workerPaymentForm.datum || suma <= 0) {
+      setMessage('Vyberte pracovníka, dátum a sumu vyššiu ako 0 €.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+    const payload = {
+      zakazka_id: Number(projectId),
+      meno,
+      datum: workerPaymentForm.datum,
+      suma,
+      poznamka: workerPaymentForm.poznamka.trim() || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const query = editingWorkerPayment
+      ? supabase.from('uhrady_pracovnikov').update(payload).eq('id', editingWorkerPayment.id).eq('zakazka_id', projectId)
+      : supabase.from('uhrady_pracovnikov').insert([payload])
+
+    const { error } = await query
+    setSaving(false)
+
+    if (error) {
+      console.error('Chyba uloženia úhrady pracovníka:', error)
+      setMessage('Úhradu pracovníka sa nepodarilo uložiť.')
+      return
+    }
+
+    setWorkerPaymentOpen(false)
+    setEditingWorkerPayment(null)
+    setMessage(editingWorkerPayment ? 'Úhrada pracovníka bola upravená.' : 'Úhrada pracovníka bola pridaná do cashflow.')
+    await loadFinance()
+  }
+
+  async function deleteWorkerPayment(payment: WorkerPaymentRow) {
+    if (!confirm(`Naozaj odstrániť úhradu ${payment.meno} vo výške ${formatCurrency(numberValue(payment.suma))}?`)) return
+    const { error } = await supabase
+      .from('uhrady_pracovnikov')
+      .delete()
+      .eq('id', payment.id)
+      .eq('zakazka_id', projectId)
+
+    if (error) {
+      console.error('Chyba mazania úhrady pracovníka:', error)
+      setMessage('Úhradu pracovníka sa nepodarilo odstrániť.')
+      return
+    }
+
+    setMessage('Úhrada pracovníka bola odstránená.')
     await loadFinance()
   }
 
@@ -722,6 +851,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             Upraviť financie
           </button>
+          <button type="button" onClick={() => openNewWorkerPayment()} disabled={laborByWorker.length === 0} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: laborByWorker.length === 0 ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: '700', opacity: laborByWorker.length === 0 ? .5 : 1 }}>
+            + Vyplatiť pracovníka
+          </button>
           <button type="button" onClick={openNewPayment} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #b9d8f8', borderRadius: '10px', backgroundColor: '#eef6ff', color: '#0066cc', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
             + Pridať platbu
           </button>
@@ -811,6 +943,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               <span style={{ color: '#6e6e73', fontSize: '11px' }}>Zaplatené ručné náklady</span>
               <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidCosts)}</strong>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', paddingBottom: '10px', borderBottom: '1px solid #ededf0' }}>
+              <span style={{ color: '#6e6e73', fontSize: '11px' }}>Vyplatené pracovníkom</span>
+              <strong style={{ fontSize: '12px' }}>− {formatCurrency(paidLaborCosts)}</strong>
+            </div>
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: currentCashflow < 0 ? '#fef2f2' : '#f2f8ff' }}>
               <div style={{ fontSize: '9px', textTransform: 'uppercase', color: '#86868b', letterSpacing: '0.05em', fontWeight: '700' }}>Aktuálny cashflow</div>
               <div style={{ marginTop: '6px', fontSize: '28px', lineHeight: 1, fontWeight: '750', color: currentCashflow < 0 ? '#b42318' : '#0066cc', letterSpacing: '-0.04em' }}>
@@ -819,7 +955,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             </div>
           </div>
           <div style={{ marginTop: '12px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-            Neuhradené ručné náklady: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Automatický náklad pracovníkov {formatCurrency(laborCosts)} vstupuje do budgetu a nákladov, ale nie do cashflow, kým neevidujeme skutočnú úhradu mzdy.
+            Neuhradené ručné náklady: <strong style={{ color: unpaidCosts > 0 ? '#9a6700' : '#6e6e73' }}>{formatCurrency(unpaidCosts)}</strong>. Pracovníci: náklad <strong>{formatCurrency(laborCosts)}</strong>, vyplatené <strong>{formatCurrency(paidLaborCosts)}</strong>, zostáva <strong style={{ color: outstandingLaborCosts > 0 ? '#9a6700' : '#047857' }}>{formatCurrency(outstandingLaborCosts)}</strong>.
           </div>
         </div>
       </div>
@@ -828,7 +964,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Automatické náklady pracovníkov</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{laborHours.toFixed(2)} h · {formatCurrency(laborCosts)} · vypočítané z dochádzky a sadzieb</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{laborHours.toFixed(2)} h · náklad {formatCurrency(laborCosts)} · vyplatené {formatCurrency(paidLaborCosts)} · zostáva {formatCurrency(outstandingLaborCosts)}</div>
           </div>
           <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0066cc', fontSize: '9px', fontWeight: '750' }}>AUTOMATICKY</span>
         </div>
@@ -841,20 +977,68 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <table className="finance-expense-table">
             <thead>
               <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
-                {['Pracovník', 'Hodiny', 'Sadzba', 'Náklad'].map(label => (
+                {['Pracovník', 'Hodiny', 'Sadzba', 'Náklad', 'Vyplatené', 'Zostáva', ''].map(label => (
                   <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {laborByWorker.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Na tejto stavbe zatiaľ nie sú evidované hodiny pracovníkov.</td></tr>
+                <tr><td colSpan={7} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Na tejto stavbe zatiaľ nie sú evidované hodiny pracovníkov.</td></tr>
               ) : laborByWorker.map(([meno, labor]) => (
                 <tr key={meno} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>{meno}</td>
                   <td data-label="Hodiny" style={{ padding: '11px 14px' }}>{labor.hodiny.toFixed(2)} h</td>
                   <td data-label="Sadzba" style={{ padding: '11px 14px', color: labor.sadzba > 0 ? '#6e6e73' : '#b42318' }}>{labor.sadzba > 0 ? `${labor.sadzba.toFixed(2)} €/h` : 'Nenastavená'}</td>
                   <td data-label="Náklad" style={{ padding: '11px 14px', fontWeight: '750' }}>{formatCurrency(labor.suma)}</td>
+                  <td data-label="Vyplatené" style={{ padding: '11px 14px', color: '#047857', fontWeight: '650' }}>{formatCurrency(paidLaborByWorker.get(meno) || 0)}</td>
+                  <td data-label="Zostáva" style={{ padding: '11px 14px', color: getWorkerOutstanding(meno) > 0 ? '#9a6700' : '#047857', fontWeight: '700' }}>{formatCurrency(getWorkerOutstanding(meno))}</td>
+                  <td data-label="Akcia" style={{ padding: '11px 14px' }}>
+                    <button type="button" disabled={getWorkerOutstanding(meno) <= 0} onClick={() => openNewWorkerPayment(meno)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: getWorkerOutstanding(meno) > 0 ? '#eef6ff' : '#f5f5f7', color: getWorkerOutstanding(meno) > 0 ? '#0071e3' : '#a1a1a6', cursor: getWorkerOutstanding(meno) > 0 ? 'pointer' : 'default', fontSize: '10px', fontWeight: '700' }}>
+                      Vyplatiť
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyplatené pracovníkom</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{workerPayments.length} úhrad · spolu {formatCurrency(paidLaborCosts)}</div>
+          </div>
+          <button type="button" onClick={() => openNewWorkerPayment()} disabled={laborByWorker.length === 0} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: laborByWorker.length === 0 ? 'not-allowed' : 'pointer', fontSize: '10px', fontWeight: '700', opacity: laborByWorker.length === 0 ? .5 : 1 }}>
+            + Vyplatiť pracovníka
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table">
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Dátum', 'Pracovník', 'Suma', 'Poznámka', 'Akcie'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {workerPayments.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie je zaevidovaná žiadna vyplatená mzda na tejto stavbe.</td></tr>
+              ) : workerPayments.map(payment => (
+                <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
+                  <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
+                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>{payment.meno}</td>
+                  <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750' }}>{formatCurrency(numberValue(payment.suma))}</td>
+                  <td data-label="Poznámka" style={{ padding: '11px 14px', color: '#6e6e73' }}>{payment.poznamka || '—'}</td>
+                  <td data-label="Akcie" style={{ padding: '11px 14px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => openWorkerPaymentEdit(payment)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Upraviť</button>
+                      <button type="button" onClick={() => deleteWorkerPayment(payment)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#f5f5f7', color: '#86868b', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -974,6 +1158,56 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           </table>
         </div>
       </div>
+
+      {workerPaymentOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setWorkerPaymentOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label={editingWorkerPayment ? 'Upraviť úhradu pracovníka' : 'Vyplatiť pracovníka'} style={{ width: 'min(620px, 100%)', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingWorkerPayment ? 'Upraviť úhradu pracovníka' : 'Vyplatiť pracovníka'}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Táto suma predstavuje reálny odchod peňazí a po uložení sa odpočíta z cashflow stavby.</div>
+            <form onSubmit={saveWorkerPayment}>
+              <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div>
+                  <label style={labelStyle}>Pracovník</label>
+                  <select
+                    required
+                    value={workerPaymentForm.meno}
+                    onChange={event => {
+                      const meno = event.target.value
+                      setWorkerPaymentForm(current => ({ ...current, meno, suma: editingWorkerPayment ? current.suma : getWorkerOutstanding(meno) }))
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="">Vyberte pracovníka</option>
+                    {laborByWorker.map(([meno]) => <option key={meno} value={meno}>{meno}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum úhrady</label>
+                  <input type="date" required value={workerPaymentForm.datum} onChange={event => setWorkerPaymentForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Suma</label>
+                  <input type="number" min="0.01" step="0.01" required value={workerPaymentForm.suma || ''} onChange={event => setWorkerPaymentForm(current => ({ ...current, suma: Number(event.target.value) }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Zostáva podľa evidencie</label>
+                  <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', backgroundColor: '#f7f7f8', color: '#6e6e73' }}>
+                    {workerPaymentForm.meno ? formatCurrency(getWorkerOutstanding(workerPaymentForm.meno)) : '—'}
+                  </div>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Poznámka</label>
+                  <input type="text" maxLength={500} placeholder="Napr. výplata 1.–15. september" value={workerPaymentForm.poznamka} onChange={event => setWorkerPaymentForm(current => ({ ...current, poznamka: event.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button type="button" onClick={() => setWorkerPaymentOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
+                <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : (editingWorkerPayment ? 'Uložiť zmenu' : 'Zaúčtovať úhradu')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {financeOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setFinanceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
