@@ -6,6 +6,7 @@ import { vypocitajNakladyPracovnikov } from '../lib/laborCosts'
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../lib/financeBreakdown'
 import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } from '../lib/supplierInvoices'
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
+import { vypocitajZiskovost } from '../lib/profitability'
 
 type FinanceRow = {
   id?: number | string
@@ -476,7 +477,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const unpaid = clientInvoices.length > 0
     ? clientInvoiceSummary.pohladavky
     : Math.max(0, values.vyfakturovane - otherReceivedPayments)
-  const expectedProfit = values.cena - values.budget
+  const profitability = useMemo(
+    () => vypocitajZiskovost({
+      cenaZakazky: values.cena,
+      budgetNakladov: values.budget,
+      aktualneNaklady: currentCosts,
+      vyfakturovane: values.vyfakturovane,
+      prijate: values.prijate,
+    }),
+    [values.cena, values.budget, values.vyfakturovane, values.prijate, currentCosts]
+  )
   const currentCashflow = values.prijate - paidCosts - paidLaborCosts - paidSupplierInvoiceCosts
   const budgetPercent = values.budget > 0 ? (currentCosts / values.budget) * 100 : 0
   const budgetExceeded = values.budget > 0 && currentCosts > values.budget
@@ -1182,7 +1192,36 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail={clientInvoices.length > 0 ? `${clientInvoices.length} vystavených faktúr` : 'Zatiaľ bez vystavených faktúr'} />
         <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`FA ${formatCurrency(clientInvoiceSummary.prijate)} + zálohy ${formatCurrency(otherReceivedPayments)}`} tone={values.prijate > 0 ? 'positive' : 'default'} />
         <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
-        <MetricCard label="Predpokladaný zisk" value={formatCurrency(expectedProfit)} detail="Cena zákazky mínus budget" tone={expectedProfit < 0 ? 'negative' : 'positive'} />
+        <MetricCard label="Plánovaný zisk" value={formatCurrency(profitability.planovanyZisk)} detail={profitability.planovanaMarzaPercent === null ? 'Nastav cenu zákazky' : `Plánovaná marža ${profitability.planovanaMarzaPercent.toFixed(1)} %`} tone={profitability.planovanyZisk < 0 ? 'negative' : 'positive'} />
+      </div>
+
+      <div style={{ ...cardStyle, padding: '18px', marginTop: '14px' }}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '750' }}>Ziskovosť stavby</div>
+          <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Plánovaný zisk vychádza z ceny zákazky a budgetu. Aktuálna rezerva ukazuje rozdiel medzi cenou zákazky a doteraz zaevidovanými nákladmi.</div>
+        </div>
+        <div className="finance-metrics-grid" style={{ marginTop: '15px' }}>
+          <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
+            <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Plánovaný zisk</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.planovanyZisk < 0 ? '#b42318' : '#047857' }}>{formatCurrency(profitability.planovanyZisk)}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{profitability.planovanaMarzaPercent === null ? '—' : `marža ${profitability.planovanaMarzaPercent.toFixed(1)} %`}</div>
+          </div>
+          <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
+            <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Aktuálna rezerva do ceny</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{formatCurrency(profitability.aktualnaRezerva)}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>cena zákazky − doterajšie náklady</div>
+          </div>
+          <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: profitability.odchylkaOdBudgetu < 0 ? '#fff5f5' : '#f7f7f8' }}>
+            <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Rezerva budgetu</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750', color: profitability.odchylkaOdBudgetu < 0 ? '#b42318' : '#1d1d1f' }}>{formatCurrency(profitability.odchylkaOdBudgetu)}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>{profitability.odchylkaOdBudgetuPercent === null ? '—' : `${profitability.odchylkaOdBudgetuPercent.toFixed(1)} % budgetu zostáva`}</div>
+          </div>
+          <div style={{ padding: '13px 14px', borderRadius: '12px', backgroundColor: '#f7f7f8' }}>
+            <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase' }}>Fakturácia / inkaso</div>
+            <div style={{ marginTop: '7px', fontSize: '19px', fontWeight: '750' }}>{profitability.fakturacnyProgressPercent === null ? '—' : `${profitability.fakturacnyProgressPercent.toFixed(0)} %`}</div>
+            <div style={{ marginTop: '4px', color: '#86868b', fontSize: '9px' }}>inkaso {profitability.inkasnyProgressPercent === null ? '—' : `${profitability.inkasnyProgressPercent.toFixed(0)} %`} z ceny zákazky</div>
+          </div>
+        </div>
       </div>
 
       <div style={{ ...cardStyle, padding: '18px', marginTop: '14px', borderColor: budgetExceeded ? '#f3b4ae' : 'rgba(0,0,0,0.08)' }}>
