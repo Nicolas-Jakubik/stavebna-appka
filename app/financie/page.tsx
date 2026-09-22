@@ -630,7 +630,7 @@ export default function FinanciePage() {
                         <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(row.costs)} z {euro(row.budget)}</div>
                       </div>
                       <div style={{ color: row.usage >= 100 ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
+                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining ?? 0))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
                       </div>
                       <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
                     </Link>
