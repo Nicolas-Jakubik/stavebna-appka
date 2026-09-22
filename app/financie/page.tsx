@@ -6,6 +6,7 @@ import AdminSidebar from '../../components/AdminSidebar'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov, zhrnNakladyPracovnikovPodlaZakazky } from '../../lib/laborCosts'
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../../lib/financeBreakdown'
+import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierInvoices'
 
 type Project = {
   id: number | string
@@ -53,6 +54,15 @@ type WorkerPayment = {
   suma: number | string
 }
 
+type SupplierInvoice = {
+  zakazka_id: number | string
+  datum_vystavenia: string
+  datum_splatnosti: string
+  kategoria: string
+  suma: number | string
+  uhradene: boolean
+}
+
 function num(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -81,6 +91,7 @@ export default function FinanciePage() {
   const [attendance, setAttendance] = useState<Attendance[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [workerPayments, setWorkerPayments] = useState<WorkerPayment[]>([])
+  const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
@@ -101,6 +112,7 @@ export default function FinanciePage() {
         { data: attendanceData, error: attendanceError },
         { data: employeeData, error: employeeError },
         { data: workerPaymentData, error: workerPaymentError },
+        { data: supplierInvoiceData, error: supplierInvoiceError },
       ] = await Promise.all([
         supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
         supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
@@ -109,12 +121,13 @@ export default function FinanciePage() {
         supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod'),
         supabase.from('zamestnanci').select('meno,sadzba'),
         supabase.from('uhrady_pracovnikov').select('zakazka_id,meno,suma'),
+        supabase.from('faktury_dodavatelov').select('zakazka_id,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
       ])
 
       if (cancelled) return
 
-      if (projectError || financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError) {
-        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError)
+      if (projectError || financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError) {
+        console.error('Chyba načítania finančného prehľadu:', projectError || financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError)
         setError('Finančný prehľad sa nepodarilo načítať kompletne.')
       }
 
@@ -125,6 +138,7 @@ export default function FinanciePage() {
       setAttendance((attendanceData as Attendance[]) || [])
       setEmployees((employeeData as Employee[]) || [])
       setWorkerPayments((workerPaymentData as WorkerPayment[]) || [])
+      setSupplierInvoices((supplierInvoiceData as SupplierInvoice[]) || [])
       setLoading(false)
     }
 
@@ -169,6 +183,15 @@ export default function FinanciePage() {
     return map
   }, [workerPayments])
 
+  const supplierInvoicesByProject = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof zhrnDodavatelskeFaktury>>()
+    projects.forEach(project => {
+      const projectInvoices = supplierInvoices.filter(invoice => String(invoice.zakazka_id) === String(project.id))
+      map.set(String(project.id), zhrnDodavatelskeFaktury(projectInvoices, new Date().toISOString().slice(0, 10)))
+    })
+    return map
+  }, [projects, supplierInvoices])
+
   const laborEntries = useMemo(
     () => vypocitajNakladyPracovnikov(attendance, employees),
     [attendance, employees]
@@ -180,8 +203,8 @@ export default function FinanciePage() {
   )
 
   const monthlyBreakdown = useMemo(
-    () => vytvorMesacnyRozpadNakladov(expenses, laborEntries),
-    [expenses, laborEntries]
+    () => vytvorMesacnyRozpadNakladov([...expenses, ...fakturyAkoNaklady(supplierInvoices)], laborEntries),
+    [expenses, supplierInvoices, laborEntries]
   )
 
   const rows = useMemo(() => {
@@ -191,7 +214,9 @@ export default function FinanciePage() {
       const labor = laborByProject.get(String(project.nazov || '').trim())
       const manualCosts = projectCosts.total
       const laborCosts = labor?.suma || 0
-      const costs = manualCosts + laborCosts
+      const supplierSummary = supplierInvoicesByProject.get(String(project.id)) || { spolu: 0, uhradene: 0, neuhradene: 0, poSplatnosti: 0, pocetPoSplatnosti: 0 }
+      const supplierCosts = supplierSummary.spolu
+      const costs = manualCosts + laborCosts + supplierCosts
       const paidCosts = projectCosts.paid
       const unpaidCosts = manualCosts - paidCosts
       const price = num(finance?.cena_zakazky)
@@ -201,7 +226,7 @@ export default function FinanciePage() {
       const paidLabor = workerPaymentsByProject.get(String(project.id)) || 0
       const laborOutstanding = Math.max(0, laborCosts - paidLabor)
       const remaining = budget - costs
-      const cashflow = received - paidCosts - paidLabor
+      const cashflow = received - paidCosts - paidLabor - supplierSummary.uhradene
       const usage = budget > 0 ? (costs / budget) * 100 : 0
 
       return {
@@ -211,6 +236,11 @@ export default function FinanciePage() {
         costs,
         manualCosts,
         laborCosts,
+        supplierCosts,
+        paidSupplierCosts: supplierSummary.uhradene,
+        unpaidSupplierCosts: supplierSummary.neuhradene,
+        overdueSupplierCosts: supplierSummary.poSplatnosti,
+        overdueSupplierCount: supplierSummary.pocetPoSplatnosti,
         laborHours: labor?.hodiny || 0,
         laborWorkers: labor?.pracovnici.size || 0,
         laborMissingRates: labor?.bezSadzby.size || 0,
@@ -226,7 +256,7 @@ export default function FinanciePage() {
         hasFinance: Boolean(finance) || costs > 0 || received > 0,
       }
     })
-  }, [projects, financeByProject, costsByProject, paymentsByProject, workerPaymentsByProject, laborByProject])
+  }, [projects, financeByProject, costsByProject, paymentsByProject, workerPaymentsByProject, supplierInvoicesByProject, laborByProject])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('sk')
@@ -246,6 +276,10 @@ export default function FinanciePage() {
       acc.budget += row.budget
       acc.costs += row.costs
       acc.laborCosts += row.laborCosts
+      acc.supplierCosts += row.supplierCosts
+      acc.paidSupplierCosts += row.paidSupplierCosts
+      acc.unpaidSupplierCosts += row.unpaidSupplierCosts
+      acc.overdueSupplierCosts += row.overdueSupplierCosts
       acc.paidCosts += row.paidCosts
       acc.paidLabor += row.paidLabor
       acc.unpaidCosts += row.unpaidCosts
@@ -259,6 +293,10 @@ export default function FinanciePage() {
       budget: 0,
       costs: 0,
       laborCosts: 0,
+      supplierCosts: 0,
+      paidSupplierCosts: 0,
+      unpaidSupplierCosts: 0,
+      overdueSupplierCosts: 0,
       paidCosts: 0,
       paidLabor: 0,
       unpaidCosts: 0,
@@ -387,19 +425,19 @@ export default function FinanciePage() {
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálne náklady</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{euro(totals.costs)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Vyčerpanie budgetu {totalUsage.toFixed(0)} % · pracovníci {euro(totals.laborCosts)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Vyčerpanie {totalUsage.toFixed(0)} % · faktúry {euro(totals.supplierCosts)} · pracovníci {euro(totals.laborCosts)}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Zostáva z budgetu</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totalRemaining < 0 ? '#b42318' : '#1d1d1f' }}>{euro(totalRemaining)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Budget mínus ručné náklady a automatické mzdy</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Budget mínus ručné náklady, dodávateľské faktúry a automatické mzdy</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px', backgroundColor: totals.cashflow < 0 ? '#fffafa' : '#f7fbff' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálny cashflow</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(totals.cashflow)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté platby mínus uhradené náklady a vyplatené mzdy {euro(totals.paidLabor)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté mínus uhradené náklady, faktúry {euro(totals.paidSupplierCosts)} a mzdy {euro(totals.paidLabor)}</div>
               </div>
             </div>
 
@@ -509,8 +547,13 @@ export default function FinanciePage() {
                           <td data-label="Náklady" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: '700' }}>{euro(row.costs)}</div>
                             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px', fontWeight: '650' }}>
-                              pracovníci {euro(row.laborCosts)} · vyplatené {euro(row.paidLabor)} · ručné {euro(row.manualCosts)}
+                              faktúry {euro(row.supplierCosts)} · pracovníci {euro(row.laborCosts)} · ručné {euro(row.manualCosts)}
                             </div>
+                            {row.overdueSupplierCount > 0 && (
+                              <div style={{ marginTop: '3px', color: '#b42318', fontSize: '8px', fontWeight: '700' }}>
+                                {row.overdueSupplierCount} FA po splatnosti · {euro(row.overdueSupplierCosts)}
+                              </div>
+                            )}
                             {row.laborMissingRates > 0 && (
                               <div style={{ marginTop: '3px', color: '#b42318', fontSize: '8px', fontWeight: '700' }}>
                                 {row.laborMissingRates} pracovník bez sadzby
@@ -554,7 +597,7 @@ export default function FinanciePage() {
             </div>
 
             <div style={{ marginTop: '10px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-              Súhrn používa rovnaké reálne finančné údaje ako detail stavby. Budget počíta všetky náklady, cashflow iba náklady označené ako uhradené.
+              Súhrn používa rovnaké reálne finančné údaje ako detail stavby. Dodávateľská faktúra vstupuje do budgetu ihneď a do cashflow až po označení ako uhradená.
             </div>
           </>
         )}
