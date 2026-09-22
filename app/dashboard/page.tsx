@@ -394,11 +394,22 @@ export default function DashboardPage() {
     nacitajKontrolneZaznamy()
   }
 
+  function vypocitajHodinyUpravovanehoZaznamu(id: string, prichod: string, odchod: string) {
+    const povodny = kontrolneZaznamy.find(z => String(z.id) === String(id))
+    if (!povodny) return vypocitajHodiny(prichod, odchod)
+
+    const upraveneZaznamy = kontrolneZaznamy.map(z =>
+      String(z.id) === String(id) ? { ...z, prichod, odchod } : z
+    )
+    const mapa = vytvorMapuCistychHodin(upraveneZaznamy)
+    return hodinyZaznamuZMapy({ ...povodny, prichod, odchod }, mapa)
+  }
+
   function zacatUpravu(id: string, prichod: string, odchod: string) {
     setUpravovaneId(id)
     setUpravovanePrichod(prichod)
     setUpravovaneOdchod(odchod)
-    setUpravovaneHodiny(vypocitajHodiny(prichod, odchod).toFixed(2))
+    setUpravovaneHodiny(vypocitajHodinyUpravovanehoZaznamu(id, prichod, odchod).toFixed(2))
     setChybaUpravaHodiny('')
   }
 
@@ -417,7 +428,10 @@ export default function DashboardPage() {
         const error = getTimeValidationError(upravovanePrichod, value)
         setChybaUpravaHodiny(error)
         if (!error) {
-          setUpravovaneHodiny(vypocitajHodiny(upravovanePrichod, value).toFixed(2))
+          const hodiny = upravovaneId
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, upravovanePrichod, value)
+            : vypocitajHodiny(upravovanePrichod, value)
+          setUpravovaneHodiny(hodiny.toFixed(2))
         }
       }
     } else {
@@ -426,7 +440,10 @@ export default function DashboardPage() {
         const error = getTimeValidationError(value, upravovaneOdchod)
         setChybaUpravaHodiny(error)
         if (!error) {
-          setUpravovaneHodiny(vypocitajHodiny(value, upravovaneOdchod).toFixed(2))
+          const hodiny = upravovaneId
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, value, upravovaneOdchod)
+            : vypocitajHodiny(value, upravovaneOdchod)
+          setUpravovaneHodiny(hodiny.toFixed(2))
         }
       }
     }
@@ -565,7 +582,7 @@ export default function DashboardPage() {
       .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
     const druha = zaznamyPracovnika
       .filter(z => Number(String(z.datum).split('-')[2]) >= 16)
-      .reduce((sucet, z) => sucet + vypocitajHodiny(z.prichod, z.odchod), 0)
+      .reduce((sucet, z) => sucet + hodinyZaznamu(z), 0)
     const spolu = prva + druha
     return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
   })
