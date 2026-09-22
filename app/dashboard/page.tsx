@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
+import { bratislavaDateKey, bratislavaMonthKey, jeNedela } from '../../lib/dateKeys'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function DashboardPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
   const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
-  const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
+  const [filterMesiac, setFilterMesiac] = useState(bratislavaMonthKey())
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
   const [filterMeno, setFilterMeno] = useState('')
@@ -33,12 +34,12 @@ export default function DashboardPage() {
   const [ukladaNepritomnost, setUkladaNepritomnost] = useState(false)
   const [chybaNepritomnosti, setChybaNepritomnosti] = useState('')
   const [novaNepritomnost, setNovaNepritomnost] = useState({
-    datum: new Date().toISOString().split('T')[0],
+    datum: bratislavaDateKey(),
     dovod: '',
     mena: [] as string[]
   })
   const [noveZaznamy, setNoveZaznamy] = useState([
-    { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
+    { datum: bratislavaDateKey(), mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
 
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
@@ -231,6 +232,12 @@ export default function DashboardPage() {
     vcera.setDate(vcera.getDate() - 1)
     const datum = datumDoLocalString(vcera)
     setDatumKontroly(datum)
+
+    if (jeNedela(datum)) {
+      setNezapisaniVcera([])
+      setNacitavaKontrola(false)
+      return
+    }
 
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
@@ -468,6 +475,11 @@ export default function DashboardPage() {
       return
     }
 
+    if (maPrekryvajuciSaCas(upraveny, id)) {
+      setChybaUpravaHodiny('Tento čas sa prekrýva s iným zápisom pracovníka v rovnaký deň.')
+      return
+    }
+
     const { error: supabaseError } = await supabase
       .from('dochadzka')
       .update({ prichod: upravovanePrichod, odchod: upravovaneOdchod })
@@ -483,7 +495,7 @@ export default function DashboardPage() {
   }
 
   function pridatPrazdnyZaznam() {
-    setNoveZaznamy([...noveZaznamy, { datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
+    setNoveZaznamy([...noveZaznamy, { datum: bratislavaDateKey(), mena: [], zakazka: '', prichod: '', odchod: '' }])
   }
 
   function zmenaNovehoZaznamu(index: number, pole: string, hodnota: string) {
@@ -532,14 +544,33 @@ export default function DashboardPage() {
         alert(`Duplikát: ${zaznam.meno} už má rovnaký zápis ${zaznam.datum} na stavbe ${zaznam.zakazka} (${zaznam.prichod}–${zaznam.odchod}).`)
         return
       }
+      if (maPrekryvajuciSaCas(zaznam)) {
+        alert(`Prekryv času: ${zaznam.meno} už má ${zaznam.datum} iný zápis, ktorý sa prekrýva s časom ${zaznam.prichod}–${zaznam.odchod}.`)
+        return
+      }
       kluce.add(kluc)
+    }
+
+    for (let i = 0; i < dataNaVlozenie.length; i++) {
+      for (let j = i + 1; j < dataNaVlozenie.length; j++) {
+        const a = dataNaVlozenie[i]
+        const b = dataNaVlozenie[j]
+        if (
+          a.datum === b.datum &&
+          a.meno === b.meno &&
+          intervalySaPrekryvaju(a.prichod, a.odchod, b.prichod, b.odchod)
+        ) {
+          alert(`Prekryv času v nových blokoch: ${a.meno} má ${a.datum} prekrývajúce sa časy ${a.prichod}–${a.odchod} a ${b.prichod}–${b.odchod}.`)
+          return
+        }
+      }
     }
 
     const { error } = await supabase.from('dochadzka').insert(dataNaVlozenie)
     if (error) alert('Chyba: ' + error.message)
     else {
       setUkazatFormular(false)
-      setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
+      setNoveZaznamy([{ datum: bratislavaDateKey(), mena: [], zakazka: '', prichod: '', odchod: '' }])
       await Promise.all([nacitaj(), nacitajFiltre(), nacitajNezapisanychVcera(), nacitajKontrolneZaznamy()])
     }
   }
@@ -612,8 +643,10 @@ export default function DashboardPage() {
       nepritomnostiDna.map(n => n.meno).filter(Boolean)
     )
     const menaVPraci = new Set(mena)
-    const jeBuduciDen = datum > datumDoLocalString(new Date())
-    const nezapisani = jeBuduciDen
+    const denVTyzdniIndex = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
+    const jeNedelaDna = denVTyzdniIndex === 0
+    const jeBuduciDen = datum > bratislavaDateKey()
+    const nezapisani = jeBuduciDen || jeNedelaDna
       ? []
       : dostupneMena
           .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
@@ -630,11 +663,12 @@ export default function DashboardPage() {
       polozky
     }))
 
-    const denVTyzdni = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     return {
       datum,
       den,
-      denVTyzdni: nazvyDni[denVTyzdni],
+      denVTyzdni: nazvyDni[denVTyzdniIndex],
+      jeNedela: jeNedelaDna,
+      jeBuduciDen,
       pocet: mena.length,
       mena,
       pocetNepritomnych: menaNepritomnych.size,
@@ -650,7 +684,7 @@ export default function DashboardPage() {
     return true
   })
 
-  const dnesText = datumDoLocalString(new Date())
+  const dnesText = bratislavaDateKey()
   const vceraDatum = new Date()
   vceraDatum.setDate(vceraDatum.getDate() - 1)
   const vceraText = datumDoLocalString(vceraDatum)
@@ -963,6 +997,10 @@ export default function DashboardPage() {
                 <div style={{ fontSize: '12px', color: '#86868b' }}>Kontrolujem zápisy...</div>
               ) : chybaKontroly ? (
                 <div style={{ fontSize: '12px', color: '#ff3b30' }}>⚠️ {chybaKontroly}</div>
+              ) : jeNedela(datumKontroly) ? (
+                <div style={{ fontSize: '12px', color: '#6e6e73', fontWeight: '600' }}>
+                  Nedeľa – evidencia dochádzky sa nevyžaduje.
+                </div>
               ) : nezapisaniVcera.length > 0 ? (
                 <>
                   <div style={{ fontSize: '12px', color: '#b42318', marginBottom: '10px' }}>
@@ -1399,10 +1437,27 @@ export default function DashboardPage() {
                       </td>
 
                       <td style={{ padding: '11px 12px', verticalAlign: 'middle' }}>
-                        {den.pocetNezapisanych === 0 ? (
-                          <span style={{ color: '#c7c7cc', fontSize: '11px' }}>—</span>
+                        {den.jeNedela ? (
+                          <span style={{ color: '#a1a1a6', fontSize: '10px', fontWeight: '600' }}>Nevyžaduje sa</span>
+                        ) : den.jeBuduciDen ? (
+                          <span style={{ color: '#a1a1a6', fontSize: '10px', fontWeight: '600' }}>Budúci deň</span>
+                        ) : den.pocetNezapisanych === 0 ? (
+                          <span style={{ color: '#15803d', fontSize: '10px', fontWeight: '700' }}>✓ Všetci evidovaní</span>
                         ) : (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              minWidth: '24px',
+                              height: '24px',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0 7px',
+                              borderRadius: '12px',
+                              backgroundColor: '#b42318',
+                              color: '#fff',
+                              fontSize: '10px',
+                              fontWeight: '750'
+                            }}>{den.pocetNezapisanych}</span>
                             {den.nezapisani.map((meno: string) => (
                               <span
                                 key={meno}
