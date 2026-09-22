@@ -107,6 +107,9 @@ export default function FinanciePage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
+  const [dokladoConfigured, setDokladoConfigured] = useState<boolean | null>(null)
+  const [dokladoChecking, setDokladoChecking] = useState(false)
+  const [dokladoMessage, setDokladoMessage] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -159,6 +162,44 @@ export default function FinanciePage() {
     load()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadDokladoStatus() {
+      try {
+        const response = await fetch('/api/admin/doklado', { cache: 'no-store' })
+        const data = await response.json()
+        if (!cancelled) setDokladoConfigured(Boolean(data?.configured))
+      } catch {
+        if (!cancelled) setDokladoConfigured(false)
+      }
+    }
+
+    loadDokladoStatus()
+    return () => { cancelled = true }
+  }, [])
+
+  async function testDokladoConnection() {
+    if (dokladoChecking) return
+    setDokladoChecking(true)
+    setDokladoMessage('')
+
+    try {
+      const response = await fetch('/api/admin/doklado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: 90 }),
+      })
+      const data = await response.json()
+      setDokladoConfigured(Boolean(data?.configured))
+      setDokladoMessage(data?.message || (response.ok ? 'Spojenie s Doklado funguje.' : 'Spojenie s Doklado sa nepodarilo overiť.'))
+    } catch {
+      setDokladoMessage('Spojenie s Doklado sa nepodarilo overiť.')
+    } finally {
+      setDokladoChecking(false)
+    }
+  }
 
   const financeByProject = useMemo(() => {
     const map = new Map<string, Finance>()
@@ -522,6 +563,57 @@ export default function FinanciePage() {
                   <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750' }}>{portfolioProfitability.inkasnyProgressPercent === null ? '—' : `${portfolioProfitability.inkasnyProgressPercent.toFixed(0)} %`}</div>
                   <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(totals.received)} prijaté</div>
                 </div>
+              </div>
+            </div>
+
+            <div style={{ ...cardStyle, padding: '16px 18px', marginBottom: '14px', borderColor: dokladoConfigured ? '#b7dfc8' : 'rgba(0,0,0,.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '750' }}>Automatický import dokladov · Doklado</div>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '999px',
+                      backgroundColor: dokladoConfigured ? '#ecfdf5' : '#f5f5f7',
+                      color: dokladoConfigured ? '#047857' : '#6e6e73',
+                      fontSize: '9px',
+                      fontWeight: '750',
+                    }}>
+                      {dokladoConfigured === null ? 'KONTROLUJEM' : dokladoConfigured ? 'PRIPOJENÉ' : 'NEPRIPOJENÉ'}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: '5px', color: '#86868b', fontSize: '10px', lineHeight: 1.55 }}>
+                    Doklado je firemná verzia pre prijaté a vystavené faktúry. Po pripojení vieme načítať prijaté faktúry cez API a následne ich priraďovať ku konkrétnym stavbám bez ručného prepisovania.
+                  </div>
+                  {!dokladoConfigured && dokladoConfigured !== null && (
+                    <div style={{ marginTop: '7px', color: '#9a6700', fontSize: '10px', fontWeight: '650' }}>
+                      Na aktiváciu chýba DOKLADO_API_KEY a DOKLADO_ORGANIZATION_ID vo Verceli.
+                    </div>
+                  )}
+                  {dokladoMessage && (
+                    <div style={{ marginTop: '7px', color: dokladoConfigured ? '#047857' : '#6e6e73', fontSize: '10px', fontWeight: '650' }}>
+                      {dokladoMessage}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={testDokladoConnection}
+                  disabled={!dokladoConfigured || dokladoChecking}
+                  style={{
+                    minHeight: '38px',
+                    padding: '8px 13px',
+                    borderRadius: '9px',
+                    border: dokladoConfigured ? '1px solid #b9d8f8' : '1px solid #d2d2d7',
+                    backgroundColor: dokladoConfigured ? '#eef6ff' : '#f5f5f7',
+                    color: dokladoConfigured ? '#0071e3' : '#a1a1a6',
+                    cursor: dokladoConfigured && !dokladoChecking ? 'pointer' : 'not-allowed',
+                    fontSize: '10px',
+                    fontWeight: '750',
+                  }}
+                >
+                  {dokladoChecking ? 'Kontrolujem…' : 'Otestovať spojenie'}
+                </button>
               </div>
             </div>
 
