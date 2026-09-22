@@ -486,7 +486,11 @@ export default function DashboardPage() {
 
     if (supabaseError) {
       console.error("Chyba úpravy:", supabaseError)
-      setChybaUpravaHodiny('Úpravu sa nepodarilo uložiť: ' + supabaseError.message)
+      setChybaUpravaHodiny(
+        supabaseError.code === '23505'
+          ? 'Tento čas sa prekrýva s iným zápisom pracovníka. Obnovte prehľad a skontrolujte časy.'
+          : 'Úpravu sa nepodarilo uložiť: ' + supabaseError.message
+      )
     } else {
       zrusitUpravu()
       await Promise.all([nacitaj(), nacitajFiltre(), nacitajKontrolneZaznamy()])
