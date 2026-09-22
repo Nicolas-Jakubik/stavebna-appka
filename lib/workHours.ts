@@ -88,7 +88,7 @@ export function vytvorMapuCistychHodin(zaznamy: PracovnyZaznam[]) {
     if (minutySpolu <= HRANICA_PRESTAVKY_MINUTY) return
 
     let zostavajucaPrestavka = PRESTAVKA_MINUTY
-    const poradieNaPrestávku = [...polozky].sort((a, b) => {
+    const poradieNaPrestavku = [...polozky].sort((a, b) => {
       const aPoludnie = intervalObsahujePoludnie(a.zaznam) ? 1 : 0
       const bPoludnie = intervalObsahujePoludnie(b.zaznam) ? 1 : 0
       if (aPoludnie !== bPoludnie) return bPoludnie - aPoludnie
@@ -96,7 +96,7 @@ export function vytvorMapuCistychHodin(zaznamy: PracovnyZaznam[]) {
       return String(a.zaznam.prichod || '').localeCompare(String(b.zaznam.prichod || ''))
     })
 
-    for (const { zaznam } of poradieNaPrestávku) {
+    for (const { zaznam } of poradieNaPrestavku) {
       if (zostavajucaPrestavka <= 0) break
       const kluc = klucPracovnehoZaznamu(zaznam)
       const aktualne = cisteMinuty.get(kluc) || 0
