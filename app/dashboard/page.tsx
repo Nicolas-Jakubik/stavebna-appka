@@ -240,7 +240,7 @@ export default function DashboardPage() {
     }
 
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      supabase.from('zamestnanci').select('meno').eq('aktivny', true).order('meno', { ascending: true }),
       supabase.from('dochadzka').select('meno').eq('datum', datum),
       supabase.from('nepritomnosti').select('meno').eq('datum', datum)
     ])
@@ -349,7 +349,7 @@ export default function DashboardPage() {
 
   async function nacitajFiltre() {
     const [zamestnanciResult, dochadzkaResult] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      supabase.from('zamestnanci').select('meno').eq('aktivny', true).order('meno', { ascending: true }),
       supabase.from('dochadzka').select('zakazka, meno')
     ])
 
