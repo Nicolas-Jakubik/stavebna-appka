@@ -10,6 +10,7 @@ import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierIn
 import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
 import { vypocitajZiskovost } from '../../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../../lib/financeAlerts'
+import { bratislavaDateKey } from '../../lib/dateKeys'
 
 type Project = {
   id: number | string
@@ -203,11 +204,13 @@ export default function FinanciePage() {
     return map
   }, [workerPayments])
 
+  const todayKey = bratislavaDateKey()
+
   const supplierInvoicesByProject = useMemo(() => {
     const map = new Map<string, ReturnType<typeof zhrnDodavatelskeFaktury>>()
     projects.forEach(project => {
       const projectInvoices = supplierInvoices.filter(invoice => String(invoice.zakazka_id) === String(project.id))
-      map.set(String(project.id), zhrnDodavatelskeFaktury(projectInvoices, new Date().toISOString().slice(0, 10)))
+      map.set(String(project.id), zhrnDodavatelskeFaktury(projectInvoices, todayKey))
     })
     return map
   }, [projects, supplierInvoices])
@@ -216,7 +219,7 @@ export default function FinanciePage() {
     const map = new Map<string, ReturnType<typeof zhrnKlientskeFaktury>>()
     projects.forEach(project => {
       const projectInvoices = clientInvoices.filter(invoice => String(invoice.zakazka_id) === String(project.id))
-      map.set(String(project.id), zhrnKlientskeFaktury(projectInvoices, new Date().toISOString().slice(0, 10)))
+      map.set(String(project.id), zhrnKlientskeFaktury(projectInvoices, todayKey))
     })
     return map
   }, [projects, clientInvoices])
@@ -382,13 +385,6 @@ export default function FinanciePage() {
     vyfakturovane: totals.invoiced,
     prijate: totals.received,
   })
-
-  const todayKey = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Bratislava',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
 
   const projectNameById = useMemo(() => {
     const map = new Map<string, string>()
