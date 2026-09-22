@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov } from '../lib/laborCosts'
+import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../lib/financeBreakdown'
 
 type FinanceRow = {
   id?: number | string
@@ -405,6 +406,11 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     totals['Pracovníci'] += laborCosts
     return totals
   }, [expenses, laborCosts])
+
+  const monthlyBreakdown = useMemo(
+    () => vytvorMesacnyRozpadNakladov(expenses, laborEntries),
+    [expenses, laborEntries]
+  )
 
   const chartData = useMemo<ChartPoint[]>(() => {
     const months = new Set<string>()
@@ -1082,6 +1088,42 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                       <button type="button" onClick={() => deletePayment(payment)} style={{ padding: '6px 9px', border: 'none', borderRadius: '8px', backgroundColor: '#f5f5f7', color: '#86868b', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
                     </div>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '750' }}>Náklady podľa mesiacov a kategórií</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Automatické mzdy + ručne evidované náklady v jednom mesačnom prehľade.</div>
+          </div>
+          <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{monthlyBreakdown.length} mes.</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="finance-expense-table" style={{ minWidth: '840px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                {['Mesiac', ...FINANCE_CATEGORIES, 'Spolu'].map(label => (
+                  <th key={label} style={{ padding: '10px 14px', color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyBreakdown.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Mesačný prehľad sa zobrazí po zaevidovaní prvých nákladov alebo hodín pracovníkov.</td></tr>
+              ) : monthlyBreakdown.map(row => (
+                <tr key={row.key} style={{ borderBottom: '1px solid #ededf0' }}>
+                  <td data-label="Mesiac" style={{ padding: '11px 14px', fontWeight: '700', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{row.label}</td>
+                  {FINANCE_CATEGORIES.map(category => (
+                    <td key={category} data-label={category} style={{ padding: '11px 14px', whiteSpace: 'nowrap', color: row.categories[category] > 0 ? '#1d1d1f' : '#a1a1a6' }}>
+                      {row.categories[category] > 0 ? formatCurrency(row.categories[category]) : '—'}
+                    </td>
+                  ))}
+                  <td data-label="Spolu" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(row.total)}</td>
                 </tr>
               ))}
             </tbody>

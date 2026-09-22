@@ -5,6 +5,7 @@ import Link from 'next/link'
 import AdminSidebar from '../../components/AdminSidebar'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov, zhrnNakladyPracovnikovPodlaZakazky } from '../../lib/laborCosts'
+import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../../lib/financeBreakdown'
 
 type Project = {
   id: number | string
@@ -26,6 +27,8 @@ type Payment = {
 
 type Expense = {
   zakazka_id: number | string
+  datum: string
+  kategoria: string
   suma: number | string
   uhradene: boolean
 }
@@ -101,7 +104,7 @@ export default function FinanciePage() {
       ] = await Promise.all([
         supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
         supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
-        supabase.from('naklady_stavby').select('zakazka_id,suma,uhradene'),
+        supabase.from('naklady_stavby').select('zakazka_id,datum,kategoria,suma,uhradene'),
         supabase.from('platby_stavby').select('zakazka_id,suma'),
         supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod'),
         supabase.from('zamestnanci').select('meno,sadzba'),
@@ -174,6 +177,11 @@ export default function FinanciePage() {
   const laborByProject = useMemo(
     () => zhrnNakladyPracovnikovPodlaZakazky(laborEntries),
     [laborEntries]
+  )
+
+  const monthlyBreakdown = useMemo(
+    () => vytvorMesacnyRozpadNakladov(expenses, laborEntries),
+    [expenses, laborEntries]
   )
 
   const rows = useMemo(() => {
@@ -429,6 +437,42 @@ export default function FinanciePage() {
                     })}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: '14px' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '750' }}>Mesačné náklady firmy</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Súčet všetkých stavieb podľa kategórií vrátane automatických nákladov pracovníkov.</div>
+                </div>
+                <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{monthlyBreakdown.length} mes.</span>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="finances-table" style={{ width: '100%', minWidth: '840px', borderCollapse: 'collapse', fontSize: '11px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
+                      {['Mesiac', ...FINANCE_CATEGORIES, 'Spolu'].map(label => (
+                        <th key={label} style={{ padding: '10px 12px', color: '#86868b', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '.045em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyBreakdown.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú finančné dáta na mesačný rozpad.</td></tr>
+                    ) : monthlyBreakdown.map(row => (
+                      <tr key={row.key} style={{ borderBottom: '1px solid #ededf0' }}>
+                        <td data-label="Mesiac" style={{ padding: '12px', fontWeight: '700', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{row.label}</td>
+                        {FINANCE_CATEGORIES.map(category => (
+                          <td key={category} data-label={category} style={{ padding: '12px', whiteSpace: 'nowrap', color: row.categories[category] > 0 ? '#1d1d1f' : '#a1a1a6' }}>
+                            {row.categories[category] > 0 ? euro(row.categories[category]) : '—'}
+                          </td>
+                        ))}
+                        <td data-label="Spolu" style={{ padding: '12px', fontWeight: '750', whiteSpace: 'nowrap' }}>{euro(row.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
