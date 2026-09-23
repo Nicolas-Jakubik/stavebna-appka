@@ -254,7 +254,7 @@ function AttendanceForm() {
     if (error) {
       if (error.code === '23505') {
         setZobrazitPotvrdenie(false)
-        setStatus('⚠️ Rovnaký zápis už existuje. Skontrolujte dátum, pracovníka, stavbu a čas.')
+        setStatus('⚠️ Pracovník už má v tomto čase zápis. Skontrolujte dátum a čas.')
       } else {
         setStatus('Chyba: ' + error.message)
       }
