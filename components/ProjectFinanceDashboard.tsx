@@ -9,6 +9,16 @@ import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoic
 import { vypocitajZiskovost } from '../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
 
+type OfferItem = {
+  sekcia: string
+  kod: string
+  popis: string
+  cena_objekt_samostatne: number | string
+  cena_objekt_balik: number | string
+  spolu_bez_dph: number | string
+  spolu_s_dph: number | string
+}
+
 type FinanceRow = {
   id?: number | string
   zakazka_id: number | string
@@ -16,6 +26,16 @@ type FinanceRow = {
   budget_nakladov: number | string
   vyfakturovane: number | string
   prijate_platby: number | string
+  ponuka_nazov?: string | null
+  ponuka_datum?: string | null
+  ponuka_variant?: string | null
+  ponuka_pocet_objektov?: number | string | null
+  ponuka_plocha_m2?: number | string | null
+  ponuka_cielova_cena_m2?: number | string | null
+  ponuka_suma_bez_dph?: number | string | null
+  ponuka_suma_s_dph?: number | string | null
+  ponuka_dokument_url?: string | null
+  ponuka_polozky?: OfferItem[] | null
 }
 
 type ExpenseRow = {
@@ -143,6 +163,15 @@ function formatCurrency(value: number) {
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function formatCurrencyPrecise(value: number) {
+  return new Intl.NumberFormat('sk-SK', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
@@ -407,6 +436,11 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     vyfakturovane: clientInvoices.length > 0 ? clientInvoiceSummary.vyfakturovane : legacyInvoiced,
     prijate: clientInvoiceSummary.prijate + otherReceivedPayments,
   }), [finance, clientInvoices.length, clientInvoiceSummary, legacyInvoiced, otherReceivedPayments])
+
+  const offerItems = useMemo(
+    () => Array.isArray(finance?.ponuka_polozky) ? finance.ponuka_polozky : [],
+    [finance]
+  )
 
   const laborEntries = useMemo(
     () => vypocitajNakladyPracovnikov(attendance, employees)
@@ -1209,6 +1243,85 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
         <MetricCard label="Plánovaný zisk" value={values.cena > 0 && values.budget > 0 ? formatCurrency(profitability.planovanyZisk) : '—'} detail={values.cena <= 0 || values.budget <= 0 ? 'Nastav cenu zákazky aj budget' : `Plánovaná marža ${profitability.planovanaMarzaPercent?.toFixed(1)} %`} tone={values.cena > 0 && values.budget > 0 ? (profitability.planovanyZisk < 0 ? 'negative' : 'positive') : 'default'} />
       </div>
+
+      {finance?.ponuka_nazov && (
+        <section style={{ ...cardStyle, marginTop: '14px', padding: '18px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '750' }}>{finance.ponuka_nazov}</div>
+              <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px', lineHeight: 1.5 }}>
+                {finance.ponuka_variant || 'Cenová ponuka'}
+                {finance.ponuka_datum ? ` · ${formatDate(finance.ponuka_datum)}` : ''}
+              </div>
+            </div>
+            {finance.ponuka_dokument_url && (
+              <a
+                href={finance.ponuka_dokument_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: '9px', border: '1px solid #b9d8f8', backgroundColor: '#eef6ff', color: '#0066cc', textDecoration: 'none', fontSize: '10px', fontWeight: '750' }}
+              >
+                Otvoriť PDF
+              </a>
+            )}
+          </div>
+
+          <div className="finance-metrics-grid" style={{ marginTop: '14px' }}>
+            <MetricCard
+              label="Ponuka bez DPH"
+              value={numberValue(finance.ponuka_suma_bez_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_bez_dph)) : '—'}
+              detail="Spolu za 3 objekty"
+            />
+            <MetricCard
+              label="Ponuka s DPH"
+              value={numberValue(finance.ponuka_suma_s_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_s_dph)) : '—'}
+              detail="Orientačná cena s 23 % DPH"
+            />
+            <MetricCard
+              label="Cieľová cena"
+              value={numberValue(finance.ponuka_cielova_cena_m2) > 0 ? `${numberValue(finance.ponuka_cielova_cena_m2).toLocaleString('sk-SK', { maximumFractionDigits: 2 })} €/m²` : '—'}
+              detail="Bez DPH"
+            />
+            <MetricCard
+              label="Rozsah ponuky"
+              value={numberValue(finance.ponuka_pocet_objektov) > 0 ? `${numberValue(finance.ponuka_pocet_objektov)} objekty` : '—'}
+              detail={numberValue(finance.ponuka_plocha_m2) > 0 ? `${numberValue(finance.ponuka_plocha_m2).toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m² spolu` : undefined}
+            />
+          </div>
+
+          {offerItems.length > 0 && (
+            <div style={{ marginTop: '16px', overflowX: 'auto' }}>
+              <table className="finance-expense-table" style={{ minWidth: '980px' }}>
+                <thead>
+                  <tr style={{ color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '.045em' }}>
+                    <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Kód</th>
+                    <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Stavebný diel / práce</th>
+                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt samostatne</th>
+                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt v balíku</th>
+                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>3 objekty bez DPH</th>
+                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>S DPH</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {offerItems.map((item, index) => (
+                    <tr key={`${item.kod}-${index}`}>
+                      <td data-label="Kód" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        <div>{item.kod}</div>
+                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px', fontWeight: '650', lineHeight: 1.35 }}>{item.sekcia}</div>
+                      </td>
+                      <td data-label="Popis" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', lineHeight: 1.45 }}>{item.popis}</td>
+                      <td data-label="Samostatne" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_samostatne))}</td>
+                      <td data-label="V balíku" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_balik))}</td>
+                      <td data-label="Bez DPH" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '700' }}>{formatCurrencyPrecise(numberValue(item.spolu_bez_dph))}</td>
+                      <td data-label="S DPH" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.spolu_s_dph))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {financeAlertCount > 0 && (
         <div style={{ ...cardStyle, marginTop: '14px', overflow: 'hidden', borderColor: (supplierAlerts.some(alert => alert.stav === 'po_splatnosti') || clientAlerts.some(alert => alert.stav === 'po_splatnosti') || budgetExceeded) ? '#f3b4ae' : '#f0d7a3' }}>
