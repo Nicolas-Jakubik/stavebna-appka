@@ -491,6 +491,91 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     [attendance, employees, projectName]
   )
 
+
+  const objectNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    objects.forEach(objekt => map.set(String(objekt.id), objekt.nazov))
+    return map
+  }, [objects])
+
+  function matchesSelectedObject(value: number | string | null | undefined) {
+    if (selectedObject === 'all') return true
+    if (selectedObject === 'shared') return value === null || value === undefined || value === ''
+    return String(value ?? '') === selectedObject
+  }
+
+  const objectCostRows = useMemo(() => {
+    const ids = [
+      ...objects.map(objekt => String(objekt.id)),
+      'shared',
+    ]
+    return ids.map(id => {
+      const matches = (value: number | string | null | undefined) =>
+        id === 'shared'
+          ? value === null || value === undefined || value === ''
+          : String(value ?? '') === id
+      const manual = expenses.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + numberValue(row.suma), 0)
+      const supplier = supplierInvoices.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + numberValue(row.suma), 0)
+      const labor = laborEntries.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + row.suma, 0)
+      return {
+        id,
+        nazov: id === 'shared' ? 'Spoločné' : objectNameById.get(id) || 'Objekt',
+        manual,
+        supplier,
+        labor,
+        total: manual + supplier + labor,
+      }
+    })
+  }, [objects, expenses, supplierInvoices, laborEntries, objectNameById])
+
+  const selectedExpenses = useMemo(
+    () => expenses.filter(row => matchesSelectedObject(row.objekt_id)),
+    [expenses, selectedObject]
+  )
+  const selectedSupplierInvoices = useMemo(
+    () => supplierInvoices.filter(row => matchesSelectedObject(row.objekt_id)),
+    [supplierInvoices, selectedObject]
+  )
+  const selectedLaborEntries = useMemo(
+    () => laborEntries.filter(row => matchesSelectedObject(row.objekt_id)),
+    [laborEntries, selectedObject]
+  )
+  const selectedPayments = useMemo(
+    () => payments.filter(row => matchesSelectedObject(row.objekt_id)),
+    [payments, selectedObject]
+  )
+  const selectedClientInvoices = useMemo(
+    () => clientInvoices.filter(row => matchesSelectedObject(row.objekt_id)),
+    [clientInvoices, selectedObject]
+  )
+  const selectedWorkerPayments = useMemo(
+    () => workerPayments.filter(row => matchesSelectedObject(row.objekt_id)),
+    [workerPayments, selectedObject]
+  )
+
+  const selectedObjectSummary = useMemo(() => {
+    const manual = selectedExpenses.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const labor = selectedLaborEntries.reduce((sum, row) => sum + row.suma, 0)
+    const hours = selectedLaborEntries.reduce((sum, row) => sum + row.hodiny, 0)
+    const supplier = selectedSupplierInvoices.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidManual = selectedExpenses.filter(row => row.uhradene !== false).reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidSupplier = selectedSupplierInvoices.filter(row => row.uhradene).reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidLabor = selectedWorkerPayments.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const invoiceSummary = zhrnKlientskeFaktury(selectedClientInvoices, today())
+    const otherReceived = selectedPayments.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const received = invoiceSummary.prijate + otherReceived
+    return {
+      manual,
+      labor,
+      hours,
+      supplier,
+      total: manual + labor + supplier,
+      received,
+      cashflow: received - paidManual - paidSupplier - paidLabor,
+      workers: new Set(selectedLaborEntries.map(row => row.meno)).size,
+    }
+  }, [selectedExpenses, selectedSupplierInvoices, selectedLaborEntries, selectedPayments, selectedClientInvoices, selectedWorkerPayments])
+
   const laborCosts = useMemo(
     () => laborEntries.reduce((sum, entry) => sum + entry.suma, 0),
     [laborEntries]
@@ -1417,6 +1502,51 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#f7f7f8', border: '1px solid #e5e5e7', color: '#4b4b4f', fontSize: '11px' }}>
           {message}
         </div>
+      )}
+
+      {objects.length > 0 && (
+        <section style={{ ...cardStyle, padding: '14px 16px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '750' }}>Náklady podľa objektov</div>
+              <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Staré alebo nepriradené položky sú vedené ako Spoločné.</div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[{ id: 'all', nazov: 'Celá stavba' }, ...objects.map(objekt => ({ id: String(objekt.id), nazov: objekt.nazov })), { id: 'shared', nazov: 'Spoločné' }].map(option => {
+                const active = selectedObject === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedObject(option.id)}
+                    style={{ minHeight: '34px', padding: '6px 10px', borderRadius: '9px', border: active ? '1px solid #0071e3' : '1px solid #d2d2d7', backgroundColor: active ? '#e8f3ff' : '#fff', color: active ? '#0066cc' : '#6e6e73', cursor: 'pointer', fontSize: '9px', fontWeight: '750' }}
+                  >
+                    {option.nazov}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedObject === 'all' ? (
+            <div className="finance-metrics-grid" style={{ marginTop: '12px' }}>
+              {objectCostRows.map(row => (
+                <div key={row.id} style={{ padding: '11px 12px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>{row.nazov}</div>
+                  <div style={{ marginTop: '5px', fontSize: '17px', fontWeight: '750' }}>{formatCurrency(row.total)}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>práca {formatCurrency(row.labor)} · ostatné {formatCurrency(row.manual + row.supplier)}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="finance-metrics-grid" style={{ marginTop: '12px' }}>
+              <MetricCard label="Náklady objektu" value={formatCurrency(selectedObjectSummary.total)} detail={`Práca ${formatCurrency(selectedObjectSummary.labor)} · ostatné ${formatCurrency(selectedObjectSummary.manual + selectedObjectSummary.supplier)}`} />
+              <MetricCard label="Pracovníci" value={`${selectedObjectSummary.hours.toLocaleString('sk-SK', { maximumFractionDigits: 1 })} h`} detail={`${selectedObjectSummary.workers} pracovníkov · ${formatCurrency(selectedObjectSummary.labor)}`} />
+              <MetricCard label="Dodávatelia" value={formatCurrency(selectedObjectSummary.supplier)} detail="Dodávateľské faktúry priradené objektu" />
+              <MetricCard label="Cashflow objektu" value={formatCurrency(selectedObjectSummary.cashflow)} detail={`Prijaté ${formatCurrency(selectedObjectSummary.received)}`} tone={selectedObjectSummary.cashflow < 0 ? 'negative' : selectedObjectSummary.cashflow > 0 ? 'positive' : 'default'} />
+            </div>
+          )}
+        </section>
       )}
 
       <div className="finance-metrics-grid">
