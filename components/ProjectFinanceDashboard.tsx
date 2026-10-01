@@ -1275,6 +1275,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             grid-template-columns: 1fr;
           }
         }
+        @media (max-width: 900px) {
+          .finance-offer-item-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .finance-offer-item-grid > :nth-child(3) {
+            grid-column: 1 / -1;
+          }
+        }
         @media (max-width: 640px) {
           .finance-metrics-grid {
             grid-template-columns: 1fr;
@@ -1294,6 +1302,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           }
           .finance-form-grid {
             grid-template-columns: 1fr !important;
+          }
+          .finance-form-grid > * {
+            grid-column: auto !important;
+          }
+          .finance-offer-item-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .finance-offer-item-grid > * {
+            grid-column: auto !important;
           }
           .finance-expense-table {
             display: block;
@@ -2067,7 +2084,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   const withVat = withoutVat * 1.23
                   return (
                     <div key={index} style={{ padding: '12px', border: '1px solid #e5e5e7', borderRadius: '12px', backgroundColor: '#fafafa' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr .55fr 2fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
+                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr .55fr 2fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
                         <div>
                           <label style={labelStyle}>Sekcia</label>
                           <input type="text" value={String(item.sekcia || '')} onChange={event => updateOfferItem(index, 'sekcia', event.target.value)} style={inputStyle} />
