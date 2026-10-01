@@ -485,6 +485,18 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     [finance]
   )
 
+  const offerRealization = useMemo(() => {
+    return offerItems.reduce((acc, item) => {
+      const amount = numberValue(item.spolu_bez_dph)
+      const owner = item.realizuje || 'stavby_domy'
+      if (owner === 'investor') acc.investor += amount
+      else if (owner === 'nerozhodnute') acc.undecided += amount
+      else acc.ours += amount
+      acc.total += amount
+      return acc
+    }, { total: 0, ours: 0, investor: 0, undecided: 0 })
+  }, [offerItems])
+
   const laborEntries = useMemo(
     () => vypocitajNakladyPracovnikov(attendance, employees)
       .filter(entry => entry.zakazka === projectName.trim()),
@@ -1606,24 +1618,26 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
           <div className="finance-metrics-grid" style={{ marginTop: '14px' }}>
             <MetricCard
-              label="Ponuka bez DPH"
-              value={numberValue(finance.ponuka_suma_bez_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_bez_dph)) : '—'}
-              detail="Spolu za 3 objekty"
+              label="Celá ponuka"
+              value={offerRealization.total > 0 ? formatCurrencyPrecise(offerRealization.total) : '—'}
+              detail="Celý pôvodný rozsah bez DPH"
             />
             <MetricCard
-              label="Ponuka s DPH"
-              value={numberValue(finance.ponuka_suma_s_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_s_dph)) : '—'}
-              detail="Orientačná cena s 23 % DPH"
+              label="Realizuje Stavby Domy"
+              value={offerRealization.ours > 0 ? formatCurrencyPrecise(offerRealization.ours) : '—'}
+              detail="Táto suma sa používa ako cena našej zákazky"
+              tone={offerRealization.ours > 0 ? 'positive' : 'default'}
             />
             <MetricCard
-              label="Cieľová cena"
-              value={numberValue(finance.ponuka_cielova_cena_m2) > 0 ? `${numberValue(finance.ponuka_cielova_cena_m2).toLocaleString('sk-SK', { maximumFractionDigits: 2 })} €/m²` : '—'}
-              detail="Bez DPH"
+              label="Investor externe"
+              value={offerRealization.investor > 0 ? formatCurrencyPrecise(offerRealization.investor) : '—'}
+              detail="Len evidenčne, nevstupuje do našej ceny"
             />
             <MetricCard
-              label="Rozsah ponuky"
-              value={numberValue(finance.ponuka_pocet_objektov) > 0 ? `${numberValue(finance.ponuka_pocet_objektov)} objekty` : '—'}
-              detail={numberValue(finance.ponuka_plocha_m2) > 0 ? `${numberValue(finance.ponuka_plocha_m2).toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m² spolu` : undefined}
+              label="Nerozhodnuté"
+              value={offerRealization.undecided > 0 ? formatCurrencyPrecise(offerRealization.undecided) : '—'}
+              detail={numberValue(finance.ponuka_pocet_objektov) > 0 ? `${numberValue(finance.ponuka_pocet_objektov)} objekty · ${numberValue(finance.ponuka_plocha_m2).toLocaleString('sk-SK', { maximumFractionDigits: 2 })} m²` : 'Rozsah ešte nie je zadaný'}
+              tone={offerRealization.undecided > 0 ? 'warning' : 'default'}
             />
           </div>
 
@@ -1634,6 +1648,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <tr style={{ color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '.045em' }}>
                     <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Kód</th>
                     <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Stavebný diel / práce</th>
+                    <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Realizuje</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt samostatne</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt v balíku</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>{numberValue(finance.ponuka_pocet_objektov) || 1} obj. bez DPH</th>
@@ -1648,6 +1663,19 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                         <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px', fontWeight: '650', lineHeight: 1.35 }}>{item.sekcia}</div>
                       </td>
                       <td data-label="Popis" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', lineHeight: 1.45 }}>{item.popis}</td>
+                      <td data-label="Realizuje" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          padding: '4px 7px',
+                          borderRadius: '999px',
+                          backgroundColor: (item.realizuje || 'stavby_domy') === 'investor' ? '#f5f5f7' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? '#fff7ed' : '#ecfdf5',
+                          color: (item.realizuje || 'stavby_domy') === 'investor' ? '#6e6e73' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? '#9a6700' : '#047857',
+                          fontSize: '8px',
+                          fontWeight: '750',
+                        }}>
+                          {(item.realizuje || 'stavby_domy') === 'investor' ? 'Investor externe' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? 'Nerozhodnuté' : 'Stavby Domy'}
+                        </span>
+                      </td>
                       <td data-label="Samostatne" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_samostatne))}</td>
                       <td data-label="V balíku" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_balik))}</td>
                       <td data-label="Bez DPH" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '700' }}>{formatCurrencyPrecise(numberValue(item.spolu_bez_dph))}</td>
@@ -2264,7 +2292,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   const withVat = withoutVat * 1.23
                   return (
                     <div key={index} style={{ padding: '12px', border: '1px solid #e5e5e7', borderRadius: '12px', backgroundColor: '#fafafa' }}>
-                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr .55fr 2fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
+                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1fr .55fr 1.8fr 1fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
                         <div>
                           <label style={labelStyle}>Sekcia</label>
                           <input type="text" value={String(item.sekcia || '')} onChange={event => updateOfferItem(index, 'sekcia', event.target.value)} style={inputStyle} />
@@ -2276,6 +2304,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                         <div>
                           <label style={labelStyle}>Popis</label>
                           <input type="text" value={String(item.popis || '')} onChange={event => updateOfferItem(index, 'popis', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Realizuje</label>
+                          <select value={item.realizuje || 'stavby_domy'} onChange={event => updateOfferItem(index, 'realizuje', event.target.value)} style={inputStyle}>
+                            <option value="stavby_domy">Stavby Domy</option>
+                            <option value="investor">Investor / externá firma</option>
+                            <option value="nerozhodnute">Nerozhodnuté</option>
+                          </select>
                         </div>
                         <div>
                           <label style={labelStyle}>1 obj. samostatne</label>
