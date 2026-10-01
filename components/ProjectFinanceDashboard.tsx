@@ -13,10 +13,19 @@ type OfferItem = {
   sekcia: string
   kod: string
   popis: string
+  realizuje?: 'stavby_domy' | 'investor' | 'nerozhodnute'
   cena_objekt_samostatne: number | string
   cena_objekt_balik: number | string
   spolu_bez_dph: number | string
   spolu_s_dph: number | string
+}
+
+type ProjectObjectRow = {
+  id: number | string
+  zakazka_id: number | string
+  nazov: string
+  poradie: number | string
+  aktivny: boolean
 }
 
 type FinanceRow = {
@@ -39,6 +48,7 @@ type FinanceRow = {
 }
 
 type ExpenseRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   datum: string
@@ -50,6 +60,7 @@ type ExpenseRow = {
 }
 
 type PaymentRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   datum: string
@@ -59,6 +70,7 @@ type PaymentRow = {
 }
 
 type AttendanceRow = {
+  objekt_id?: number | string | null
   id: number | string
   meno: string
   datum: string
@@ -73,6 +85,7 @@ type EmployeeRow = {
 }
 
 type WorkerPaymentRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   meno: string
@@ -82,6 +95,7 @@ type WorkerPaymentRow = {
 }
 
 type SupplierInvoiceRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   dodavatel: string
@@ -96,6 +110,7 @@ type SupplierInvoiceRow = {
 }
 
 type ClientInvoiceRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   cislo_faktury: string
@@ -288,6 +303,8 @@ function FinanceChart({ data }: { data: ChartPoint[] }) {
 
 export default function ProjectFinanceDashboard({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [finance, setFinance] = useState<FinanceRow | null>(null)
+  const [objects, setObjects] = useState<ProjectObjectRow[]>([])
+  const [selectedObject, setSelectedObject] = useState('all')
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
@@ -315,6 +332,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
   const [offerForm, setOfferForm] = useState(EMPTY_OFFER_FORM)
   const [expenseForm, setExpenseForm] = useState({
+    objekt_id: '',
     datum: today(),
     popis: '',
     kategoria: 'Materiál' as Category,
@@ -323,18 +341,21 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     poznamka: '',
   })
   const [paymentForm, setPaymentForm] = useState({
+    objekt_id: '',
     datum: today(),
     suma: 0,
     popis: 'Prijatá záloha',
     poznamka: '',
   })
   const [workerPaymentForm, setWorkerPaymentForm] = useState({
+    objekt_id: '',
     meno: '',
     datum: today(),
     suma: 0,
     poznamka: '',
   })
   const [supplierInvoiceForm, setSupplierInvoiceForm] = useState({
+    objekt_id: '',
     dodavatel: '',
     cislo_faktury: '',
     datum_vystavenia: today(),
@@ -346,6 +367,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     poznamka: '',
   })
   const [clientInvoiceForm, setClientInvoiceForm] = useState({
+    objekt_id: '',
     cislo_faktury: '',
     datum_vystavenia: today(),
     datum_splatnosti: today(),
@@ -361,6 +383,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     const [
       { data: financeData, error: financeError },
+      { data: objectData, error: objectError },
       { data: expenseData, error: expenseError },
       { data: paymentData, error: paymentError },
       { data: attendanceData, error: attendanceError },
@@ -375,6 +398,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .maybeSingle(),
       supabase
+        .from('objekty_stavby')
+        .select('id,zakazka_id,nazov,poradie,aktivny')
+        .eq('zakazka_id', projectId)
+        .order('poradie', { ascending: true })
+        .order('id', { ascending: true }),
+      supabase
         .from('naklady_stavby')
         .select('*')
         .eq('zakazka_id', projectId)
@@ -388,7 +417,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod'),
+        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id'),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
@@ -412,12 +441,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
+    if (financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
+      console.error('Chyba načítania financií:', financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
     setFinance((financeData as FinanceRow | null) || null)
+    setObjects(((objectData as ProjectObjectRow[]) || []).filter(objekt => objekt.aktivny !== false))
     setExpenses((expenseData as ExpenseRow[]) || [])
     setPayments((paymentData as PaymentRow[]) || [])
     setAttendance((attendanceData as AttendanceRow[]) || [])
@@ -455,11 +485,114 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     [finance]
   )
 
+  const offerRealization = useMemo(() => {
+    return offerItems.reduce((acc, item) => {
+      const amount = numberValue(item.spolu_bez_dph)
+      const owner = item.realizuje || 'stavby_domy'
+      if (owner === 'investor') acc.investor += amount
+      else if (owner === 'nerozhodnute') acc.undecided += amount
+      else acc.ours += amount
+      acc.total += amount
+      return acc
+    }, { total: 0, ours: 0, investor: 0, undecided: 0 })
+  }, [offerItems])
+
   const laborEntries = useMemo(
     () => vypocitajNakladyPracovnikov(attendance, employees)
       .filter(entry => entry.zakazka === projectName.trim()),
     [attendance, employees, projectName]
   )
+
+
+  const objectNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    objects.forEach(objekt => map.set(String(objekt.id), objekt.nazov))
+    return map
+  }, [objects])
+
+  function objectLabel(value: number | string | null | undefined) {
+    return value === null || value === undefined || value === ''
+      ? 'Spoločné'
+      : objectNameById.get(String(value)) || 'Objekt'
+  }
+
+  function matchesSelectedObject(value: number | string | null | undefined) {
+    if (selectedObject === 'all') return true
+    if (selectedObject === 'shared') return value === null || value === undefined || value === ''
+    return String(value ?? '') === selectedObject
+  }
+
+  const objectCostRows = useMemo(() => {
+    const ids = [
+      ...objects.map(objekt => String(objekt.id)),
+      'shared',
+    ]
+    return ids.map(id => {
+      const matches = (value: number | string | null | undefined) =>
+        id === 'shared'
+          ? value === null || value === undefined || value === ''
+          : String(value ?? '') === id
+      const manual = expenses.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + numberValue(row.suma), 0)
+      const supplier = supplierInvoices.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + numberValue(row.suma), 0)
+      const labor = laborEntries.filter(row => matches(row.objekt_id)).reduce((sum, row) => sum + row.suma, 0)
+      return {
+        id,
+        nazov: id === 'shared' ? 'Spoločné' : objectNameById.get(id) || 'Objekt',
+        manual,
+        supplier,
+        labor,
+        total: manual + supplier + labor,
+      }
+    })
+  }, [objects, expenses, supplierInvoices, laborEntries, objectNameById])
+
+  const selectedExpenses = useMemo(
+    () => expenses.filter(row => matchesSelectedObject(row.objekt_id)),
+    [expenses, selectedObject]
+  )
+  const selectedSupplierInvoices = useMemo(
+    () => supplierInvoices.filter(row => matchesSelectedObject(row.objekt_id)),
+    [supplierInvoices, selectedObject]
+  )
+  const selectedLaborEntries = useMemo(
+    () => laborEntries.filter(row => matchesSelectedObject(row.objekt_id)),
+    [laborEntries, selectedObject]
+  )
+  const selectedPayments = useMemo(
+    () => payments.filter(row => matchesSelectedObject(row.objekt_id)),
+    [payments, selectedObject]
+  )
+  const selectedClientInvoices = useMemo(
+    () => clientInvoices.filter(row => matchesSelectedObject(row.objekt_id)),
+    [clientInvoices, selectedObject]
+  )
+  const selectedWorkerPayments = useMemo(
+    () => workerPayments.filter(row => matchesSelectedObject(row.objekt_id)),
+    [workerPayments, selectedObject]
+  )
+
+  const selectedObjectSummary = useMemo(() => {
+    const manual = selectedExpenses.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const labor = selectedLaborEntries.reduce((sum, row) => sum + row.suma, 0)
+    const hours = selectedLaborEntries.reduce((sum, row) => sum + row.hodiny, 0)
+    const supplier = selectedSupplierInvoices.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidManual = selectedExpenses.filter(row => row.uhradene !== false).reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidSupplier = selectedSupplierInvoices.filter(row => row.uhradene).reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const paidLabor = selectedWorkerPayments.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const invoiceSummary = zhrnKlientskeFaktury(selectedClientInvoices, today())
+    const otherReceived = selectedPayments.reduce((sum, row) => sum + numberValue(row.suma), 0)
+    const received = invoiceSummary.prijate + otherReceived
+    return {
+      manual,
+      labor,
+      hours,
+      supplier,
+      total: manual + labor + supplier,
+      received,
+      cashflow: received - paidManual - paidSupplier - paidLabor,
+      workers: new Set(selectedLaborEntries.map(row => row.meno)).size,
+    }
+  }, [selectedExpenses, selectedSupplierInvoices, selectedLaborEntries, selectedPayments, selectedClientInvoices, selectedWorkerPayments])
 
   const laborCosts = useMemo(
     () => laborEntries.reduce((sum, entry) => sum + entry.suma, 0),
@@ -644,6 +777,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         sekcia: item.sekcia || '',
         kod: item.kod || '',
         popis: item.popis || '',
+        realizuje: item.realizuje || 'stavby_domy',
         cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
         cena_objekt_balik: Math.max(0, numberValue(item.cena_objekt_balik)),
         spolu_bez_dph: Math.max(0, numberValue(item.spolu_bez_dph)),
@@ -653,13 +787,18 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setOfferOpen(true)
   }
 
-  function updateOfferItem(index: number, key: 'sekcia' | 'kod' | 'popis' | 'cena_objekt_samostatne' | 'cena_objekt_balik', value: string) {
+  function updateOfferItem(index: number, key: 'sekcia' | 'kod' | 'popis' | 'realizuje' | 'cena_objekt_samostatne' | 'cena_objekt_balik', value: string) {
     setOfferForm(current => ({
       ...current,
       ponuka_polozky: current.ponuka_polozky.map((item, itemIndex) => {
         if (itemIndex !== index) return item
         if (key === 'cena_objekt_samostatne' || key === 'cena_objekt_balik') {
           return { ...item, [key]: Math.max(0, Number(value) || 0) }
+        }
+        if (key === 'realizuje') {
+          const realizuje: OfferItem['realizuje'] =
+            value === 'investor' || value === 'nerozhodnute' ? value : 'stavby_domy'
+          return { ...item, realizuje }
         }
         return { ...item, [key]: value }
       }),
@@ -675,6 +814,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           sekcia: '',
           kod: '',
           popis: '',
+          realizuje: 'stavby_domy',
           cena_objekt_samostatne: 0,
           cena_objekt_balik: 0,
           spolu_bez_dph: 0,
@@ -709,6 +849,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         sekcia: String(item.sekcia || '').trim(),
         kod: String(item.kod || '').trim(),
         popis: String(item.popis || '').trim(),
+        realizuje: item.realizuje || 'stavby_domy',
         cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
         cena_objekt_balik: bundlePrice,
         spolu_bez_dph: Number(withoutVat.toFixed(2)),
@@ -718,6 +859,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     const totalWithoutVat = Number(items.reduce((sum, item) => sum + item.spolu_bez_dph, 0).toFixed(2))
     const totalWithVat = Number(items.reduce((sum, item) => sum + item.spolu_s_dph, 0).toFixed(2))
+    const ownWithoutVat = Number(items.filter(item => item.realizuje === 'stavby_domy').reduce((sum, item) => sum + item.spolu_bez_dph, 0).toFixed(2))
     const area = Math.max(0, numberValue(offerForm.ponuka_plocha_m2))
     const targetPerM2 = area > 0 ? Number((totalWithoutVat / area).toFixed(2)) : 0
 
@@ -737,6 +879,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         ponuka_suma_s_dph: totalWithVat,
         ponuka_dokument_url: offerForm.ponuka_dokument_url.trim() || null,
         ponuka_polozky: items,
+        cena_zakazky: ownWithoutVat,
         updated_at: new Date().toISOString(),
       })
       .eq('zakazka_id', projectId)
@@ -793,6 +936,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewExpense() {
     setEditingExpense(null)
     setExpenseForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       datum: today(),
       popis: '',
       kategoria: 'Materiál',
@@ -806,6 +950,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openExpenseEdit(expense: ExpenseRow) {
     setEditingExpense(expense)
     setExpenseForm({
+      objekt_id: expense.objekt_id ? String(expense.objekt_id) : '',
       datum: expense.datum,
       popis: expense.popis,
       kategoria: expense.kategoria,
@@ -831,6 +976,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: expenseForm.objekt_id ? Number(expenseForm.objekt_id) : null,
       datum: expenseForm.datum,
       popis,
       kategoria: expenseForm.kategoria,
@@ -862,6 +1008,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewClientInvoice() {
     setEditingClientInvoice(null)
     setClientInvoiceForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       cislo_faktury: '',
       datum_vystavenia: today(),
       datum_splatnosti: today(),
@@ -876,6 +1023,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openClientInvoiceEdit(invoice: ClientInvoiceRow) {
     setEditingClientInvoice(invoice)
     setClientInvoiceForm({
+      objekt_id: invoice.objekt_id ? String(invoice.objekt_id) : '',
       cislo_faktury: invoice.cislo_faktury,
       datum_vystavenia: invoice.datum_vystavenia,
       datum_splatnosti: invoice.datum_splatnosti,
@@ -906,6 +1054,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: clientInvoiceForm.objekt_id ? Number(clientInvoiceForm.objekt_id) : null,
       cislo_faktury: cisloFaktury,
       datum_vystavenia: clientInvoiceForm.datum_vystavenia,
       datum_splatnosti: clientInvoiceForm.datum_splatnosti,
@@ -958,6 +1107,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewSupplierInvoice() {
     setEditingSupplierInvoice(null)
     setSupplierInvoiceForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       dodavatel: '',
       cislo_faktury: '',
       datum_vystavenia: today(),
@@ -974,6 +1124,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openSupplierInvoiceEdit(invoice: SupplierInvoiceRow) {
     setEditingSupplierInvoice(invoice)
     setSupplierInvoiceForm({
+      objekt_id: invoice.objekt_id ? String(invoice.objekt_id) : '',
       dodavatel: invoice.dodavatel,
       cislo_faktury: invoice.cislo_faktury,
       datum_vystavenia: invoice.datum_vystavenia,
@@ -1008,6 +1159,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: supplierInvoiceForm.objekt_id ? Number(supplierInvoiceForm.objekt_id) : null,
       dodavatel,
       cislo_faktury: cisloFaktury,
       datum_vystavenia: supplierInvoiceForm.datum_vystavenia,
@@ -1068,6 +1220,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     const selectedName = meno || laborByWorker.find(([workerName]) => getWorkerOutstanding(workerName) > 0)?.[0] || laborByWorker[0]?.[0] || ''
     setEditingWorkerPayment(null)
     setWorkerPaymentForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       meno: selectedName,
       datum: today(),
       suma: selectedName ? getWorkerOutstanding(selectedName) : 0,
@@ -1079,6 +1232,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openWorkerPaymentEdit(payment: WorkerPaymentRow) {
     setEditingWorkerPayment(payment)
     setWorkerPaymentForm({
+      objekt_id: payment.objekt_id ? String(payment.objekt_id) : '',
       meno: payment.meno,
       datum: payment.datum,
       suma: numberValue(payment.suma),
@@ -1102,6 +1256,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: workerPaymentForm.objekt_id ? Number(workerPaymentForm.objekt_id) : null,
       meno,
       datum: workerPaymentForm.datum,
       suma,
@@ -1149,6 +1304,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewPayment() {
     setEditingPayment(null)
     setPaymentForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       datum: today(),
       suma: 0,
       popis: 'Prijatá záloha',
@@ -1160,6 +1316,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openPaymentEdit(payment: PaymentRow) {
     setEditingPayment(payment)
     setPaymentForm({
+      objekt_id: payment.objekt_id ? String(payment.objekt_id) : '',
       datum: payment.datum,
       suma: numberValue(payment.suma),
       popis: payment.popis,
@@ -1183,6 +1340,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: paymentForm.objekt_id ? Number(paymentForm.objekt_id) : null,
       datum: paymentForm.datum,
       suma,
       popis,
@@ -1384,6 +1542,51 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         </div>
       )}
 
+      {objects.length > 0 && (
+        <section style={{ ...cardStyle, padding: '14px 16px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '750' }}>Náklady podľa objektov</div>
+              <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Staré alebo nepriradené položky sú vedené ako Spoločné.</div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[{ id: 'all', nazov: 'Celá stavba' }, ...objects.map(objekt => ({ id: String(objekt.id), nazov: objekt.nazov })), { id: 'shared', nazov: 'Spoločné' }].map(option => {
+                const active = selectedObject === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedObject(option.id)}
+                    style={{ minHeight: '34px', padding: '6px 10px', borderRadius: '9px', border: active ? '1px solid #0071e3' : '1px solid #d2d2d7', backgroundColor: active ? '#e8f3ff' : '#fff', color: active ? '#0066cc' : '#6e6e73', cursor: 'pointer', fontSize: '9px', fontWeight: '750' }}
+                  >
+                    {option.nazov}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedObject === 'all' ? (
+            <div className="finance-metrics-grid" style={{ marginTop: '12px' }}>
+              {objectCostRows.map(row => (
+                <div key={row.id} style={{ padding: '11px 12px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
+                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>{row.nazov}</div>
+                  <div style={{ marginTop: '5px', fontSize: '17px', fontWeight: '750' }}>{formatCurrency(row.total)}</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>práca {formatCurrency(row.labor)} · ostatné {formatCurrency(row.manual + row.supplier)}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="finance-metrics-grid" style={{ marginTop: '12px' }}>
+              <MetricCard label="Náklady objektu" value={formatCurrency(selectedObjectSummary.total)} detail={`Práca ${formatCurrency(selectedObjectSummary.labor)} · ostatné ${formatCurrency(selectedObjectSummary.manual + selectedObjectSummary.supplier)}`} />
+              <MetricCard label="Pracovníci" value={`${selectedObjectSummary.hours.toLocaleString('sk-SK', { maximumFractionDigits: 1 })} h`} detail={`${selectedObjectSummary.workers} pracovníkov · ${formatCurrency(selectedObjectSummary.labor)}`} />
+              <MetricCard label="Dodávatelia" value={formatCurrency(selectedObjectSummary.supplier)} detail="Dodávateľské faktúry priradené objektu" />
+              <MetricCard label="Cashflow objektu" value={formatCurrency(selectedObjectSummary.cashflow)} detail={`Prijaté ${formatCurrency(selectedObjectSummary.received)}`} tone={selectedObjectSummary.cashflow < 0 ? 'negative' : selectedObjectSummary.cashflow > 0 ? 'positive' : 'default'} />
+            </div>
+          )}
+        </section>
+      )}
+
       <div className="finance-metrics-grid">
         <MetricCard label="Cena zákazky" value={values.cena > 0 ? formatCurrency(values.cena) : '—'} detail={values.cena > 0 ? 'Dohodnutá cena s klientom' : 'Cena zákazky nie je nastavená'} />
         <MetricCard label="Budget" value={values.budget > 0 ? formatCurrency(values.budget) : '—'} detail={values.budget > 0 ? 'Plánovaný limit nákladov' : 'Budget ešte nie je nastavený'} />
@@ -1426,24 +1629,26 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
           <div className="finance-metrics-grid" style={{ marginTop: '14px' }}>
             <MetricCard
-              label="Ponuka bez DPH"
-              value={numberValue(finance.ponuka_suma_bez_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_bez_dph)) : '—'}
-              detail="Spolu za 3 objekty"
+              label="Celá ponuka"
+              value={offerRealization.total > 0 ? formatCurrencyPrecise(offerRealization.total) : '—'}
+              detail="Celý pôvodný rozsah bez DPH"
             />
             <MetricCard
-              label="Ponuka s DPH"
-              value={numberValue(finance.ponuka_suma_s_dph) > 0 ? formatCurrencyPrecise(numberValue(finance.ponuka_suma_s_dph)) : '—'}
-              detail="Orientačná cena s 23 % DPH"
+              label="Realizuje Stavby Domy"
+              value={offerRealization.ours > 0 ? formatCurrencyPrecise(offerRealization.ours) : '—'}
+              detail="Táto suma sa používa ako cena našej zákazky"
+              tone={offerRealization.ours > 0 ? 'positive' : 'default'}
             />
             <MetricCard
-              label="Cieľová cena"
-              value={numberValue(finance.ponuka_cielova_cena_m2) > 0 ? `${numberValue(finance.ponuka_cielova_cena_m2).toLocaleString('sk-SK', { maximumFractionDigits: 2 })} €/m²` : '—'}
-              detail="Bez DPH"
+              label="Investor externe"
+              value={offerRealization.investor > 0 ? formatCurrencyPrecise(offerRealization.investor) : '—'}
+              detail="Len evidenčne, nevstupuje do našej ceny"
             />
             <MetricCard
-              label="Rozsah ponuky"
-              value={numberValue(finance.ponuka_pocet_objektov) > 0 ? `${numberValue(finance.ponuka_pocet_objektov)} objekty` : '—'}
-              detail={numberValue(finance.ponuka_plocha_m2) > 0 ? `${numberValue(finance.ponuka_plocha_m2).toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m² spolu` : undefined}
+              label="Nerozhodnuté"
+              value={offerRealization.undecided > 0 ? formatCurrencyPrecise(offerRealization.undecided) : '—'}
+              detail={numberValue(finance.ponuka_pocet_objektov) > 0 ? `${numberValue(finance.ponuka_pocet_objektov)} objekty · ${numberValue(finance.ponuka_plocha_m2).toLocaleString('sk-SK', { maximumFractionDigits: 2 })} m²` : 'Rozsah ešte nie je zadaný'}
+              tone={offerRealization.undecided > 0 ? 'warning' : 'default'}
             />
           </div>
 
@@ -1454,6 +1659,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <tr style={{ color: '#86868b', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '.045em' }}>
                     <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Kód</th>
                     <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Stavebný diel / práce</th>
+                    <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Realizuje</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt samostatne</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt v balíku</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>{numberValue(finance.ponuka_pocet_objektov) || 1} obj. bez DPH</th>
@@ -1468,6 +1674,19 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                         <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px', fontWeight: '650', lineHeight: 1.35 }}>{item.sekcia}</div>
                       </td>
                       <td data-label="Popis" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', lineHeight: 1.45 }}>{item.popis}</td>
+                      <td data-label="Realizuje" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          padding: '4px 7px',
+                          borderRadius: '999px',
+                          backgroundColor: (item.realizuje || 'stavby_domy') === 'investor' ? '#f5f5f7' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? '#fff7ed' : '#ecfdf5',
+                          color: (item.realizuje || 'stavby_domy') === 'investor' ? '#6e6e73' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? '#9a6700' : '#047857',
+                          fontSize: '8px',
+                          fontWeight: '750',
+                        }}>
+                          {(item.realizuje || 'stavby_domy') === 'investor' ? 'Investor externe' : (item.realizuje || 'stavby_domy') === 'nerozhodnute' ? 'Nerozhodnuté' : 'Stavby Domy'}
+                        </span>
+                      </td>
                       <td data-label="Samostatne" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_samostatne))}</td>
                       <td data-label="V balíku" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrencyPrecise(numberValue(item.cena_objekt_balik))}</td>
                       <td data-label="Bez DPH" style={{ padding: '10px', borderBottom: '1px solid #f0f0f2', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: '700' }}>{formatCurrencyPrecise(numberValue(item.spolu_bez_dph))}</td>
@@ -1740,7 +1959,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               ) : workerPayments.map(payment => (
                 <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
-                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>{payment.meno}</td>
+                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>
+                    <div>{payment.meno}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(payment.objekt_id)}</div>}
+                  </td>
                   <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750' }}>{formatCurrency(numberValue(payment.suma))}</td>
                   <td data-label="Poznámka" style={{ padding: '11px 14px', color: '#6e6e73' }}>{payment.poznamka || '—'}</td>
                   <td data-label="Akcie" style={{ padding: '11px 14px' }}>
@@ -1789,7 +2011,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                 const status = stavKlientskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
-                    <td data-label="Číslo FA" style={{ padding: '11px 14px', fontWeight: '700' }}>{invoice.cislo_faktury}</td>
+                    <td data-label="Číslo FA" style={{ padding: '11px 14px', fontWeight: '700' }}>
+                    <div>{invoice.cislo_faktury}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(invoice.objekt_id)}</div>}
+                  </td>
                     <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
                     <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
                     <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(numberValue(invoice.suma))}</td>
@@ -1843,6 +2068,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
                     <div style={{ fontWeight: '650' }}>{payment.popis}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(payment.objekt_id)}</div>}
                     {payment.poznamka && <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payment.poznamka}</div>}
                   </td>
                   <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap', color: '#047857' }}>{formatCurrency(numberValue(payment.suma))}</td>
@@ -1892,7 +2118,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                 const status = stavDodavatelskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
-                    <td data-label="Dodávateľ" style={{ padding: '11px 14px', fontWeight: '650' }}>{invoice.dodavatel}</td>
+                    <td data-label="Dodávateľ" style={{ padding: '11px 14px', fontWeight: '650' }}>
+                      <div>{invoice.dodavatel}</div>
+                      {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(invoice.objekt_id)}</div>}
+                    </td>
                     <td data-label="Číslo FA" style={{ padding: '11px 14px' }}>{invoice.cislo_faktury}</td>
                     <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
                     <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
@@ -1994,6 +2223,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(expense.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
                     <div style={{ fontWeight: '650' }}>{expense.popis}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(expense.objekt_id)}</div>}
                     {expense.poznamka && <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expense.poznamka}</div>}
                   </td>
                   <td data-label="Kategória" style={{ padding: '11px 14px' }}>
@@ -2084,7 +2314,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   const withVat = withoutVat * 1.23
                   return (
                     <div key={index} style={{ padding: '12px', border: '1px solid #e5e5e7', borderRadius: '12px', backgroundColor: '#fafafa' }}>
-                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr .55fr 2fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
+                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1fr .55fr 1.8fr 1fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
                         <div>
                           <label style={labelStyle}>Sekcia</label>
                           <input type="text" value={String(item.sekcia || '')} onChange={event => updateOfferItem(index, 'sekcia', event.target.value)} style={inputStyle} />
@@ -2096,6 +2326,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                         <div>
                           <label style={labelStyle}>Popis</label>
                           <input type="text" value={String(item.popis || '')} onChange={event => updateOfferItem(index, 'popis', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Realizuje</label>
+                          <select value={item.realizuje || 'stavby_domy'} onChange={event => updateOfferItem(index, 'realizuje', event.target.value)} style={inputStyle}>
+                            <option value="stavby_domy">Stavby Domy</option>
+                            <option value="investor">Investor / externá firma</option>
+                            <option value="nerozhodnute">Nerozhodnuté</option>
+                          </select>
                         </div>
                         <div>
                           <label style={labelStyle}>1 obj. samostatne</label>
@@ -2149,6 +2387,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra automaticky zvýši vyfakturovanú sumu. Po označení ako uhradená sa jej suma započíta medzi prijaté platby a do cashflow.</div>
             <form onSubmit={saveClientInvoice}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={clientInvoiceForm.objekt_id} onChange={event => setClientInvoiceForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Číslo faktúry</label>
                   <input type="text" required maxLength={120} value={clientInvoiceForm.cislo_faktury} onChange={event => setClientInvoiceForm(current => ({ ...current, cislo_faktury: event.target.value }))} style={inputStyle} />
@@ -2201,6 +2448,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra vstúpi do nákladov stavby. Do cashflow sa odpočíta až po označení ako uhradená.</div>
             <form onSubmit={saveSupplierInvoice}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={supplierInvoiceForm.objekt_id} onChange={event => setSupplierInvoiceForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dodávateľ</label>
                   <input type="text" required maxLength={200} value={supplierInvoiceForm.dodavatel} onChange={event => setSupplierInvoiceForm(current => ({ ...current, dodavatel: event.target.value }))} style={inputStyle} />
@@ -2263,6 +2519,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Táto suma predstavuje reálny odchod peňazí a po uložení sa odpočíta z cashflow stavby.</div>
             <form onSubmit={saveWorkerPayment}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={workerPaymentForm.objekt_id} onChange={event => setWorkerPaymentForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Pracovník</label>
                   <select
@@ -2346,6 +2611,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Použi na zálohu alebo inú platbu, ktorá nie je úhradou konkrétnej vystavenej faktúry.</div>
             <form onSubmit={savePayment}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={paymentForm.objekt_id} onChange={event => setPaymentForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dátum</label>
                   <input type="date" required value={paymentForm.datum} onChange={event => setPaymentForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />
@@ -2378,6 +2652,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingExpense ? 'Upraviť náklad' : 'Pridať náklad'}</div>
             <form onSubmit={saveExpense}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={expenseForm.objekt_id} onChange={event => setExpenseForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dátum</label>
                   <input type="date" required value={expenseForm.datum} onChange={event => setExpenseForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />

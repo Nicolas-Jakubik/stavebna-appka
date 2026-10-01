@@ -9,6 +9,7 @@ export type NakladPracovnika = {
   datum: string
   meno: string
   zakazka: string
+  objekt_id?: number | string | null
   hodiny: number
   sadzba: number
   suma: number
@@ -33,27 +34,30 @@ export function vypocitajNakladyPracovnikov(
 
   const mapaCistychHodin = vytvorMapuCistychHodin(zaznamy)
 
-  return zaznamy
-    .map(zaznam => {
-      const meno = String(zaznam.meno || '').trim()
-      const zakazka = String(zaznam.zakazka || '').trim()
-      const datum = String(zaznam.datum || '').trim()
-      if (!meno || !zakazka || !datum) return null
+  const vysledok: NakladPracovnika[] = []
 
-      const hodiny = hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
-      const sadzba = sadzby.get(meno) || 0
+  zaznamy.forEach(zaznam => {
+    const meno = String(zaznam.meno || '').trim()
+    const zakazka = String(zaznam.zakazka || '').trim()
+    const datum = String(zaznam.datum || '').trim()
+    if (!meno || !zakazka || !datum) return
 
-      return {
-        datum,
-        meno,
-        zakazka,
-        hodiny,
-        sadzba,
-        suma: hodiny * sadzba,
-        maSadzbu: sadzba > 0,
-      }
+    const hodiny = hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
+    const sadzba = sadzby.get(meno) || 0
+
+    vysledok.push({
+      datum,
+      meno,
+      zakazka,
+      objekt_id: (zaznam as PracovnyZaznam & { objekt_id?: number | string | null }).objekt_id ?? null,
+      hodiny,
+      sadzba,
+      suma: hodiny * sadzba,
+      maSadzbu: sadzba > 0,
     })
-    .filter((polozka): polozka is NakladPracovnika => Boolean(polozka))
+  })
+
+  return vysledok
 }
 
 export function zhrnNakladyPracovnikovPodlaZakazky(polozky: NakladPracovnika[]) {

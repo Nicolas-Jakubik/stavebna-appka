@@ -1,6 +1,9 @@
 export const RECORDER_COLUMNS: Record<string, string> = {
-  zamestnanci: 'meno', zoznam_zakaziek: 'nazov',
-  dochadzka: 'meno,zakazka,datum,prichod,odchod', nepritomnosti: 'meno,datum',
+  zamestnanci: 'meno',
+  zoznam_zakaziek: 'id,nazov',
+  objekty_stavby: 'id,zakazka_id,nazov,poradie,aktivny',
+  dochadzka: 'meno,zakazka,datum,prichod,odchod,objekt_id',
+  nepritomnosti: 'meno,datum',
 }
 
 export function validDate(value: unknown): value is string {
@@ -20,6 +23,7 @@ export function recorderReadQuery(table: string, input: URLSearchParams) {
   const output = new URLSearchParams({ select: columns, limit: '1000' })
   if (table === 'zamestnanci') output.set('order', 'meno.asc')
   if (table === 'zoznam_zakaziek') { output.set('order', 'nazov.asc'); output.set('stav', 'eq.Aktívna') }
+  if (table === 'objekty_stavby') output.set('order', 'poradie.asc,nazov.asc')
   if (table === 'dochadzka' || table === 'nepritomnosti') {
     const dates = input.getAll('datum')
     if (dates.length === 1 && dates[0].startsWith('eq.') && validDate(dates[0].slice(3))) {
@@ -39,18 +43,27 @@ export function recorderReadQuery(table: string, input: URLSearchParams) {
   return output
 }
 
-type Entry = { meno: string; zakazka: string; datum: string; prichod: string; odchod: string }
+type Entry = { meno: string; zakazka: string; datum: string; prichod: string; odchod: string; objekt_id?: number | null }
 export function validateRecorderEntries(body: unknown): Entry[] | null {
   if (!Array.isArray(body) || body.length < 1 || body.length > 200) return null
   const names = new Set<string>()
   let group = ''
-  for (const row of body) {
-    if (!row || typeof row !== 'object' || Object.keys(row).sort().join(',') !== 'datum,meno,odchod,prichod,zakazka') return null
+  for (const raw of body) {
+    if (!raw || typeof raw !== 'object') return null
+    const row = raw as Record<string, unknown>
+    const keys = Object.keys(row)
+    if (keys.some(key => !['datum','meno','odchod','prichod','zakazka','objekt_id'].includes(key))) return null
+    if (!['datum','meno','odchod','prichod','zakazka'].every(key => keys.includes(key))) return null
+
+    const objektId = row.objekt_id
+    if (objektId !== undefined && objektId !== null &&
+        (typeof objektId !== 'number' || !Number.isInteger(objektId) || objektId <= 0)) return null
+
     if (typeof row.meno !== 'string' || !row.meno.trim() || row.meno.length > 200 ||
         typeof row.zakazka !== 'string' || !row.zakazka.trim() || row.zakazka.length > 300 ||
         !validDate(row.datum) || typeof row.prichod !== 'string' || typeof row.odchod !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(row.prichod) ||
         !/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(row.odchod) || row.prichod === row.odchod || names.has(row.meno)) return null
-    const rowGroup = JSON.stringify([row.zakazka, row.datum, row.prichod, row.odchod])
+    const rowGroup = JSON.stringify([row.zakazka, row.datum, row.prichod, row.odchod, objektId ?? null])
     if (group && group !== rowGroup) return null
     group = rowGroup
     names.add(row.meno)
