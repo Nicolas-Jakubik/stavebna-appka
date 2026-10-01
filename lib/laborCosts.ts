@@ -9,6 +9,7 @@ export type NakladPracovnika = {
   datum: string
   meno: string
   zakazka: string
+  objekt_id?: number | string | null
   hodiny: number
   sadzba: number
   suma: number
@@ -47,6 +48,7 @@ export function vypocitajNakladyPracovnikov(
         datum,
         meno,
         zakazka,
+        objekt_id: (zaznam as PracovnyZaznam & { objekt_id?: number | string | null }).objekt_id ?? null,
         hodiny,
         sadzba,
         suma: hodiny * sadzba,
