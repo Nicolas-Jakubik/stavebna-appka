@@ -287,6 +287,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [clientInvoices, setClientInvoices] = useState<ClientInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [showDetails, setShowDetails] = useState(false)
   const [financeOpen, setFinanceOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
@@ -1203,7 +1204,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       <div className="finance-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <div>
           <div style={{ fontSize: '17px', fontWeight: '750', letterSpacing: '-0.02em' }}>Finančný prehľad stavby</div>
-          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Mzdy sa počítajú automaticky z dochádzky. Vyfakturované a prijaté platby sa počítajú z vystavených faktúr klientovi a prípadných záloh.</div>
+          <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Najdôležitejšie čísla stavby na jednom mieste. Podrobné faktúry, platby, mzdy a grafy sú nižšie na klik.</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" onClick={openFinanceEditor} style={{ minHeight: '38px', padding: '8px 14px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#1d1d1f', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
@@ -1235,13 +1236,11 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
       <div className="finance-metrics-grid">
         <MetricCard label="Cena zákazky" value={values.cena > 0 ? formatCurrency(values.cena) : '—'} detail={values.cena > 0 ? 'Dohodnutá cena s klientom' : 'Cena zákazky nie je nastavená'} />
-        <MetricCard label="Budget nákladov" value={values.budget > 0 ? formatCurrency(values.budget) : '—'} detail={values.budget > 0 ? 'Maximálny plánovaný náklad' : 'Budget nákladov nie je nastavený'} />
-        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Ručné ${formatCurrency(manualCosts)} + faktúry ${formatCurrency(supplierInvoiceCosts)} + pracovníci ${formatCurrency(laborCosts)}`} />
-        <MetricCard label="Zostáva z budgetu" value={values.budget > 0 ? formatCurrency(remainingBudget) : '—'} detail={values.budget > 0 ? 'Budget mínus aktuálne náklady' : 'Najprv nastav budget'} tone={values.budget > 0 && remainingBudget < 0 ? 'negative' : 'default'} />
-        <MetricCard label="Vyfakturované" value={formatCurrency(values.vyfakturovane)} detail={clientInvoices.length > 0 ? `${clientInvoices.length} vystavených faktúr` : 'Zatiaľ bez vystavených faktúr'} />
-        <MetricCard label="Prijaté platby" value={formatCurrency(values.prijate)} detail={`FA ${formatCurrency(clientInvoiceSummary.prijate)} + zálohy ${formatCurrency(otherReceivedPayments)}`} tone={values.prijate > 0 ? 'positive' : 'default'} />
-        <MetricCard label="Pohľadávky" value={formatCurrency(unpaid)} detail={clientInvoiceSummary.pocetPoSplatnosti > 0 ? `Po splatnosti ${formatCurrency(clientInvoiceSummary.poSplatnosti)}` : 'Neuhradené faktúry klientovi'} tone={unpaid > 0 ? 'warning' : 'default'} />
-        <MetricCard label="Plánovaný zisk" value={values.cena > 0 && values.budget > 0 ? formatCurrency(profitability.planovanyZisk) : '—'} detail={values.cena <= 0 || values.budget <= 0 ? 'Nastav cenu zákazky aj budget' : `Plánovaná marža ${profitability.planovanaMarzaPercent?.toFixed(1)} %`} tone={values.cena > 0 && values.budget > 0 ? (profitability.planovanyZisk < 0 ? 'negative' : 'positive') : 'default'} />
+        <MetricCard label="Budget" value={values.budget > 0 ? formatCurrency(values.budget) : '—'} detail={values.budget > 0 ? 'Plánovaný limit nákladov' : 'Budget ešte nie je nastavený'} />
+        <MetricCard label="Aktuálne náklady" value={formatCurrency(currentCosts)} detail={`Pracovníci ${formatCurrency(laborCosts)} · ostatné ${formatCurrency(manualCosts + supplierInvoiceCosts)}`} />
+        <MetricCard label="Zostáva z budgetu" value={values.budget > 0 ? formatCurrency(remainingBudget) : '—'} detail={values.budget > 0 ? 'Koľko môže stavba ešte minúť' : 'Najprv nastav budget'} tone={values.budget > 0 && remainingBudget < 0 ? 'negative' : 'default'} />
+        <MetricCard label="Cashflow" value={formatCurrency(currentCashflow)} detail={`Prijaté ${formatCurrency(values.prijate)} · reálne zaplatené výdavky`} tone={currentCashflow < 0 ? 'negative' : currentCashflow > 0 ? 'positive' : 'default'} />
+        <MetricCard label="Plánovaný zisk" value={values.cena > 0 && values.budget > 0 ? formatCurrency(profitability.planovanyZisk) : '—'} detail={values.cena <= 0 || values.budget <= 0 ? 'Nastav cenu zákazky aj budget' : `Marža ${profitability.planovanaMarzaPercent?.toFixed(1)} %`} tone={values.cena > 0 && values.budget > 0 ? (profitability.planovanyZisk < 0 ? 'negative' : 'positive') : 'default'} />
       </div>
 
       {finance?.ponuka_nazov && (
@@ -1385,6 +1384,18 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         </div>
       )}
 
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+        <button
+          type="button"
+          onClick={() => setShowDetails(value => !value)}
+          style={{ minHeight: '40px', padding: '9px 14px', borderRadius: '10px', border: '1px solid #d2d2d7', backgroundColor: '#fff', color: '#0066cc', cursor: 'pointer', fontSize: '11px', fontWeight: '750' }}
+        >
+          {showDetails ? 'Skryť podrobnosti' : 'Zobraziť podrobnosti'}
+        </button>
+      </div>
+
+      {showDetails && (
+        <>
       <div style={{ ...cardStyle, padding: '18px', marginTop: '14px' }}>
         <div>
           <div style={{ fontSize: '14px', fontWeight: '750' }}>Ziskovosť stavby</div>
@@ -1855,6 +1866,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           </table>
         </div>
       </div>
+
+
+        </>
+      )}
 
       {clientInvoiceOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setClientInvoiceOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
