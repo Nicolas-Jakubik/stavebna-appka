@@ -36,14 +36,13 @@ create index if not exists faktury_klientov_objekt_idx on public.faktury_kliento
 create index if not exists platby_stavby_objekt_idx on public.platby_stavby(objekt_id);
 
 insert into public.objekty_stavby(zakazka_id, nazov, poradie)
-select z.id, x.nazov, x.poradie
-from public.zoznam_zakaziek z
-cross join (values
+select 18, x.nazov, x.poradie
+from (values
   ('Dvojdom A', 1),
   ('Dvojdom B', 2),
   ('Dvojdom C', 3)
 ) as x(nazov, poradie)
-where trim(z.nazov) = 'Zohor Domy'
+where exists (select 1 from public.zoznam_zakaziek where id=18)
 on conflict (zakazka_id, nazov) do nothing;
 
 create or replace function public.record_attendance_secure(entries jsonb)
