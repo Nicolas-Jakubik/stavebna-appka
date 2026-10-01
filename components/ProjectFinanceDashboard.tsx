@@ -913,6 +913,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewExpense() {
     setEditingExpense(null)
     setExpenseForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       datum: today(),
       popis: '',
       kategoria: 'Materiál',
@@ -926,6 +927,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openExpenseEdit(expense: ExpenseRow) {
     setEditingExpense(expense)
     setExpenseForm({
+      objekt_id: expense.objekt_id ? String(expense.objekt_id) : '',
       datum: expense.datum,
       popis: expense.popis,
       kategoria: expense.kategoria,
@@ -951,6 +953,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: expenseForm.objekt_id ? Number(expenseForm.objekt_id) : null,
       datum: expenseForm.datum,
       popis,
       kategoria: expenseForm.kategoria,
@@ -982,6 +985,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewClientInvoice() {
     setEditingClientInvoice(null)
     setClientInvoiceForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       cislo_faktury: '',
       datum_vystavenia: today(),
       datum_splatnosti: today(),
@@ -996,6 +1000,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openClientInvoiceEdit(invoice: ClientInvoiceRow) {
     setEditingClientInvoice(invoice)
     setClientInvoiceForm({
+      objekt_id: invoice.objekt_id ? String(invoice.objekt_id) : '',
       cislo_faktury: invoice.cislo_faktury,
       datum_vystavenia: invoice.datum_vystavenia,
       datum_splatnosti: invoice.datum_splatnosti,
@@ -1026,6 +1031,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: clientInvoiceForm.objekt_id ? Number(clientInvoiceForm.objekt_id) : null,
       cislo_faktury: cisloFaktury,
       datum_vystavenia: clientInvoiceForm.datum_vystavenia,
       datum_splatnosti: clientInvoiceForm.datum_splatnosti,
@@ -1078,6 +1084,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewSupplierInvoice() {
     setEditingSupplierInvoice(null)
     setSupplierInvoiceForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       dodavatel: '',
       cislo_faktury: '',
       datum_vystavenia: today(),
@@ -1094,6 +1101,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openSupplierInvoiceEdit(invoice: SupplierInvoiceRow) {
     setEditingSupplierInvoice(invoice)
     setSupplierInvoiceForm({
+      objekt_id: invoice.objekt_id ? String(invoice.objekt_id) : '',
       dodavatel: invoice.dodavatel,
       cislo_faktury: invoice.cislo_faktury,
       datum_vystavenia: invoice.datum_vystavenia,
@@ -1128,6 +1136,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: supplierInvoiceForm.objekt_id ? Number(supplierInvoiceForm.objekt_id) : null,
       dodavatel,
       cislo_faktury: cisloFaktury,
       datum_vystavenia: supplierInvoiceForm.datum_vystavenia,
@@ -1188,6 +1197,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     const selectedName = meno || laborByWorker.find(([workerName]) => getWorkerOutstanding(workerName) > 0)?.[0] || laborByWorker[0]?.[0] || ''
     setEditingWorkerPayment(null)
     setWorkerPaymentForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       meno: selectedName,
       datum: today(),
       suma: selectedName ? getWorkerOutstanding(selectedName) : 0,
@@ -1199,6 +1209,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openWorkerPaymentEdit(payment: WorkerPaymentRow) {
     setEditingWorkerPayment(payment)
     setWorkerPaymentForm({
+      objekt_id: payment.objekt_id ? String(payment.objekt_id) : '',
       meno: payment.meno,
       datum: payment.datum,
       suma: numberValue(payment.suma),
@@ -1222,6 +1233,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: workerPaymentForm.objekt_id ? Number(workerPaymentForm.objekt_id) : null,
       meno,
       datum: workerPaymentForm.datum,
       suma,
@@ -1269,6 +1281,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openNewPayment() {
     setEditingPayment(null)
     setPaymentForm({
+      objekt_id: selectedObject !== 'all' && selectedObject !== 'shared' ? selectedObject : '',
       datum: today(),
       suma: 0,
       popis: 'Prijatá záloha',
@@ -1280,6 +1293,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   function openPaymentEdit(payment: PaymentRow) {
     setEditingPayment(payment)
     setPaymentForm({
+      objekt_id: payment.objekt_id ? String(payment.objekt_id) : '',
       datum: payment.datum,
       suma: numberValue(payment.suma),
       popis: payment.popis,
@@ -1303,6 +1317,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setMessage('')
     const payload = {
       zakazka_id: Number(projectId),
+      objekt_id: paymentForm.objekt_id ? Number(paymentForm.objekt_id) : null,
       datum: paymentForm.datum,
       suma,
       popis,
