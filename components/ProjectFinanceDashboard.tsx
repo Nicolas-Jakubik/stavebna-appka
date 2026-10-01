@@ -122,6 +122,16 @@ const EMPTY_FINANCE = {
   budget_nakladov: 0,
 }
 
+const EMPTY_OFFER_FORM = {
+  ponuka_nazov: '',
+  ponuka_datum: '',
+  ponuka_variant: '',
+  ponuka_pocet_objektov: 1,
+  ponuka_plocha_m2: 0,
+  ponuka_dokument_url: '',
+  ponuka_polozky: [] as OfferItem[],
+}
+
 const cardStyle = {
   backgroundColor: '#ffffff',
   borderRadius: '14px',
@@ -289,6 +299,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [message, setMessage] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [financeOpen, setFinanceOpen] = useState(false)
+  const [offerOpen, setOfferOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [workerPaymentOpen, setWorkerPaymentOpen] = useState(false)
@@ -302,6 +313,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [saving, setSaving] = useState(false)
 
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
+  const [offerForm, setOfferForm] = useState(EMPTY_OFFER_FORM)
   const [expenseForm, setExpenseForm] = useState({
     datum: today(),
     popis: '',
@@ -619,6 +631,127 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       }
     })
   }, [expenses, supplierInvoices, payments, clientInvoices, laborEntries])
+
+  function openOfferEditor() {
+    setOfferForm({
+      ponuka_nazov: finance?.ponuka_nazov || 'Cenová ponuka',
+      ponuka_datum: finance?.ponuka_datum || today(),
+      ponuka_variant: finance?.ponuka_variant || '',
+      ponuka_pocet_objektov: Math.max(1, Math.round(numberValue(finance?.ponuka_pocet_objektov) || 1)),
+      ponuka_plocha_m2: Math.max(0, numberValue(finance?.ponuka_plocha_m2)),
+      ponuka_dokument_url: finance?.ponuka_dokument_url || '',
+      ponuka_polozky: offerItems.map(item => ({
+        sekcia: item.sekcia || '',
+        kod: item.kod || '',
+        popis: item.popis || '',
+        cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
+        cena_objekt_balik: Math.max(0, numberValue(item.cena_objekt_balik)),
+        spolu_bez_dph: Math.max(0, numberValue(item.spolu_bez_dph)),
+        spolu_s_dph: Math.max(0, numberValue(item.spolu_s_dph)),
+      })),
+    })
+    setOfferOpen(true)
+  }
+
+  function updateOfferItem(index: number, key: 'sekcia' | 'kod' | 'popis' | 'cena_objekt_samostatne' | 'cena_objekt_balik', value: string) {
+    setOfferForm(current => ({
+      ...current,
+      ponuka_polozky: current.ponuka_polozky.map((item, itemIndex) => {
+        if (itemIndex !== index) return item
+        if (key === 'cena_objekt_samostatne' || key === 'cena_objekt_balik') {
+          return { ...item, [key]: Math.max(0, Number(value) || 0) }
+        }
+        return { ...item, [key]: value }
+      }),
+    }))
+  }
+
+  function addOfferItem() {
+    setOfferForm(current => ({
+      ...current,
+      ponuka_polozky: [
+        ...current.ponuka_polozky,
+        {
+          sekcia: '',
+          kod: '',
+          popis: '',
+          cena_objekt_samostatne: 0,
+          cena_objekt_balik: 0,
+          spolu_bez_dph: 0,
+          spolu_s_dph: 0,
+        },
+      ],
+    }))
+  }
+
+  function removeOfferItem(index: number) {
+    setOfferForm(current => ({
+      ...current,
+      ponuka_polozky: current.ponuka_polozky.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
+  async function saveOffer(event: FormEvent) {
+    event.preventDefault()
+    if (saving) return
+
+    const name = offerForm.ponuka_nazov.trim()
+    if (!name) {
+      setMessage('Zadajte názov cenovej ponuky.')
+      return
+    }
+
+    const objectCount = Math.max(1, Math.round(numberValue(offerForm.ponuka_pocet_objektov) || 1))
+    const items = offerForm.ponuka_polozky.map(item => {
+      const bundlePrice = Math.max(0, numberValue(item.cena_objekt_balik))
+      const withoutVat = bundlePrice * objectCount
+      return {
+        sekcia: String(item.sekcia || '').trim(),
+        kod: String(item.kod || '').trim(),
+        popis: String(item.popis || '').trim(),
+        cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
+        cena_objekt_balik: bundlePrice,
+        spolu_bez_dph: Number(withoutVat.toFixed(2)),
+        spolu_s_dph: Number((withoutVat * 1.23).toFixed(2)),
+      }
+    })
+
+    const totalWithoutVat = Number(items.reduce((sum, item) => sum + item.spolu_bez_dph, 0).toFixed(2))
+    const totalWithVat = Number(items.reduce((sum, item) => sum + item.spolu_s_dph, 0).toFixed(2))
+    const area = Math.max(0, numberValue(offerForm.ponuka_plocha_m2))
+    const targetPerM2 = area > 0 ? Number((totalWithoutVat / area).toFixed(2)) : 0
+
+    setSaving(true)
+    setMessage('')
+
+    const { error } = await supabase
+      .from('financie_stavby')
+      .update({
+        ponuka_nazov: name,
+        ponuka_datum: offerForm.ponuka_datum || null,
+        ponuka_variant: offerForm.ponuka_variant.trim() || null,
+        ponuka_pocet_objektov: objectCount,
+        ponuka_plocha_m2: area || null,
+        ponuka_cielova_cena_m2: targetPerM2 || null,
+        ponuka_suma_bez_dph: totalWithoutVat,
+        ponuka_suma_s_dph: totalWithVat,
+        ponuka_dokument_url: offerForm.ponuka_dokument_url.trim() || null,
+        ponuka_polozky: items,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('zakazka_id', projectId)
+
+    setSaving(false)
+    if (error) {
+      console.error('Chyba uloženia cenovej ponuky:', error)
+      setMessage('Cenovú ponuku sa nepodarilo uložiť.')
+      return
+    }
+
+    setOfferOpen(false)
+    setMessage('Cenová ponuka bola upravená.')
+    await loadFinance()
+  }
 
   function openFinanceEditor() {
     setFinanceForm({
@@ -1142,6 +1275,14 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             grid-template-columns: 1fr;
           }
         }
+        @media (max-width: 900px) {
+          .finance-offer-item-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .finance-offer-item-grid > :nth-child(3) {
+            grid-column: 1 / -1;
+          }
+        }
         @media (max-width: 640px) {
           .finance-metrics-grid {
             grid-template-columns: 1fr;
@@ -1161,6 +1302,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           }
           .finance-form-grid {
             grid-template-columns: 1fr !important;
+          }
+          .finance-form-grid > * {
+            grid-column: auto !important;
+          }
+          .finance-offer-item-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .finance-offer-item-grid > * {
+            grid-column: auto !important;
           }
           .finance-expense-table {
             display: block;
@@ -1253,16 +1403,25 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                 {finance.ponuka_datum ? ` · ${formatDate(finance.ponuka_datum)}` : ''}
               </div>
             </div>
-            {finance.ponuka_dokument_url && (
-              <a
-                href={finance.ponuka_dokument_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: '9px', border: '1px solid #b9d8f8', backgroundColor: '#eef6ff', color: '#0066cc', textDecoration: 'none', fontSize: '10px', fontWeight: '750' }}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={openOfferEditor}
+                style={{ minHeight: '36px', padding: '8px 12px', borderRadius: '9px', border: '1px solid #d2d2d7', backgroundColor: '#fff', color: '#0066cc', cursor: 'pointer', fontSize: '10px', fontWeight: '750' }}
               >
-                Otvoriť PDF
-              </a>
-            )}
+                Upraviť cenovú ponuku
+              </button>
+              {finance.ponuka_dokument_url && (
+                <a
+                  href={finance.ponuka_dokument_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '8px 12px', borderRadius: '9px', border: '1px solid #b9d8f8', backgroundColor: '#eef6ff', color: '#0066cc', textDecoration: 'none', fontSize: '10px', fontWeight: '750' }}
+                >
+                  Otvoriť PDF
+                </a>
+              )}
+            </div>
           </div>
 
           <div className="finance-metrics-grid" style={{ marginTop: '14px' }}>
@@ -1297,7 +1456,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                     <th style={{ textAlign: 'left', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>Stavebný diel / práce</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt samostatne</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>1 objekt v balíku</th>
-                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>3 objekty bez DPH</th>
+                    <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>{numberValue(finance.ponuka_pocet_objektov) || 1} obj. bez DPH</th>
                     <th style={{ textAlign: 'right', padding: '9px 10px', borderBottom: '1px solid #e5e5e7' }}>S DPH</th>
                   </tr>
                 </thead>
@@ -1869,6 +2028,118 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
 
         </>
+      )}
+
+      {offerOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setOfferOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(0,0,0,.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="finance-modal-card" role="dialog" aria-modal="true" aria-label="Upraviť cenovú ponuku" style={{ width: 'min(1120px, 100%)', maxHeight: '92vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '18px', padding: '20px', boxShadow: '0 24px 70px rgba(0,0,0,.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '750' }}>Upraviť cenovú ponuku</div>
+                <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px', lineHeight: 1.5 }}>Uprav názov, rozsah a ceny položiek. Súčet bez DPH a s 23 % DPH sa dopočíta automaticky z ceny „1 objekt v balíku“.</div>
+              </div>
+              <button type="button" onClick={() => setOfferOpen(false)} style={{ padding: '7px 10px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Zavrieť</button>
+            </div>
+
+            <form onSubmit={saveOffer}>
+              <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={labelStyle}>Názov ponuky</label>
+                  <input type="text" required maxLength={200} value={offerForm.ponuka_nazov} onChange={event => setOfferForm(current => ({ ...current, ponuka_nazov: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dátum</label>
+                  <input type="date" value={offerForm.ponuka_datum} onChange={event => setOfferForm(current => ({ ...current, ponuka_datum: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Variant</label>
+                  <input type="text" maxLength={200} value={offerForm.ponuka_variant} onChange={event => setOfferForm(current => ({ ...current, ponuka_variant: event.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Počet objektov</label>
+                  <input type="number" min="1" step="1" value={offerForm.ponuka_pocet_objektov} onChange={event => setOfferForm(current => ({ ...current, ponuka_pocet_objektov: Math.max(1, Number(event.target.value) || 1) }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Plocha spolu m²</label>
+                  <input type="number" min="0" step="0.01" value={offerForm.ponuka_plocha_m2 || ''} onChange={event => setOfferForm(current => ({ ...current, ponuka_plocha_m2: Number(event.target.value) || 0 }))} style={inputStyle} />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Odkaz na PDF ponuky</label>
+                  <input type="url" maxLength={2000} placeholder="https://..." value={offerForm.ponuka_dokument_url} onChange={event => setOfferForm(current => ({ ...current, ponuka_dokument_url: event.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '750' }}>Položky ponuky</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Cena za balík × počet objektov = celkom bez DPH.</div>
+                </div>
+                <button type="button" onClick={addOfferItem} style={{ padding: '7px 10px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0066cc', cursor: 'pointer', fontSize: '10px', fontWeight: '750' }}>+ Pridať položku</button>
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px', marginTop: '12px' }}>
+                {offerForm.ponuka_polozky.map((item, index) => {
+                  const bundle = Math.max(0, numberValue(item.cena_objekt_balik))
+                  const withoutVat = bundle * Math.max(1, offerForm.ponuka_pocet_objektov)
+                  const withVat = withoutVat * 1.23
+                  return (
+                    <div key={index} style={{ padding: '12px', border: '1px solid #e5e5e7', borderRadius: '12px', backgroundColor: '#fafafa' }}>
+                      <div className="finance-offer-item-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr .55fr 2fr .8fr .8fr auto', gap: '8px', alignItems: 'end' }}>
+                        <div>
+                          <label style={labelStyle}>Sekcia</label>
+                          <input type="text" value={String(item.sekcia || '')} onChange={event => updateOfferItem(index, 'sekcia', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Kód</label>
+                          <input type="text" value={String(item.kod || '')} onChange={event => updateOfferItem(index, 'kod', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Popis</label>
+                          <input type="text" value={String(item.popis || '')} onChange={event => updateOfferItem(index, 'popis', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>1 obj. samostatne</label>
+                          <input type="number" min="0" step="0.01" value={numberValue(item.cena_objekt_samostatne) || ''} onChange={event => updateOfferItem(index, 'cena_objekt_samostatne', event.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>1 obj. v balíku</label>
+                          <input type="number" min="0" step="0.01" value={numberValue(item.cena_objekt_balik) || ''} onChange={event => updateOfferItem(index, 'cena_objekt_balik', event.target.value)} style={inputStyle} />
+                        </div>
+                        <button type="button" onClick={() => removeOfferItem(index)} style={{ minHeight: '44px', padding: '8px 10px', border: '1px solid #f3b4ae', borderRadius: '9px', backgroundColor: '#fff', color: '#b42318', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>Odstrániť</button>
+                      </div>
+                      <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end', gap: '16px', color: '#6e6e73', fontSize: '10px' }}>
+                        <span>Bez DPH <strong style={{ color: '#1d1d1f' }}>{formatCurrencyPrecise(withoutVat)}</strong></span>
+                        <span>S DPH <strong style={{ color: '#1d1d1f' }}>{formatCurrencyPrecise(withVat)}</strong></span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {offerForm.ponuka_polozky.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px', border: '1px dashed #d2d2d7', borderRadius: '12px' }}>Ponuka nemá žiadne položky. Klikni na „Pridať položku“.</div>
+                )}
+              </div>
+
+              {(() => {
+                const count = Math.max(1, offerForm.ponuka_pocet_objektov)
+                const totalWithoutVat = offerForm.ponuka_polozky.reduce((sum, item) => sum + numberValue(item.cena_objekt_balik) * count, 0)
+                const totalWithVat = totalWithoutVat * 1.23
+                const target = offerForm.ponuka_plocha_m2 > 0 ? totalWithoutVat / offerForm.ponuka_plocha_m2 : 0
+                return (
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' }}>
+                    <div style={{ padding: '12px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}><div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700' }}>SPOLU BEZ DPH</div><div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750' }}>{formatCurrencyPrecise(totalWithoutVat)}</div></div>
+                    <div style={{ padding: '12px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}><div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700' }}>SPOLU S 23 % DPH</div><div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750' }}>{formatCurrencyPrecise(totalWithVat)}</div></div>
+                    <div style={{ padding: '12px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}><div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700' }}>CENA / M² BEZ DPH</div><div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750' }}>{target > 0 ? `${target.toLocaleString('sk-SK', { maximumFractionDigits: 2 })} €/m²` : '—'}</div></div>
+                  </div>
+                )
+              })()}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button type="button" onClick={() => setOfferOpen(false)} style={{ padding: '9px 13px', border: '1px solid #d2d2d7', borderRadius: '9px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>Zrušiť</button>
+                <button type="submit" disabled={saving} style={{ padding: '9px 14px', border: 0, borderRadius: '9px', background: '#0071e3', color: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: '700', opacity: saving ? .6 : 1 }}>{saving ? 'Ukladám…' : 'Uložiť cenovú ponuku'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {clientInvoiceOpen && (
