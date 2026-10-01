@@ -571,6 +571,48 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     [workerPayments, selectedObject]
   )
 
+  const objectFilterActive = selectedObject !== 'all'
+  const visibleExpenses = objectFilterActive ? selectedExpenses : expenses
+  const visibleSupplierInvoices = objectFilterActive ? selectedSupplierInvoices : supplierInvoices
+  const visibleLaborEntries = objectFilterActive ? selectedLaborEntries : laborEntries
+  const visiblePayments = objectFilterActive ? selectedPayments : payments
+  const visibleClientInvoices = objectFilterActive ? selectedClientInvoices : clientInvoices
+  const visibleWorkerPayments = objectFilterActive ? selectedWorkerPayments : workerPayments
+
+  const visibleLaborCosts = useMemo(
+    () => visibleLaborEntries.reduce((sum, entry) => sum + entry.suma, 0),
+    [visibleLaborEntries]
+  )
+  const visibleLaborHours = useMemo(
+    () => visibleLaborEntries.reduce((sum, entry) => sum + entry.hodiny, 0),
+    [visibleLaborEntries]
+  )
+  const visibleLaborMissingRates = useMemo(
+    () => Array.from(new Set(visibleLaborEntries.filter(entry => !entry.maSadzbu && entry.hodiny > 0).map(entry => entry.meno))),
+    [visibleLaborEntries]
+  )
+  const visiblePaidLaborCosts = useMemo(
+    () => visibleWorkerPayments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
+    [visibleWorkerPayments]
+  )
+  const visibleOutstandingLaborCosts = Math.max(0, visibleLaborCosts - visiblePaidLaborCosts)
+  const visibleManualCosts = useMemo(
+    () => visibleExpenses.reduce((sum, expense) => sum + numberValue(expense.suma), 0),
+    [visibleExpenses]
+  )
+  const visibleSupplierInvoiceSummary = useMemo(
+    () => zhrnDodavatelskeFaktury(visibleSupplierInvoices, today()),
+    [visibleSupplierInvoices]
+  )
+  const visibleClientInvoiceSummary = useMemo(
+    () => zhrnKlientskeFaktury(visibleClientInvoices, today()),
+    [visibleClientInvoices]
+  )
+  const visibleOtherReceivedPayments = useMemo(
+    () => visiblePayments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
+    [visiblePayments]
+  )
+
   const selectedObjectSummary = useMemo(() => {
     const manual = selectedExpenses.reduce((sum, row) => sum + numberValue(row.suma), 0)
     const labor = selectedLaborEntries.reduce((sum, row) => sum + row.suma, 0)
@@ -612,7 +654,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   )
   const laborByWorker = useMemo(() => {
     const map = new Map<string, { hodiny: number; suma: number; sadzba: number }>()
-    laborEntries.forEach(entry => {
+    visibleLaborEntries.forEach(entry => {
       const current = map.get(entry.meno) || { hodiny: 0, suma: 0, sadzba: entry.sadzba }
       current.hodiny += entry.hodiny
       current.suma += entry.suma
@@ -620,15 +662,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
       map.set(entry.meno, current)
     })
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'sk'))
-  }, [laborEntries])
+  }, [visibleLaborEntries])
 
   const paidLaborByWorker = useMemo(() => {
     const map = new Map<string, number>()
-    workerPayments.forEach(payment => {
+    visibleWorkerPayments.forEach(payment => {
       map.set(payment.meno, (map.get(payment.meno) || 0) + numberValue(payment.suma))
     })
     return map
-  }, [workerPayments])
+  }, [visibleWorkerPayments])
 
   const paidLaborCosts = useMemo(
     () => workerPayments.reduce((sum, payment) => sum + numberValue(payment.suma), 0),
@@ -688,28 +730,28 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   const categoryTotals = useMemo(() => {
     const totals = Object.fromEntries(CATEGORIES.map(category => [category, 0])) as Record<Category, number>
-    expenses.forEach(expense => {
+    visibleExpenses.forEach(expense => {
       totals[expense.kategoria] = (totals[expense.kategoria] || 0) + numberValue(expense.suma)
     })
-    supplierInvoices.forEach(invoice => {
+    visibleSupplierInvoices.forEach(invoice => {
       totals[invoice.kategoria] = (totals[invoice.kategoria] || 0) + numberValue(invoice.suma)
     })
-    totals['Pracovníci'] += laborCosts
+    totals['Pracovníci'] += visibleLaborCosts
     return totals
-  }, [expenses, supplierInvoices, laborCosts])
+  }, [visibleExpenses, visibleSupplierInvoices, visibleLaborCosts])
 
   const monthlyBreakdown = useMemo(
-    () => vytvorMesacnyRozpadNakladov([...expenses, ...fakturyAkoNaklady(supplierInvoices)], laborEntries),
-    [expenses, supplierInvoices, laborEntries]
+    () => vytvorMesacnyRozpadNakladov([...visibleExpenses, ...fakturyAkoNaklady(visibleSupplierInvoices)], visibleLaborEntries),
+    [visibleExpenses, visibleSupplierInvoices, visibleLaborEntries]
   )
 
   const chartData = useMemo<ChartPoint[]>(() => {
     const months = new Set<string>()
-    expenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
-    supplierInvoices.forEach(invoice => invoice.datum_vystavenia && months.add(invoice.datum_vystavenia.slice(0, 7)))
-    payments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
-    clientInvoices.forEach(invoice => invoice.uhradene && invoice.datum_uhrady && months.add(invoice.datum_uhrady.slice(0, 7)))
-    laborEntries.forEach(entry => entry.datum && months.add(entry.datum.slice(0, 7)))
+    visibleExpenses.forEach(expense => expense.datum && months.add(expense.datum.slice(0, 7)))
+    visibleSupplierInvoices.forEach(invoice => invoice.datum_vystavenia && months.add(invoice.datum_vystavenia.slice(0, 7)))
+    visiblePayments.forEach(payment => payment.datum && months.add(payment.datum.slice(0, 7)))
+    visibleClientInvoices.forEach(invoice => invoice.uhradene && invoice.datum_uhrady && months.add(invoice.datum_uhrady.slice(0, 7)))
+    visibleLaborEntries.forEach(entry => entry.datum && months.add(entry.datum.slice(0, 7)))
     const sorted = Array.from(months).sort()
     if (sorted.length === 0) return []
 
@@ -729,23 +771,23 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     const costsByMonth = new Map<string, number>()
     const paymentsByMonth = new Map<string, number>()
-    expenses.forEach(expense => {
+    visibleExpenses.forEach(expense => {
       const key = expense.datum.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(expense.suma))
     })
-    supplierInvoices.forEach(invoice => {
+    visibleSupplierInvoices.forEach(invoice => {
       const key = invoice.datum_vystavenia.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + numberValue(invoice.suma))
     })
-    laborEntries.forEach(entry => {
+    visibleLaborEntries.forEach(entry => {
       const key = entry.datum.slice(0, 7)
       costsByMonth.set(key, (costsByMonth.get(key) || 0) + entry.suma)
     })
-    payments.forEach(payment => {
+    visiblePayments.forEach(payment => {
       const key = payment.datum.slice(0, 7)
       paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(payment.suma))
     })
-    clientInvoices.forEach(invoice => {
+    visibleClientInvoices.forEach(invoice => {
       if (!invoice.uhradene || !invoice.datum_uhrady) return
       const key = invoice.datum_uhrady.slice(0, 7)
       paymentsByMonth.set(key, (paymentsByMonth.get(key) || 0) + numberValue(invoice.suma))
@@ -763,7 +805,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         payments: cumulativePayments,
       }
     })
-  }, [expenses, supplierInvoices, payments, clientInvoices, laborEntries])
+  }, [visibleExpenses, visibleSupplierInvoices, visiblePayments, visibleClientInvoices, visibleLaborEntries])
 
   function openOfferEditor() {
     setOfferForm({
@@ -1547,7 +1589,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: '750' }}>Náklady podľa objektov</div>
-              <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Staré alebo nepriradené položky sú vedené ako Spoločné.</div>
+              <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Výber filtruje prehľady a tabuľky nižšie. Hlavné KPI zákazky ostávajú za celú stavbu. Staré alebo nepriradené položky sú vedené ako Spoločné.</div>
             </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {[{ id: 'all', nazov: 'Celá stavba' }, ...objects.map(objekt => ({ id: String(objekt.id), nazov: objekt.nazov })), { id: 'shared', nazov: 'Spoločné' }].map(option => {
@@ -1893,13 +1935,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Automatické náklady pracovníkov</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{laborHours.toFixed(2)} h · náklad {formatCurrency(laborCosts)} · vyplatené {formatCurrency(paidLaborCosts)} · zostáva {formatCurrency(outstandingLaborCosts)}</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{visibleLaborHours.toFixed(2)} h · náklad {formatCurrency(visibleLaborCosts)} · vyplatené {formatCurrency(visiblePaidLaborCosts)} · zostáva {formatCurrency(visibleOutstandingLaborCosts)}</div>
           </div>
           <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#eef6ff', color: '#0066cc', fontSize: '9px', fontWeight: '750' }}>AUTOMATICKY</span>
         </div>
-        {laborMissingRates.length > 0 && (
+        {visibleLaborMissingRates.length > 0 && (
           <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '650' }}>
-            Chýba hodinová sadzba: {laborMissingRates.join(', ')}. Ich hodiny sú započítané, ale náklad je zatiaľ 0 €.
+            Chýba hodinová sadzba: {visibleLaborMissingRates.join(', ')}. Ich hodiny sú započítané, ale náklad je zatiaľ 0 €.
           </div>
         )}
         <div style={{ overflowX: 'auto' }}>
@@ -1938,7 +1980,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyplatené pracovníkom</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{workerPayments.length} úhrad · spolu {formatCurrency(paidLaborCosts)}</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{visibleWorkerPayments.length} úhrad · spolu {formatCurrency(visiblePaidLaborCosts)}</div>
           </div>
           <button type="button" onClick={() => openNewWorkerPayment()} disabled={laborByWorker.length === 0} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: laborByWorker.length === 0 ? 'not-allowed' : 'pointer', fontSize: '10px', fontWeight: '700', opacity: laborByWorker.length === 0 ? .5 : 1 }}>
             + Vyplatiť pracovníka
@@ -1954,9 +1996,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               </tr>
             </thead>
             <tbody>
-              {workerPayments.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie je zaevidovaná žiadna vyplatená mzda na tejto stavbe.</td></tr>
-              ) : workerPayments.map(payment => (
+              {visibleWorkerPayments.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Pre zvolený objekt zatiaľ nie je zaevidovaná žiadna vyplatená mzda.</td></tr>
+              ) : visibleWorkerPayments.map(payment => (
                 <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
                   <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>
@@ -1983,16 +2025,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Faktúry klientovi</div>
             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>
-              {clientInvoices.length} faktúr · vyfakturované {formatCurrency(clientInvoiceSummary.vyfakturovane)} · prijaté {formatCurrency(clientInvoiceSummary.prijate)} · pohľadávky {formatCurrency(clientInvoiceSummary.pohladavky)}
+              {visibleClientInvoices.length} faktúr · vyfakturované {formatCurrency(visibleClientInvoiceSummary.vyfakturovane)} · prijaté {formatCurrency(visibleClientInvoiceSummary.prijate)} · pohľadávky {formatCurrency(visibleClientInvoiceSummary.pohladavky)}
             </div>
           </div>
           <button type="button" onClick={openNewClientInvoice} style={{ padding: '7px 11px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať faktúru
           </button>
         </div>
-        {clientInvoiceSummary.pocetPoSplatnosti > 0 && (
+        {visibleClientInvoiceSummary.pocetPoSplatnosti > 0 && (
           <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '700' }}>
-            Pohľadávky po splatnosti: {clientInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(clientInvoiceSummary.poSplatnosti)}
+            Pohľadávky po splatnosti: {visibleClientInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(visibleClientInvoiceSummary.poSplatnosti)}
           </div>
         )}
         <div style={{ overflowX: 'auto' }}>
@@ -2005,9 +2047,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               </tr>
             </thead>
             <tbody>
-              {clientInvoices.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie je zaevidovaná žiadna vystavená faktúra klientovi.</td></tr>
-              ) : clientInvoices.map(invoice => {
+              {visibleClientInvoices.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Pre zvolený objekt zatiaľ nie je zaevidovaná žiadna faktúra klientovi.</td></tr>
+              ) : visibleClientInvoices.map(invoice => {
                 const status = stavKlientskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
@@ -2045,7 +2087,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Iné prijaté platby / zálohy</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payments.length} platieb · spolu {formatCurrency(otherReceivedPayments)}</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{visiblePayments.length} platieb · spolu {formatCurrency(visibleOtherReceivedPayments)}</div>
           </div>
           <button type="button" onClick={openNewPayment} style={{ padding: '7px 11px', border: '1px solid #b9d8f8', borderRadius: '9px', backgroundColor: '#eef6ff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať zálohu
@@ -2061,9 +2103,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               </tr>
             </thead>
             <tbody>
-              {payments.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne platby od klienta.</td></tr>
-              ) : payments.map(payment => (
+              {visiblePayments.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '24px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Pre zvolený objekt zatiaľ nie sú zaevidované žiadne platby od klienta.</td></tr>
+              ) : visiblePayments.map(payment => (
                 <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
@@ -2090,16 +2132,16 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Faktúry od dodávateľov</div>
             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>
-              {supplierInvoices.length} faktúr · spolu {formatCurrency(supplierInvoiceCosts)} · neuhradené {formatCurrency(supplierInvoiceSummary.neuhradene)}
+              {visibleSupplierInvoices.length} faktúr · spolu {formatCurrency(visibleSupplierInvoiceSummary.spolu)} · neuhradené {formatCurrency(visibleSupplierInvoiceSummary.neuhradene)}
             </div>
           </div>
           <button type="button" onClick={openNewSupplierInvoice} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať faktúru
           </button>
         </div>
-        {supplierInvoiceSummary.pocetPoSplatnosti > 0 && (
+        {visibleSupplierInvoiceSummary.pocetPoSplatnosti > 0 && (
           <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#b42318', fontSize: '10px', fontWeight: '700' }}>
-            Po splatnosti: {supplierInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(supplierInvoiceSummary.poSplatnosti)}
+            Po splatnosti: {visibleSupplierInvoiceSummary.pocetPoSplatnosti} faktúr · {formatCurrency(visibleSupplierInvoiceSummary.poSplatnosti)}
           </div>
         )}
         <div style={{ overflowX: 'auto' }}>
@@ -2112,9 +2154,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               </tr>
             </thead>
             <tbody>
-              {supplierInvoices.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne faktúry od dodávateľov.</td></tr>
-              ) : supplierInvoices.map(invoice => {
+              {visibleSupplierInvoices.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Pre zvolený objekt zatiaľ nie sú zaevidované žiadne faktúry od dodávateľov.</td></tr>
+              ) : visibleSupplierInvoices.map(invoice => {
                 const status = stavDodavatelskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
@@ -2200,7 +2242,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         <div style={{ padding: '15px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '750' }}>Ostatné ručné náklady</div>
-            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expenses.length} položiek mimo dodávateľských faktúr · spolu {formatCurrency(manualCosts)}</div>
+            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{visibleExpenses.length} položiek mimo dodávateľských faktúr · spolu {formatCurrency(visibleManualCosts)}</div>
           </div>
           <button type="button" onClick={openNewExpense} style={{ padding: '7px 11px', border: '1px solid #d2d2d7', borderRadius: '9px', backgroundColor: '#fff', color: '#0071e3', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}>
             + Pridať náklad
@@ -2216,9 +2258,9 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               </tr>
             </thead>
             <tbody>
-              {expenses.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú zaevidované žiadne náklady.</td></tr>
-              ) : expenses.map(expense => (
+              {visibleExpenses.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Pre zvolený objekt zatiaľ nie sú zaevidované žiadne ručné náklady.</td></tr>
+              ) : visibleExpenses.map(expense => (
                 <tr key={expense.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(expense.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
