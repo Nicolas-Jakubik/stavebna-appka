@@ -2329,6 +2329,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra automaticky zvýši vyfakturovanú sumu. Po označení ako uhradená sa jej suma započíta medzi prijaté platby a do cashflow.</div>
             <form onSubmit={saveClientInvoice}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={clientInvoiceForm.objekt_id} onChange={event => setClientInvoiceForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Číslo faktúry</label>
                   <input type="text" required maxLength={120} value={clientInvoiceForm.cislo_faktury} onChange={event => setClientInvoiceForm(current => ({ ...current, cislo_faktury: event.target.value }))} style={inputStyle} />
@@ -2381,6 +2390,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Faktúra vstúpi do nákladov stavby. Do cashflow sa odpočíta až po označení ako uhradená.</div>
             <form onSubmit={saveSupplierInvoice}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={supplierInvoiceForm.objekt_id} onChange={event => setSupplierInvoiceForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dodávateľ</label>
                   <input type="text" required maxLength={200} value={supplierInvoiceForm.dodavatel} onChange={event => setSupplierInvoiceForm(current => ({ ...current, dodavatel: event.target.value }))} style={inputStyle} />
@@ -2443,6 +2461,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Táto suma predstavuje reálny odchod peňazí a po uložení sa odpočíta z cashflow stavby.</div>
             <form onSubmit={saveWorkerPayment}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={workerPaymentForm.objekt_id} onChange={event => setWorkerPaymentForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Pracovník</label>
                   <select
@@ -2526,6 +2553,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Použi na zálohu alebo inú platbu, ktorá nie je úhradou konkrétnej vystavenej faktúry.</div>
             <form onSubmit={savePayment}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={paymentForm.objekt_id} onChange={event => setPaymentForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dátum</label>
                   <input type="date" required value={paymentForm.datum} onChange={event => setPaymentForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />
@@ -2558,6 +2594,15 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
             <div style={{ fontSize: '18px', fontWeight: '750' }}>{editingExpense ? 'Upraviť náklad' : 'Pridať náklad'}</div>
             <form onSubmit={saveExpense}>
               <div className="finance-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '18px' }}>
+                {objects.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Objekt</label>
+                    <select value={expenseForm.objekt_id} onChange={event => setExpenseForm(current => ({ ...current, objekt_id: event.target.value }))} style={inputStyle}>
+                      <option value="">Spoločné / celá stavba</option>
+                      {objects.map(objekt => <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Dátum</label>
                   <input type="date" required value={expenseForm.datum} onChange={event => setExpenseForm(current => ({ ...current, datum: event.target.value }))} style={inputStyle} />
