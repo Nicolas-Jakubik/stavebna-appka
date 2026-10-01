@@ -113,7 +113,6 @@ export default function FinanciePage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'vsetky' | 'aktivne' | 'dokoncene'>('vsetky')
-  const [showDetails, setShowDetails] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -426,6 +425,14 @@ export default function FinanciePage() {
 
   const allFinanceAlertsCount = supplierAlerts.length + clientAlerts.length + budgetAlerts.length + setupAlerts.length
 
+  const activeProjectsCount = rows.filter(row => row.stav !== 'Dokončená').length
+  const overdueCount =
+    supplierAlerts.filter(alert => alert.stav === 'po_splatnosti').length +
+    clientAlerts.filter(alert => alert.stav === 'po_splatnosti').length
+  const dueSoonCount =
+    supplierAlerts.filter(alert => alert.stav === 'splatne_coskor').length +
+    clientAlerts.filter(alert => alert.stav === 'splatne_coskor').length
+
   return (
     <div className="finances-shell" style={{
       minHeight: '100vh',
@@ -453,11 +460,20 @@ export default function FinanciePage() {
           .finances-filter-grid {
             grid-template-columns: 1fr !important;
           }
+          .finances-project-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
 
         @media (max-width: 640px) {
           .finances-summary-grid {
             grid-template-columns: 1fr !important;
+          }
+          .finances-project-metrics {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+          }
+          .finances-attention-grid {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
           }
           .finances-table {
             display: block;
@@ -515,7 +531,7 @@ export default function FinanciePage() {
             Financie
           </h1>
           <div style={{ marginTop: '5px', color: '#86868b', fontSize: '11px' }}>
-            Rýchly prehľad toho, koľko stavby stoja, čo zostáva z budgetu a aký je aktuálny cashflow.
+            Prehľad firmy na jednom mieste. Detailné faktúry, náklady a ponuky riešiš až v konkrétnej stavbe.
           </div>
         </div>
 
@@ -533,293 +549,165 @@ export default function FinanciePage() {
           <>
             <div className="finances-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
-                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Celkový budget</div>
-                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{euro(totals.budget)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.withFinance} z {rows.length} stavieb má finančné dáta</div>
+                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktívne stavby</div>
+                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{activeProjectsCount}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.withFinance} stavieb už má finančné údaje</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálne náklady</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{euro(totals.costs)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.budget > 0 ? `Vyčerpanie ${totalUsage.toFixed(0)} % · ` : ''}faktúry {euro(totals.supplierCosts)} · pracovníci {euro(totals.laborCosts)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Pracovníci {euro(totals.laborCosts)} · ostatné {euro(totals.costs - totals.laborCosts)}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
-                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Zostáva z budgetu</div>
-                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totalRemaining !== null && totalRemaining < 0 ? '#b42318' : '#1d1d1f' }}>{totalRemaining === null ? '—' : euro(totalRemaining)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>{totals.budget > 0 ? `Počíta sa iba zo stavieb s nastaveným budgetom${totals.withoutBudget > 0 ? ` · ${totals.withoutBudget} bez budgetu` : ''}` : 'Budget zatiaľ nie je nastavený na žiadnej stavbe'}</div>
+                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Prijaté platby</div>
+                <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.received > 0 ? '#047857' : '#1d1d1f' }}>{euro(totals.received)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Pohľadávky {euro(totals.receivables)}{totals.overdueClientReceivables > 0 ? ` · po splatnosti ${euro(totals.overdueClientReceivables)}` : ''}</div>
               </div>
 
               <div style={{ ...cardStyle, padding: '17px 18px', backgroundColor: totals.cashflow < 0 ? '#fffafa' : '#f7fbff' }}>
-                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktuálny cashflow</div>
+                <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Cashflow firmy</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em', color: totals.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(totals.cashflow)}</div>
-                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Prijaté {euro(totals.received)} · pohľadávky {euro(totals.receivables)} · po splatnosti {euro(totals.overdueClientReceivables)}</div>
+                <div style={{ marginTop: '6px', color: '#86868b', fontSize: '10px' }}>Reálne prijaté peniaze mínus zaevidované úhrady</div>
               </div>
             </div>
 
             {allFinanceAlertsCount > 0 && (
-            <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: '14px', borderColor: urgentAlertsCount > 0 ? '#f3b4ae' : 'rgba(0,0,0,.08)' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '750' }}>Finančné upozornenia</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Faktúry po splatnosti, splatné do 7 dní a stavby s čerpaním budgetu od 90 %.</div>
+              <div style={{ ...cardStyle, padding: '16px 18px', marginBottom: '14px', borderColor: urgentAlertsCount > 0 ? '#f3b4ae' : '#f0d7a3' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyžaduje pozornosť</div>
+                    <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Len veci, ktoré teraz treba riešiť.</div>
+                  </div>
+                  <span style={{ padding: '5px 9px', borderRadius: '999px', backgroundColor: urgentAlertsCount > 0 ? '#fef2f2' : '#fff7ed', color: urgentAlertsCount > 0 ? '#b42318' : '#9a6700', fontSize: '9px', fontWeight: '750' }}>
+                    {allFinanceAlertsCount} upozornení
+                  </span>
                 </div>
-                <span style={{
-                  padding: '5px 9px',
-                  borderRadius: '999px',
-                  backgroundColor: urgentAlertsCount > 0 ? '#fef2f2' : allFinanceAlertsCount > 0 ? '#fff7ed' : '#ecfdf5',
-                  color: urgentAlertsCount > 0 ? '#b42318' : allFinanceAlertsCount > 0 ? '#9a6700' : '#047857',
-                  fontSize: '9px',
-                  fontWeight: '750',
-                }}>
-                  {allFinanceAlertsCount === 0 ? 'BEZ UPOZORNENÍ' : `${allFinanceAlertsCount} upozornení`}
-                </span>
-              </div>
-
-              {allFinanceAlertsCount === 0 ? (
-                <div style={{ padding: '20px 18px', color: '#047857', fontSize: '11px', fontWeight: '650' }}>
-                  Momentálne nie je nič po splatnosti, nič nespadá do najbližších 7 dní, žiadna stavba nie je nad 90 % budgetu a finančný setup je kompletný.
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: 0 }}>
-                  {supplierAlerts.map(alert => (
-                    <Link key={`supplier-${alert.id}`} href={`/zakazky/${alert.zakazkaId}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{projectNameById.get(alert.zakazkaId) || 'Neznáma stavba'} · dodávateľská FA {alert.cisloFaktury}</div>
-                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{alert.dodavatel || 'Dodávateľ'} · {euro(alert.suma)}</div>
-                      </div>
-                      <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {alert.stav === 'po_splatnosti'
-                          ? `Po splatnosti ${Math.abs(alert.dniDoSplatnosti)} dní`
-                          : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `Splatná o ${alert.dniDoSplatnosti} dní`}
-                      </div>
-                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
-                    </Link>
-                  ))}
-
-                  {clientAlerts.map(alert => (
-                    <Link key={`client-${alert.id}`} href={`/zakazky/${alert.zakazkaId}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{projectNameById.get(alert.zakazkaId) || 'Neznáma stavba'} · pohľadávka FA {alert.cisloFaktury}</div>
-                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(alert.suma)}</div>
-                      </div>
-                      <div style={{ color: alert.stav === 'po_splatnosti' ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {alert.stav === 'po_splatnosti'
-                          ? `Klient mešká ${Math.abs(alert.dniDoSplatnosti)} dní`
-                          : alert.dniDoSplatnosti === 0 ? 'Splatná dnes' : `Splatnosť o ${alert.dniDoSplatnosti} dní`}
-                      </div>
-                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
-                    </Link>
-                  ))}
-
-                  {setupAlerts.map(row => (
-                    <Link key={`setup-${row.id}`} href={`/zakazky/${row.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{row.nazov} · chýba finančný setup</div>
-                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>Evidované náklady {euro(row.costs)}</div>
-                      </div>
-                      <div style={{ color: '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {!row.hasPrice && !row.hasBudget ? 'Chýba cena aj budget' : !row.hasPrice ? 'Chýba cena zákazky' : 'Chýba budget'}
-                      </div>
-                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Doplniť →</div>
-                    </Link>
-                  ))}
-
-                  {budgetAlerts.map(row => (
-                    <Link key={`budget-${row.id}`} href={`/zakazky/${row.id}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,1.4fr) minmax(160px,1fr) auto', gap: '12px', alignItems: 'center', padding: '11px 18px', borderBottom: '1px solid #ededf0', color: '#1d1d1f', textDecoration: 'none' }}>
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: '750' }}>{row.nazov} · budget</div>
-                        <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(row.costs)} z {euro(row.budget)}</div>
-                      </div>
-                      <div style={{ color: row.usage >= 100 ? '#b42318' : '#9a6700', fontSize: '10px', fontWeight: '700' }}>
-                        {row.usage >= 100 ? `Prekročený o ${euro(Math.abs(row.remaining ?? 0))}` : `Vyčerpané ${row.usage.toFixed(0)} %`}
-                      </div>
-                      <div style={{ color: '#0071e3', fontSize: '10px', fontWeight: '750' }}>Detail →</div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-            )}
-
-            {showDetails && (
-            <div style={{ ...cardStyle, padding: '17px 18px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '14px', fontWeight: '750' }}>Ziskovosť všetkých stavieb</div>
-              <div style={{ marginTop: '4px', color: '#86868b', fontSize: '10px' }}>Prehľad podľa nastavenej ceny zákaziek, budgetov a aktuálne zaevidovaných nákladov.</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginTop: '14px' }} className="finances-summary-grid">
-                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
-                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Plánovaný zisk</div>
-                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: portfolioProfitability.planovanyZisk < 0 ? '#b42318' : '#047857' }}>{euro(portfolioProfitability.planovanyZisk)}</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{portfolioProfitability.planovanaMarzaPercent === null ? '—' : `marža ${portfolioProfitability.planovanaMarzaPercent.toFixed(1)} %`}</div>
-                </div>
-                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
-                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Aktuálna rezerva do ceny</div>
-                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750', color: totals.price > 0 && portfolioProfitability.aktualnaRezerva < 0 ? '#b42318' : '#1d1d1f' }}>{totals.price > 0 ? euro(portfolioProfitability.aktualnaRezerva) : '—'}</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{totals.price > 0 ? `cena − náklady na ocenených stavbách${totals.withoutPrice > 0 ? ` · ${totals.withoutPrice} bez ceny` : ''}` : 'Cena zákaziek zatiaľ nie je nastavená'}</div>
-                </div>
-                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
-                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Fakturácia</div>
-                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750' }}>{portfolioProfitability.fakturacnyProgressPercent === null ? '—' : `${portfolioProfitability.fakturacnyProgressPercent.toFixed(0)} %`}</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(totals.invoiced)} z {euro(totals.price)}</div>
-                </div>
-                <div style={{ padding: '12px 13px', borderRadius: '11px', backgroundColor: '#f7f7f8' }}>
-                  <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Inkaso</div>
-                  <div style={{ marginTop: '6px', fontSize: '19px', fontWeight: '750' }}>{portfolioProfitability.inkasnyProgressPercent === null ? '—' : `${portfolioProfitability.inkasnyProgressPercent.toFixed(0)} %`}</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{euro(totals.received)} prijaté</div>
-                </div>
-              </div>
-            </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setShowDetails(value => !value)}
-                style={{ minHeight: '38px', padding: '8px 12px', border: '1px solid #d2d2d7', borderRadius: '10px', backgroundColor: '#fff', color: '#0066cc', cursor: 'pointer', fontSize: '10px', fontWeight: '750' }}
-              >
-                {showDetails ? 'Skryť podrobné firemné čísla' : 'Zobraziť podrobné firemné čísla'}
-              </button>
-            </div>
-
-            <div style={{ ...cardStyle, padding: '14px 16px', marginBottom: '14px' }}>
-              <div className="finances-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) auto', gap: '12px', alignItems: 'end' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Vyhľadať stavbu</label>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={event => setSearch(event.target.value)}
-                    placeholder="Napíš názov stavby..."
-                    style={{ width: '100%', minHeight: '40px', padding: '8px 10px', borderRadius: '9px', border: '1px solid #d2d2d7', backgroundColor: '#fff', color: '#1d1d1f', outline: 'none', boxSizing: 'border-box', fontSize: '12px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Zobraziť</label>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {[
-                      ['vsetky', 'Všetky'],
-                      ['aktivne', 'Aktívne'],
-                      ['dokoncene', 'Dokončené'],
-                    ].map(([key, label]) => {
-                      const active = status === key
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setStatus(key as typeof status)}
-                          style={{ minHeight: '40px', padding: '8px 12px', borderRadius: '9px', border: active ? '1px solid #0071e3' : '1px solid #d2d2d7', backgroundColor: active ? '#e8f3ff' : '#fff', color: active ? '#0066cc' : '#6e6e73', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}
-                        >
-                          {label}
-                        </button>
-                      )
-                    })}
+                <div className="finances-attention-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '8px', marginTop: '12px' }}>
+                  <div style={{ padding: '11px 12px', borderRadius: '10px', backgroundColor: overdueCount > 0 ? '#fef2f2' : '#f7f7f8' }}>
+                    <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Po splatnosti</div>
+                    <div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750', color: overdueCount > 0 ? '#b42318' : '#1d1d1f' }}>{overdueCount}</div>
+                  </div>
+                  <div style={{ padding: '11px 12px', borderRadius: '10px', backgroundColor: dueSoonCount > 0 ? '#fff7ed' : '#f7f7f8' }}>
+                    <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Do 7 dní</div>
+                    <div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750', color: dueSoonCount > 0 ? '#9a6700' : '#1d1d1f' }}>{dueSoonCount}</div>
+                  </div>
+                  <div style={{ padding: '11px 12px', borderRadius: '10px', backgroundColor: budgetAlerts.length > 0 ? '#fff7ed' : '#f7f7f8' }}>
+                    <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Budget ≥ 90 %</div>
+                    <div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750', color: budgetAlerts.length > 0 ? '#9a6700' : '#1d1d1f' }}>{budgetAlerts.length}</div>
+                  </div>
+                  <div style={{ padding: '11px 12px', borderRadius: '10px', backgroundColor: setupAlerts.length > 0 ? '#fff7ed' : '#f7f7f8' }}>
+                    <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Chýba setup</div>
+                    <div style={{ marginTop: '5px', fontSize: '18px', fontWeight: '750', color: setupAlerts.length > 0 ? '#9a6700' : '#1d1d1f' }}>{setupAlerts.length}</div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {showDetails && (
-            <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: '14px' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '750' }}>Mesačné náklady firmy</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Súčet všetkých stavieb podľa kategórií vrátane automatických nákladov pracovníkov.</div>
-                </div>
-                <span style={{ padding: '4px 8px', borderRadius: '999px', backgroundColor: '#f5f5f7', color: '#6e6e73', fontSize: '9px', fontWeight: '750' }}>{monthlyBreakdown.length} mes.</span>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="finances-table" style={{ width: '100%', minWidth: '840px', borderCollapse: 'collapse', fontSize: '11px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
-                      {['Mesiac', ...FINANCE_CATEGORIES, 'Spolu'].map(label => (
-                        <th key={label} style={{ padding: '10px 12px', color: '#86868b', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '.045em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthlyBreakdown.length === 0 ? (
-                      <tr><td colSpan={7} style={{ padding: '26px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Zatiaľ nie sú finančné dáta na mesačný rozpad.</td></tr>
-                    ) : monthlyBreakdown.map(row => (
-                      <tr key={row.key} style={{ borderBottom: '1px solid #ededf0' }}>
-                        <td data-label="Mesiac" style={{ padding: '12px', fontWeight: '700', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{row.label}</td>
-                        {FINANCE_CATEGORIES.map(category => (
-                          <td key={category} data-label={category} style={{ padding: '12px', whiteSpace: 'nowrap', color: row.categories[category] > 0 ? '#1d1d1f' : '#a1a1a6' }}>
-                            {row.categories[category] > 0 ? euro(row.categories[category]) : '—'}
-                          </td>
-                        ))}
-                        <td data-label="Spolu" style={{ padding: '12px', fontWeight: '750', whiteSpace: 'nowrap' }}>{euro(row.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
             )}
 
-            <div style={{ ...cardStyle, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #ededf0', display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <section style={{ ...cardStyle, padding: '16px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '14px' }}>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: '750' }}>Financie podľa stavieb</div>
-                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{filteredRows.length} zobrazených stavieb</div>
+                  <div style={{ fontSize: '15px', fontWeight: '750' }}>Stavby</div>
+                  <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Otvor stavbu až keď potrebuješ faktúry, položky ponuky alebo detailný rozpad.</div>
                 </div>
-                <div style={{ color: '#86868b', fontSize: '9px' }}>Klikni na Detail pre faktúry, platby a rozpad nákladov.</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[
+                    ['vsetky', 'Všetky'],
+                    ['aktivne', 'Aktívne'],
+                    ['dokoncene', 'Dokončené'],
+                  ].map(([key, label]) => {
+                    const active = status === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setStatus(key as typeof status)}
+                        style={{ minHeight: '36px', padding: '7px 11px', borderRadius: '9px', border: active ? '1px solid #0071e3' : '1px solid #d2d2d7', backgroundColor: active ? '#e8f3ff' : '#fff', color: active ? '#0066cc' : '#6e6e73', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table className="finances-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f7f7f8', borderBottom: '1px solid #ededf0', textAlign: 'left' }}>
-                      {['Stavba', 'Cena', 'Náklady', 'Budget', 'Zostáva', 'Cashflow', ''].map(label => (
-                        <th key={label || 'action'} style={{ padding: '10px 12px', color: '#86868b', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '.045em', fontWeight: '700', whiteSpace: 'nowrap' }}>{label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.length === 0 ? (
-                      <tr><td colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Žiadna stavba nezodpovedá filtru.</td></tr>
-                    ) : filteredRows.map(row => {
-                      const budgetExceeded = row.budget > 0 && row.costs > row.budget
-                      return (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #ededf0' }}>
-                          <td data-label="Stavba" style={{ padding: '12px', minWidth: '180px' }}>
-                            <div style={{ fontWeight: '750', color: '#1d1d1f' }}>{row.nazov}</div>
+              <div style={{ marginBottom: '12px' }}>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                  placeholder="Vyhľadať stavbu..."
+                  style={{ width: '100%', minHeight: '40px', padding: '8px 11px', borderRadius: '9px', border: '1px solid #d2d2d7', backgroundColor: '#fff', color: '#1d1d1f', outline: 'none', boxSizing: 'border-box', fontSize: '12px' }}
+                />
+              </div>
+
+              {filteredRows.length === 0 ? (
+                <div style={{ padding: '28px 12px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Žiadna stavba nezodpovedá filtru.</div>
+              ) : (
+                <div className="finances-project-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '12px' }}>
+                  {filteredRows.map(row => {
+                    const hasAttention =
+                      row.overdueSupplierCount > 0 ||
+                      row.overdueClientInvoiceCount > 0 ||
+                      (row.budget > 0 && row.usage >= 90) ||
+                      (row.costs > 0 && (!row.hasBudget || !row.hasPrice))
+                    const remainingLabel = row.remaining === null ? '—' : euro(row.remaining)
+                    return (
+                      <article key={row.id} style={{ border: '1px solid #e5e5e7', borderRadius: '13px', padding: '14px', backgroundColor: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', gap: '7px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <div style={{ fontSize: '14px', fontWeight: '750', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.nazov}</div>
+                              {hasAttention && <span style={{ padding: '3px 6px', borderRadius: '999px', backgroundColor: '#fff7ed', color: '#9a6700', fontSize: '8px', fontWeight: '750' }}>POZOR</span>}
+                            </div>
                             <div style={{ marginTop: '3px', color: '#86868b', fontSize: '9px' }}>{row.stav || 'Aktívna'}</div>
-                          </td>
-                          <td data-label="Cena" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '650' }}>{row.price > 0 ? euro(row.price) : <span style={{ color: '#a1a1a6' }}>—</span>}</td>
-                          <td data-label="Náklady" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontWeight: '750' }}>{euro(row.costs)}</div>
-                            <div style={{ marginTop: '3px', color: '#86868b', fontSize: '8px' }}>pracovníci {euro(row.laborCosts)} · ostatné {euro(row.manualCosts + row.supplierCosts)}</div>
-                          </td>
-                          <td data-label="Budget" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
-                            {row.budget > 0 ? (
-                              <>
-                                <div style={{ fontWeight: '700' }}>{euro(row.budget)}</div>
-                                <div style={{ marginTop: '3px', color: row.usage >= 100 ? '#b42318' : '#86868b', fontSize: '8px', fontWeight: '700' }}>{row.usage.toFixed(0)} % vyčerpané</div>
-                              </>
-                            ) : <span style={{ color: '#a1a1a6' }}>Nenastavený</span>}
-                          </td>
-                          <td data-label="Zostáva" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '750', color: row.remaining !== null && row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{row.remaining === null ? <span style={{ color: '#a1a1a6' }}>—</span> : euro(row.remaining)}</td>
-                          <td data-label="Cashflow" style={{ padding: '12px', whiteSpace: 'nowrap', fontWeight: '750', color: row.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(row.cashflow)}</td>
-                          <td data-label="Detail" style={{ padding: '12px', textAlign: 'right' }}>
-                            <Link
-                              className="finances-detail-link"
-                              href={`/zakazky/${row.id}`}
-                              style={{ display: 'inline-flex', alignItems: 'center', minHeight: '34px', padding: '6px 10px', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', textDecoration: 'none', fontSize: '10px', fontWeight: '750', whiteSpace: 'nowrap' }}
-                            >
-                              Detail →
-                            </Link>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          </div>
+                          <Link href={`/zakazky/${row.id}`} style={{ flexShrink: 0, minHeight: '32px', display: 'inline-flex', alignItems: 'center', padding: '6px 9px', borderRadius: '8px', backgroundColor: '#eef6ff', color: '#0071e3', textDecoration: 'none', fontSize: '9px', fontWeight: '750' }}>
+                            Otvoriť →
+                          </Link>
+                        </div>
 
-            <div style={{ marginTop: '10px', color: '#86868b', fontSize: '9px', lineHeight: 1.5 }}>
-              Súhrn používa rovnaké reálne finančné údaje ako detail stavby. Vyfakturované a pohľadávky sa počítajú z faktúr klientovi; uhradené faktúry a zálohy vstupujú do prijatých platieb a cashflow.
-            </div>
+                        <div className="finances-project-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '8px', marginTop: '13px' }}>
+                          <div>
+                            <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Cena</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', fontWeight: '750' }}>{row.price > 0 ? euro(row.price) : '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Náklady</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', fontWeight: '750' }}>{euro(row.costs)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Zostáva</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', fontWeight: '750', color: row.remaining !== null && row.remaining < 0 ? '#b42318' : '#1d1d1f' }}>{remainingLabel}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: '#86868b', fontSize: '8px', fontWeight: '700', textTransform: 'uppercase' }}>Cashflow</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', fontWeight: '750', color: row.cashflow < 0 ? '#b42318' : '#0066cc' }}>{euro(row.cashflow)}</div>
+                          </div>
+                        </div>
+
+                        {row.budget > 0 ? (
+                          <div style={{ marginTop: '13px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: '#86868b', fontSize: '9px' }}>
+                              <span>Budget {euro(row.budget)}</span>
+                              <span style={{ color: row.usage >= 100 ? '#b42318' : row.usage >= 90 ? '#9a6700' : '#86868b', fontWeight: '700' }}>{row.usage.toFixed(0)} %</span>
+                            </div>
+                            <div style={{ marginTop: '6px', height: '6px', borderRadius: '999px', backgroundColor: '#ededf0', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, row.usage))}%`, borderRadius: '999px', backgroundColor: row.usage >= 100 ? '#b42318' : row.usage >= 90 ? '#d97706' : '#0071e3' }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '13px', padding: '8px 10px', borderRadius: '9px', backgroundColor: '#f7f7f8', color: '#86868b', fontSize: '9px' }}>
+                            Budget nie je nastavený.
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
           </>
         )}
       </main>
