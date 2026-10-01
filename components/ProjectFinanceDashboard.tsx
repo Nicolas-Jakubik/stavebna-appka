@@ -13,10 +13,19 @@ type OfferItem = {
   sekcia: string
   kod: string
   popis: string
+  realizuje?: 'stavby_domy' | 'investor' | 'nerozhodnute'
   cena_objekt_samostatne: number | string
   cena_objekt_balik: number | string
   spolu_bez_dph: number | string
   spolu_s_dph: number | string
+}
+
+type ProjectObjectRow = {
+  id: number | string
+  zakazka_id: number | string
+  nazov: string
+  poradie: number | string
+  aktivny: boolean
 }
 
 type FinanceRow = {
@@ -39,6 +48,7 @@ type FinanceRow = {
 }
 
 type ExpenseRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   datum: string
@@ -50,6 +60,7 @@ type ExpenseRow = {
 }
 
 type PaymentRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   datum: string
@@ -59,6 +70,7 @@ type PaymentRow = {
 }
 
 type AttendanceRow = {
+  objekt_id?: number | string | null
   id: number | string
   meno: string
   datum: string
@@ -73,6 +85,7 @@ type EmployeeRow = {
 }
 
 type WorkerPaymentRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   meno: string
@@ -82,6 +95,7 @@ type WorkerPaymentRow = {
 }
 
 type SupplierInvoiceRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   dodavatel: string
@@ -96,6 +110,7 @@ type SupplierInvoiceRow = {
 }
 
 type ClientInvoiceRow = {
+  objekt_id?: number | string | null
   id: number | string
   zakazka_id: number | string
   cislo_faktury: string
@@ -288,6 +303,8 @@ function FinanceChart({ data }: { data: ChartPoint[] }) {
 
 export default function ProjectFinanceDashboard({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [finance, setFinance] = useState<FinanceRow | null>(null)
+  const [objects, setObjects] = useState<ProjectObjectRow[]>([])
+  const [selectedObject, setSelectedObject] = useState('all')
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
@@ -315,6 +332,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [financeForm, setFinanceForm] = useState(EMPTY_FINANCE)
   const [offerForm, setOfferForm] = useState(EMPTY_OFFER_FORM)
   const [expenseForm, setExpenseForm] = useState({
+    objekt_id: '',
     datum: today(),
     popis: '',
     kategoria: 'Materiál' as Category,
@@ -323,18 +341,21 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     poznamka: '',
   })
   const [paymentForm, setPaymentForm] = useState({
+    objekt_id: '',
     datum: today(),
     suma: 0,
     popis: 'Prijatá záloha',
     poznamka: '',
   })
   const [workerPaymentForm, setWorkerPaymentForm] = useState({
+    objekt_id: '',
     meno: '',
     datum: today(),
     suma: 0,
     poznamka: '',
   })
   const [supplierInvoiceForm, setSupplierInvoiceForm] = useState({
+    objekt_id: '',
     dodavatel: '',
     cislo_faktury: '',
     datum_vystavenia: today(),
@@ -346,6 +367,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     poznamka: '',
   })
   const [clientInvoiceForm, setClientInvoiceForm] = useState({
+    objekt_id: '',
     cislo_faktury: '',
     datum_vystavenia: today(),
     datum_splatnosti: today(),
@@ -361,6 +383,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     const [
       { data: financeData, error: financeError },
+      { data: objectData, error: objectError },
       { data: expenseData, error: expenseError },
       { data: paymentData, error: paymentError },
       { data: attendanceData, error: attendanceError },
@@ -375,6 +398,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .maybeSingle(),
       supabase
+        .from('objekty_stavby')
+        .select('id,zakazka_id,nazov,poradie,aktivny')
+        .eq('zakazka_id', projectId)
+        .order('poradie', { ascending: true })
+        .order('id', { ascending: true }),
+      supabase
         .from('naklady_stavby')
         .select('*')
         .eq('zakazka_id', projectId)
@@ -388,7 +417,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod'),
+        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id'),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
@@ -412,12 +441,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
     ])
 
-    if (financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
-      console.error('Chyba načítania financií:', financeError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
+    if (financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
+      console.error('Chyba načítania financií:', financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
     setFinance((financeData as FinanceRow | null) || null)
+    setObjects(((objectData as ProjectObjectRow[]) || []).filter(objekt => objekt.aktivny !== false))
     setExpenses((expenseData as ExpenseRow[]) || [])
     setPayments((paymentData as PaymentRow[]) || [])
     setAttendance((attendanceData as AttendanceRow[]) || [])
@@ -644,6 +674,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         sekcia: item.sekcia || '',
         kod: item.kod || '',
         popis: item.popis || '',
+        realizuje: item.realizuje || 'stavby_domy',
         cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
         cena_objekt_balik: Math.max(0, numberValue(item.cena_objekt_balik)),
         spolu_bez_dph: Math.max(0, numberValue(item.spolu_bez_dph)),
@@ -653,7 +684,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     setOfferOpen(true)
   }
 
-  function updateOfferItem(index: number, key: 'sekcia' | 'kod' | 'popis' | 'cena_objekt_samostatne' | 'cena_objekt_balik', value: string) {
+  function updateOfferItem(index: number, key: 'sekcia' | 'kod' | 'popis' | 'realizuje' | 'cena_objekt_samostatne' | 'cena_objekt_balik', value: string) {
     setOfferForm(current => ({
       ...current,
       ponuka_polozky: current.ponuka_polozky.map((item, itemIndex) => {
@@ -675,6 +706,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
           sekcia: '',
           kod: '',
           popis: '',
+          realizuje: 'stavby_domy',
           cena_objekt_samostatne: 0,
           cena_objekt_balik: 0,
           spolu_bez_dph: 0,
@@ -709,6 +741,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         sekcia: String(item.sekcia || '').trim(),
         kod: String(item.kod || '').trim(),
         popis: String(item.popis || '').trim(),
+        realizuje: item.realizuje || 'stavby_domy',
         cena_objekt_samostatne: Math.max(0, numberValue(item.cena_objekt_samostatne)),
         cena_objekt_balik: bundlePrice,
         spolu_bez_dph: Number(withoutVat.toFixed(2)),
@@ -718,6 +751,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     const totalWithoutVat = Number(items.reduce((sum, item) => sum + item.spolu_bez_dph, 0).toFixed(2))
     const totalWithVat = Number(items.reduce((sum, item) => sum + item.spolu_s_dph, 0).toFixed(2))
+    const ownWithoutVat = Number(items.filter(item => item.realizuje === 'stavby_domy').reduce((sum, item) => sum + item.spolu_bez_dph, 0).toFixed(2))
     const area = Math.max(0, numberValue(offerForm.ponuka_plocha_m2))
     const targetPerM2 = area > 0 ? Number((totalWithoutVat / area).toFixed(2)) : 0
 
@@ -737,6 +771,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         ponuka_suma_s_dph: totalWithVat,
         ponuka_dokument_url: offerForm.ponuka_dokument_url.trim() || null,
         ponuka_polozky: items,
+        cena_zakazky: ownWithoutVat,
         updated_at: new Date().toISOString(),
       })
       .eq('zakazka_id', projectId)
