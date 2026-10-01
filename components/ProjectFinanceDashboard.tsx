@@ -795,6 +795,11 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         if (key === 'cena_objekt_samostatne' || key === 'cena_objekt_balik') {
           return { ...item, [key]: Math.max(0, Number(value) || 0) }
         }
+        if (key === 'realizuje') {
+          const realizuje: OfferItem['realizuje'] =
+            value === 'investor' || value === 'nerozhodnute' ? value : 'stavby_domy'
+          return { ...item, realizuje }
+        }
         return { ...item, [key]: value }
       }),
     }))
