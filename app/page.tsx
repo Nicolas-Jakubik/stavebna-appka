@@ -14,6 +14,7 @@ function AttendanceForm() {
   // Zmena: Namiesto jedného mena ukladáme pole vybraných mien
   const [vybraneMena, setVybraneMena] = useState<string[]>([])
   const [zakazka, setZakazka] = useState('')
+  const [objektId, setObjektId] = useState('')
   const [prichod, setPrichod] = useState('')
   const [odchod, setOdchod] = useState('')
   const [datum, setDatum] = useState('')
@@ -24,6 +25,7 @@ function AttendanceForm() {
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
 
   const [aktivneZakazky, setAktivneZakazky] = useState<any[]>([])
+  const [objektyStavby, setObjektyStavby] = useState<any[]>([])
   const [zoznamZamestnancov, setZoznamZamestnancov] = useState<any[]>([])
   const [stavDnesnehoDna, setStavDnesnehoDna] = useState<{
     nacitava: boolean
@@ -52,19 +54,29 @@ function AttendanceForm() {
 
   useEffect(() => {
     async function nacitajData() {
-      const { data: zakazkyData } = await supabase
-        .from('zoznam_zakaziek')
-        .select('nazov')
-        .eq('stav', 'Aktívna')
-        .order('nazov', { ascending: true })
-      
-      if (zakazkyData) setAktivneZakazky(zakazkyData)
+      const [
+        { data: zakazkyData },
+        { data: objektyData },
+        { data: zamData },
+      ] = await Promise.all([
+        supabase
+          .from('zoznam_zakaziek')
+          .select('id,nazov')
+          .eq('stav', 'Aktívna')
+          .order('nazov', { ascending: true }),
+        supabase
+          .from('objekty_stavby')
+          .select('id,zakazka_id,nazov,poradie,aktivny')
+          .order('poradie', { ascending: true })
+          .order('nazov', { ascending: true }),
+        supabase
+          .from('zamestnanci')
+          .select('meno')
+          .order('meno', { ascending: true }),
+      ])
 
-      const { data: zamData } = await supabase
-        .from('zamestnanci')
-        .select('meno')
-        .order('meno', { ascending: true })
-      
+      if (zakazkyData) setAktivneZakazky(zakazkyData)
+      if (objektyData) setObjektyStavby(objektyData.filter((objekt: any) => objekt.aktivny !== false))
       if (zamData) setZoznamZamestnancov(zamData)
     }
     nacitajData()
@@ -242,10 +254,11 @@ function AttendanceForm() {
     }
 
     const zaznamyNaUlozenie = vybraneMena.map(meno => ({
-      meno, 
-      zakazka, 
-      prichod, 
-      odchod, 
+      meno,
+      zakazka,
+      objekt_id: objektId ? Number(objektId) : null,
+      prichod,
+      odchod,
       datum: datumNaUlozenie
     }))
 
@@ -266,6 +279,7 @@ function AttendanceForm() {
       id: Date.now(),
       mena: [...vybraneMena],
       zakazka,
+      objekt: objektyStavby.find((objekt: any) => String(objekt.id) === objektId)?.nazov || 'Spoločné',
       datum: datumNaUlozenie,
       prichod,
       odchod,
@@ -284,6 +298,7 @@ function AttendanceForm() {
     setZobrazitPotvrdenie(false)
     setVybraneMena([])
     setZakazka('')
+    setObjektId('')
     setPrichod('')
     setOdchod('')
     setDatum(datumDoLocalString(new Date()))
@@ -347,6 +362,9 @@ function AttendanceForm() {
     const [rok, mesiac, den] = datumPreFormat.split('-')
     return `${den}. ${mesiac}. ${rok}`
   }
+
+  const vybranaZakazkaId = aktivneZakazky.find((z: any) => z.nazov === zakazka)?.id
+  const dostupneObjekty = objektyStavby.filter((objekt: any) => String(objekt.zakazka_id) === String(vybranaZakazkaId ?? ''))
 
   const inputStyle = {
     padding: '12px 0',
@@ -576,6 +594,12 @@ function AttendanceForm() {
                 <span style={{ color: '#86868b' }}>Zákazka:</span>
                 <span style={{ fontWeight: '500', color: '#1d1d1f', textAlign: 'right', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{zakazka}</span>
               </div>
+              {dostupneObjekty.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                  <span style={{ color: '#86868b' }}>Objekt:</span>
+                  <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{objektyStavby.find((objekt: any) => String(objekt.id) === objektId)?.nazov || 'Spoločné'}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                 <span style={{ color: '#86868b' }}>Dátum:</span>
                 <span style={{ fontWeight: '500', color: '#1d1d1f' }}>{formatujDatum(datum)}</span>
@@ -760,7 +784,7 @@ function AttendanceForm() {
           
           <select 
             value={zakazka} 
-            onChange={e => setZakazka(e.target.value)} 
+            onChange={e => { setZakazka(e.target.value); setObjektId('') }} 
             required 
             className="attendance-field" style={{ ...inputStyle, color: zakazka ? '#000000' : '#9ca3af' }}
           >
@@ -769,6 +793,20 @@ function AttendanceForm() {
               <option key={i} value={z.nazov} style={{ color: '#000000' }}>{z.nazov}</option>
             ))}
           </select>
+
+          {dostupneObjekty.length > 0 && (
+            <select
+              value={objektId}
+              onChange={e => setObjektId(e.target.value)}
+              className="attendance-field"
+              style={{ ...inputStyle, color: '#000000' }}
+            >
+              <option value="">Spoločné / celá stavba</option>
+              {dostupneObjekty.map((objekt: any) => (
+                <option key={objekt.id} value={String(objekt.id)}>{objekt.nazov}</option>
+              ))}
+            </select>
+          )}
           
           <div className="attendance-date-block" style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
             <span style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dátum</span>
@@ -823,7 +861,7 @@ function AttendanceForm() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#1d1d1f', lineHeight: '1.4' }}>{zapis.mena.join(', ')}</div>
-                    <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{zapis.zakazka} · {formatujDatum(zapis.datum)}</div>
+                    <div style={{ fontSize: '11px', color: '#86868b', marginTop: '3px' }}>{zapis.zakazka}{zapis.objekt ? ` · ${zapis.objekt}` : ''} · {formatujDatum(zapis.datum)}</div>
                   </div>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: '#15803d', whiteSpace: 'nowrap' }}>✓ Zapísané {zapis.casZapisu}</span>
                 </div>
