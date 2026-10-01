@@ -510,6 +510,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
     return map
   }, [objects])
 
+  function objectLabel(value: number | string | null | undefined) {
+    return value === null || value === undefined || value === ''
+      ? 'Spoločné'
+      : objectNameById.get(String(value)) || 'Objekt'
+  }
+
   function matchesSelectedObject(value: number | string | null | undefined) {
     if (selectedObject === 'all') return true
     if (selectedObject === 'shared') return value === null || value === undefined || value === ''
@@ -1948,7 +1954,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
               ) : workerPayments.map(payment => (
                 <tr key={payment.id} style={{ borderBottom: '1px solid #ededf0' }}>
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
-                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>{payment.meno}</td>
+                  <td data-label="Pracovník" style={{ padding: '11px 14px', fontWeight: '650' }}>
+                    <div>{payment.meno}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(payment.objekt_id)}</div>}
+                  </td>
                   <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750' }}>{formatCurrency(numberValue(payment.suma))}</td>
                   <td data-label="Poznámka" style={{ padding: '11px 14px', color: '#6e6e73' }}>{payment.poznamka || '—'}</td>
                   <td data-label="Akcie" style={{ padding: '11px 14px' }}>
@@ -1997,7 +2006,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                 const status = stavKlientskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
-                    <td data-label="Číslo FA" style={{ padding: '11px 14px', fontWeight: '700' }}>{invoice.cislo_faktury}</td>
+                    <td data-label="Číslo FA" style={{ padding: '11px 14px', fontWeight: '700' }}>
+                    <div>{invoice.cislo_faktury}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(invoice.objekt_id)}</div>}
+                  </td>
                     <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
                     <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
                     <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap' }}>{formatCurrency(numberValue(invoice.suma))}</td>
@@ -2051,6 +2063,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(payment.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
                     <div style={{ fontWeight: '650' }}>{payment.popis}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(payment.objekt_id)}</div>}
                     {payment.poznamka && <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{payment.poznamka}</div>}
                   </td>
                   <td data-label="Suma" style={{ padding: '11px 14px', fontWeight: '750', whiteSpace: 'nowrap', color: '#047857' }}>{formatCurrency(numberValue(payment.suma))}</td>
@@ -2100,7 +2113,10 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                 const status = stavDodavatelskejFaktury(invoice, today())
                 return (
                   <tr key={invoice.id} style={{ borderBottom: '1px solid #ededf0' }}>
-                    <td data-label="Dodávateľ" style={{ padding: '11px 14px', fontWeight: '650' }}>{invoice.dodavatel}</td>
+                    <td data-label="Dodávateľ" style={{ padding: '11px 14px', fontWeight: '650' }}>
+                      <div>{invoice.dodavatel}</div>
+                      {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(invoice.objekt_id)}</div>}
+                    </td>
                     <td data-label="Číslo FA" style={{ padding: '11px 14px' }}>{invoice.cislo_faktury}</td>
                     <td data-label="Vystavená" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(invoice.datum_vystavenia)}</td>
                     <td data-label="Splatnosť" style={{ padding: '11px 14px', color: status === 'Po splatnosti' ? '#b42318' : '#6e6e73', fontWeight: status === 'Po splatnosti' ? '700' : '400' }}>{formatDate(invoice.datum_splatnosti)}</td>
@@ -2202,6 +2218,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
                   <td data-label="Dátum" style={{ padding: '11px 14px', color: '#6e6e73' }}>{formatDate(expense.datum)}</td>
                   <td data-label="Popis" style={{ padding: '11px 14px' }}>
                     <div style={{ fontWeight: '650' }}>{expense.popis}</div>
+                    {objects.length > 0 && <div style={{ marginTop: '3px', color: '#0071e3', fontSize: '9px', fontWeight: '700' }}>{objectLabel(expense.objekt_id)}</div>}
                     {expense.poznamka && <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>{expense.poznamka}</div>}
                   </td>
                   <td data-label="Kategória" style={{ padding: '11px 14px' }}>
