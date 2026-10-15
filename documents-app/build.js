@@ -1,7 +1,8 @@
 const fs=require('fs');
 const path=require('path');
 const zlib=require('zlib');
-const payload=fs.readFileSync(path.join(__dirname,'payload.br'));
+const parts=['payload.00.br','payload.01.br','payload.02.br','payload.03.br'];
+const payload=Buffer.concat(parts.map(name=>fs.readFileSync(path.join(__dirname,name))));
 const files=JSON.parse(zlib.brotliDecompressSync(payload).toString('utf8'));
 const out=path.join(__dirname,'dist');
 fs.rmSync(out,{recursive:true,force:true});
