@@ -1,0 +1,10 @@
+{
+  "buildCommand": "node build.js",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/cloud",
+      "destination": "https://stavby-domy-supisy-j7i0aiyn1-stavby-domysro.vercel.app/api/cloud"
+    }
+  ]
+}
