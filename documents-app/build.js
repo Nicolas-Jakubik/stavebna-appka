@@ -13,4 +13,8 @@ for(const [name,content] of Object.entries(files)){
   fs.mkdirSync(path.dirname(target),{recursive:true});
   fs.writeFileSync(target,content,'utf8');
 }
-console.log('Built STAVBY-DOMY documents app:',Object.keys(files).filter(x=>!x.startsWith('api/')).join(', '));
+const supisyV2=path.join(__dirname,'supisy-v2.html');
+if(fs.existsSync(supisyV2)){
+  fs.copyFileSync(supisyV2,path.join(out,'supisy.html'));
+}
+console.log('Built STAVBY-DOMY documents app with Supisy v2:',Object.keys(files).filter(x=>!x.startsWith('api/')).join(', '));
