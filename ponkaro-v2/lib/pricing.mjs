@@ -13,14 +13,14 @@ export function money(n) {
  */
 export function lineTotal(item, settings = {}) {
   const quantity = value(item.quantity, "množstvo");
-  const combined = item.combinedUnitPrice;
+  const combined = settings.columns?.combined === false ? null : item.combinedUnitPrice;
   if (combined !== null && combined !== undefined && combined !== "") {
     return money(quantity * value(combined, "JC spolu"));
   }
   const workMarkup = value(settings.workMarkupPercent, "prirážka práca");
   const materialMarkup = value(settings.materialMarkupPercent, "prirážka materiál");
-  const work = value(item.workUnitPrice, "JC práca") * (1 + workMarkup / 100);
-  const material = value(item.materialUnitPrice, "JC materiál") * (1 + materialMarkup / 100);
+  const work = (settings.columns?.work === false ? 0 : value(item.workUnitPrice, "JC práca")) * (1 + workMarkup / 100);
+  const material = (settings.columns?.material === false ? 0 : value(item.materialUnitPrice, "JC materiál")) * (1 + materialMarkup / 100);
   return money(quantity * (work + material));
 }
 export function totals(items = [], settings = {}) {
