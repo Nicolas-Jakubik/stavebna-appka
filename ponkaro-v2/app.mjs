@@ -11,6 +11,25 @@ const text = (v) => String(v ?? "");
 const escapeHtml = (v) => text(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const eur = (v) => new Intl.NumberFormat("sk-SK", { style: "currency", currency: "EUR" }).format(v || 0);
 const dateNow = () => new Date().toISOString().slice(0, 10);
+const COLUMN_KEYS = ["work", "material", "combined", "total"];
+const columnDefaults = (k) => k === "objednavka" ?
+  { work: false, material: false, combined: false, total: false } :
+  { work: true, material: true, combined: false, total: true };
+function getColumns() {
+  return Object.fromEntries(COLUMN_KEYS.map((key) =>
+    [key, document.querySelector('[data-column="' + key + '"]').checked]));
+}
+function setColumns(obj = columnDefaults(kind)) {
+  for (const key of COLUMN_KEYS)
+    document.querySelector('[data-column="' + key + '"]').checked = obj[key] === true;
+  applyColumns();
+}
+function applyColumns() {
+  const cols = getColumns();
+  for (const key of COLUMN_KEYS)
+    for (const element of document.querySelectorAll(".col-" + key))
+      element.classList.toggle("col-hidden", !cols[key]);
+}
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const number = (value) => Number(String(value || 0).replace(",", "."));
 
@@ -41,23 +60,36 @@ function settings() {
 
 function addItem(item = {}) {
   const tr = document.createElement("tr");
+  tr.dataset.type = "item";
   tr.innerHTML = '<td><input data-key="description" placeholder="Popis položky"></td>' +
     '<td><input data-key="quantity" inputmode="decimal" type="number" min="0" step="any"></td>' +
     '<td><input data-key="unit" placeholder="MJ"></td>' +
-    '<td><input data-key="workUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
-    '<td><input data-key="materialUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
-    '<td><input data-key="combinedUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
-    '<td class="line-total">0,00 €</td><td><button class="row-del" aria-label="Odstrániť položku">×</button></td>';
+    '<td class="col-work"><input data-key="workUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
+    '<td class="col-material"><input data-key="materialUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
+    '<td class="col-combined"><input data-key="combinedUnitPrice" inputmode="decimal" type="number" min="0" step="any"></td>' +
+    '<td class="col-total line-total">0,00 €</td><td><button class="row-del" aria-label="Odstrániť položku">×</button></td>';
   for (const key of ["description", "quantity", "unit", "workUnitPrice", "materialUnitPrice", "combinedUnitPrice"]) {
     const input = tr.querySelector('[data-key="' + key + '"]');
     input.value = item[key] ?? (key === "quantity" ? 1 : key === "unit" ? "ks" : "");
   }
   $("items").appendChild(tr);
+  applyColumns();
   recalc();
 }
-
+function addSection(item = {}) {
+  const tr = document.createElement("tr");
+  tr.dataset.type = "section";
+  tr.className = "section-row";
+  tr.innerHTML = '<td colspan="7"><input data-key="description" placeholder="Názov oddielu"></td>' +
+    '<td><button class="row-del" aria-label="Odstrániť oddiel">×</button></td>';
+  tr.querySelector('[data-key="description"]').value = item.description || "";
+  $("items").appendChild(tr);
+  recalc();
+}
 function rowData(tr) {
   const get = (key) => tr.querySelector('[data-key="' + key + '"]').value;
+  if (tr.dataset.type === "section")
+    return { type: "section", description: get("description").trim() };
   return {
     type: "item",
     description: get("description").trim(),
@@ -76,11 +108,12 @@ function collect() {
     number: $("docNumber").textContent,
     project: $("project").value.trim(),
     partner: $("partner").value.trim(),
+    company: $("company").value.trim(),
     title: $("title").value.trim(),
     date: $("date").value,
     status: $("status").value,
     note: $("note").value.trim(),
-    settings: settings(),
+    settings: { ...settings(), columns: getColumns(), printBrand: $("printBrand").checked },
     items: Array.from($("items").querySelectorAll("tr")).map(rowData),
     updatedAt: new Date().toISOString()
   };
@@ -91,7 +124,9 @@ function recalc() {
     const d = collect();
     let i = 0;
     for (const tr of $("items").querySelectorAll("tr")) {
-      tr.querySelector(".line-total").textContent = eur(lineTotal(d.items[i++], d.settings));
+      const item = d.items[i++];
+      if (item.type === "section") continue;
+      tr.querySelector(".line-total").textContent = eur(lineTotal(item, d.settings));
     }
     const t = totals(d.items, d.settings);
     $("subtotal").textContent = eur(t.subtotal);
@@ -140,12 +175,15 @@ function freshDoc() {
   $("docNumber").textContent = makeNumber(kind);
   $("editorTitle").textContent = "Nový dokument";
   for (const id of ["project", "partner", "title", "note"]) $(id).value = "";
+  $("company").value = "Stavby – domy s.r.o.";
   $("date").value = dateNow();
   $("status").value = "draft";
   $("workMarkup").value = "0";
   $("materialMarkup").value = "0";
   $("rounding").value = "0.01";
   $("includeVat").checked = true;
+  $("printBrand").checked = true;
+  setColumns(columnDefaults(kind));
   $("items").innerHTML = "";
   addItem();
   $("message").textContent = "";
@@ -158,12 +196,16 @@ function loadDocument(doc) {
   $("docNumber").textContent = doc.number;
   $("editorTitle").textContent = doc.title || KINDS[doc.kind].one;
   for (const id of ["project", "partner", "title", "date", "status", "note"]) $(id).value = doc[id] || "";
+  $("company").value = doc.company ?? "Stavby – domy s.r.o.";
   $("workMarkup").value = doc.settings?.workMarkupPercent ?? 0;
   $("materialMarkup").value = doc.settings?.materialMarkupPercent ?? 0;
   $("rounding").value = doc.settings?.roundTotalTo ?? 0.01;
   $("includeVat").checked = doc.settings?.includeVat !== false;
+  $("printBrand").checked = doc.settings?.printBrand !== false;
+  setColumns({ ...columnDefaults(kind), ...(doc.settings?.columns || {}) });
   $("items").innerHTML = "";
-  (doc.items?.length ? doc.items : [{}]).forEach(addItem);
+  (doc.items?.length ? doc.items : [{}]).forEach((item) =>
+    item.type === "section" ? addSection(item) : addItem(item));
   recalc();
   renderList();
 }
@@ -203,16 +245,45 @@ function copyMail() {
 }
 
 function printDocument() {
-  const t = recalc();
-  if (!t) return;
+  const result = recalc();
+  if (!result) return;
   const d = collect();
-  const lines = d.items.filter((i) => i.description).map((i) => "<tr><td>" + escapeHtml(i.description) + "</td><td>" + escapeHtml(i.quantity) +
-    "</td><td>" + escapeHtml(i.unit) + "</td><td>" + eur(lineTotal(i, d.settings)) + "</td></tr>").join("");
-  $("printArea").innerHTML = "<h1>" + escapeHtml(KINDS[kind].one) + "</h1>" +
-    '<div class="print-meta"><div>Číslo: ' + escapeHtml(d.number) + "</div><div>Dátum: " + escapeHtml(d.date) +
-    "</div><div>Zákazka: " + escapeHtml(d.project) + "</div><div>" + escapeHtml(KINDS[kind].partner) + ": " + escapeHtml(d.partner) +
-    "</div></div><p>" + escapeHtml(d.title) + "</p><table><thead><tr><th>Popis</th><th>Množstvo</th><th>MJ</th><th>Spolu</th></tr></thead><tbody>" +
-    lines + '</tbody></table><div class="print-total">Celkom: ' + eur(t.total) + "</div><div>DPH: " + eur(t.vat) +
+  const c = d.settings.columns;
+  const cols = [
+    ["Popis", true, "description"],
+    ["Množstvo", true, "quantity"],
+    ["MJ", true, "unit"],
+    ["JC práca", c.work, "workUnitPrice"],
+    ["JC materiál", c.material, "materialUnitPrice"],
+    ["JC materiál/práca", c.combined, "combinedUnitPrice"],
+    ["Spolu", c.total, "total"]
+  ].filter((entry) => entry[1]);
+  const headers = cols.map(([label]) => "<th>" + escapeHtml(label) + "</th>").join("");
+  const lines = d.items.filter((item) => item.description).map((item) => {
+    if (item.type === "section") {
+      return '<tr class="print-section"><td colspan="' + cols.length + '">' +
+        escapeHtml(item.description) + "</td></tr>";
+    }
+    return "<tr>" + cols.map(([, , key]) => {
+      const value = key === "total" ? eur(lineTotal(item, d.settings)) :
+        ["workUnitPrice", "materialUnitPrice", "combinedUnitPrice"].includes(key) ?
+          (item[key] !== "" && item[key] != null ? eur(Number(item[key])) : "") : escapeHtml(item[key]);
+      return "<td>" + value + "</td>";
+    }).join("") + "</tr>";
+  }).join("");
+  const header = d.settings.printBrand ? '<div class="print-brand">P.</div>' : "";
+  $("printArea").innerHTML = '<header class="print-head">' + header + "<h1>" +
+    escapeHtml(KINDS[d.kind].one) + '</h1></header>' +
+    '<div class="print-meta"><div>Číslo: ' + escapeHtml(d.number) +
+    "</div><div>Dátum: " + escapeHtml(d.date) +
+    "</div><div>Zákazka: " + escapeHtml(d.project) +
+    "</div><div>" + escapeHtml(KINDS[d.kind].partner) + ": " + escapeHtml(d.partner) +
+    "</div><div>Zhotoviteľ / objednávajúci: " + escapeHtml(d.company) +
+    "</div></div><p>" + escapeHtml(d.title) +
+    "</p><table><thead><tr>" + headers + "</tr></thead><tbody>" + lines +
+    '</tbody></table><div class="print-total">Spolu: ' + eur(result.total) +
+    "</div><div class=\"print-summary\">Základ: " + eur(result.subtotal) +
+    " · DPH: " + eur(result.vat) +
     '</div><p class="print-note">' + escapeHtml(d.note) + "</p>";
   window.print();
 }
@@ -225,6 +296,9 @@ $("nav").addEventListener("click", (event) => {
 });
 $("newBtn").addEventListener("click", freshDoc);
 $("addRow").addEventListener("click", () => addItem());
+$("addSection").addEventListener("click", () => addSection());
+for (const key of COLUMN_KEYS)
+  document.querySelector('[data-column="' + key + '"]').addEventListener("change", applyColumns);
 $("items").addEventListener("click", (event) => {
   if (!event.target.closest(".row-del")) return;
   event.target.closest("tr").remove();
