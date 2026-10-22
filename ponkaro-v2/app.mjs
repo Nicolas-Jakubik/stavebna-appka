@@ -161,6 +161,7 @@ function updateKind(k) {
   $("pageTitle").textContent = KINDS[k].title;
   $("partnerLabel").firstChild.textContent = KINDS[k].partner;
   $("copyMailBtn").hidden = k !== "objednavka";
+  $("convertBtn").hidden = k !== "ponuka";
   $("status").innerHTML = "";
   for (const [value, caption] of KINDS[k].statuses) {
     const opt = document.createElement("option");
@@ -320,6 +321,25 @@ for (const id of ["workMarkup", "materialMarkup", "rounding", "includeVat"]) $(i
 $("saveBtn").addEventListener("click", save);
 $("copyMailBtn").addEventListener("click", copyMail);
 $("printBtn").addEventListener("click", printDocument);
+$("convertBtn").addEventListener("click", () => {
+  if (kind !== "ponuka") return;
+  const t = recalc();
+  if (!t) return;
+  const source = collect();
+  updateKind("supis");
+  freshDoc();
+  const converted = {
+    ...source,
+    id: crypto.randomUUID(),
+    kind: "supis",
+    number: makeNumber("supis"),
+    status: "draft",
+    updatedAt: new Date().toISOString()
+  };
+  loadDocument(converted);
+  currentId = null;
+  $("message").textContent = "Súpis je pripravený z cenovej ponuky. Skontroluj položky a ulož ho.";
+});
 $("duplicateBtn").addEventListener("click", () => {
   const d = collect();
   d.id = crypto.randomUUID();
