@@ -40,6 +40,9 @@ try {
 } catch { /* nechaj prázdne */ }
 let kind = "supis";
 let currentId = null;
+let dirty = false;
+function markDirty() { dirty = true; $("message").textContent = "Neuložené zmeny"; }
+function confirmDiscard() { return !dirty || confirm("Máš neuložené zmeny. Pokračovať bez uloženia?"); }
 
 function makeNumber(k) {
   const year = new Date().getFullYear();
@@ -150,7 +153,7 @@ function renderList() {
     btn.className = "doc-card" + (currentId === d.id ? " selected" : "");
     btn.innerHTML = "<b>" + escapeHtml(d.number) + "</b><small>" + escapeHtml(d.project || d.title || "Bez názvu") +
       "</small><small>" + escapeHtml(d.date || "") + "</small>";
-    btn.addEventListener("click", () => loadDocument(d));
+    btn.addEventListener("click", () => { if (confirmDiscard()) loadDocument(d); });
     $("docList").appendChild(btn);
   }
 }
@@ -188,6 +191,7 @@ function freshDoc() {
   $("items").innerHTML = "";
   addItem();
   $("message").textContent = "";
+  dirty = false;
   renderList();
 }
 
@@ -208,6 +212,7 @@ function loadDocument(doc) {
   (doc.items?.length ? doc.items : [{}]).forEach((item) =>
     item.type === "section" ? addSection(item) : addItem(item));
   recalc();
+  dirty = false;
   renderList();
 }
 
@@ -229,6 +234,7 @@ function save() {
     return;
   }
   currentId = d.id;
+  dirty = false;
   $("message").textContent = "Skúšobný dokument uložený v tomto prehliadači.";
   renderList();
 }
@@ -292,12 +298,13 @@ function printDocument() {
 $("nav").addEventListener("click", (event) => {
   const btn = event.target.closest("[data-kind]");
   if (!btn) return;
+  if (!confirmDiscard()) return;
   updateKind(btn.dataset.kind);
   freshDoc();
 });
-$("newBtn").addEventListener("click", freshDoc);
-$("addRow").addEventListener("click", () => addItem());
-$("addSection").addEventListener("click", () => addSection());
+$("newBtn").addEventListener("click", () => { if (confirmDiscard()) freshDoc(); });
+$("addRow").addEventListener("click", () => { addItem(); markDirty(); });
+$("addSection").addEventListener("click", () => { addSection(); markDirty(); });
 for (const key of COLUMN_KEYS) {
   document.querySelector('[data-column="' + key + '"]').addEventListener("change", () => {
     if (key === "combined" && getColumns().combined) {
@@ -308,6 +315,7 @@ for (const key of COLUMN_KEYS) {
     }
     applyColumns();
     recalc();
+    markDirty();
   });
 }
 $("items").addEventListener("click", (event) => {
@@ -315,9 +323,18 @@ $("items").addEventListener("click", (event) => {
   event.target.closest("tr").remove();
   if (!$("items").querySelector("tr")) addItem();
   recalc();
+  markDirty();
 });
-$("items").addEventListener("input", recalc);
-for (const id of ["workMarkup", "materialMarkup", "rounding", "includeVat"]) $(id).addEventListener("change", recalc);
+$("items").addEventListener("input", () => { recalc(); markDirty(); });
+for (const id of ["workMarkup", "materialMarkup", "rounding", "includeVat"])
+  $(id).addEventListener("change", () => { recalc(); markDirty(); });
+for (const id of ["project", "partner", "company", "title", "date", "status", "note", "printBrand"])
+  $(id).addEventListener("input", markDirty);
+window.addEventListener("beforeunload", (event) => {
+  if (!dirty) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 $("saveBtn").addEventListener("click", save);
 $("copyMailBtn").addEventListener("click", copyMail);
 $("printBtn").addEventListener("click", printDocument);
@@ -338,6 +355,7 @@ $("convertBtn").addEventListener("click", () => {
   };
   loadDocument(converted);
   currentId = null;
+  markDirty();
   $("message").textContent = "Súpis je pripravený z cenovej ponuky. Skontroluj položky a ulož ho.";
 });
 $("duplicateBtn").addEventListener("click", () => {
@@ -348,6 +366,7 @@ $("duplicateBtn").addEventListener("click", () => {
   currentId = null;
   loadDocument(d);
   currentId = null;
+  markDirty();
   $("message").textContent = "Kópia je pripravená. Pre uloženie klikni Uložiť dokument.";
 });
 $("deleteBtn").addEventListener("click", () => {
