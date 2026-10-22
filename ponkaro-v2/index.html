@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="sk"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PONKARO – skúšobná verzia</title>
+<link rel="stylesheet" href="./styles.css">
+<script type="module" src="./app.mjs"></script>
+</head><body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">P.</div><div><strong>PONKARO</strong><small>Firemné dokumenty</small></div></div>
+    <nav class="nav" id="nav">
+      <button data-kind="supis" class="active">Súpisy prác</button>
+      <button data-kind="ponuka">Cenové ponuky</button>
+      <button data-kind="objednavka">Objednávky</button>
+    </nav>
+    <div class="sidebar-foot">Vývojová verzia • žiadne firemné dáta</div>
+  </aside>
+  <main class="main">
+    <header class="top"><div><div class="eyebrow">DOKUMENTY</div><h1 id="pageTitle">Súpisy prác</h1><p>Rýchla administratíva bez zbytočnej zložitosti.</p></div><button class="primary" id="newBtn">+ Nový dokument</button></header>
+    <div class="notice">Skúšobná verzia. Údaje sa zatiaľ ukladajú len v tomto prehliadači. Nepoužívaj ju na ostrú firemnú evidenciu.</div>
+    <section class="workspace">
+      <aside class="history panel"><div class="panel-head"><strong>Dokumenty</strong><span id="docCount">0</span></div>
+        <div id="docList" class="doc-list"></div>
+        <div class="backup"><button id="exportBtn" class="subtle">Exportovať zálohu JSON</button>
+        <label class="subtle file">Importovať JSON<input id="importInput" type="file" accept="application/json,.json" hidden></label></div>
+      </aside>
+      <section class="editor panel">
+        <div class="panel-head"><strong id="editorTitle">Nový súpis</strong><span class="muted" id="docNumber">Návrh</span></div>
+        <div class="content">
+          <div class="fields">
+            <label>Zákazka<input id="project" placeholder="napr. Rajchlova – ZB"></label>
+            <label id="partnerLabel">Objednávateľ<input id="partner" placeholder="Meno / firma"></label>
+            <label>Názov dokumentu<input id="title" placeholder="napr. Sadrokartónové práce"></label>
+            <label>Dátum<input id="date" type="date"></label>
+            <label>Stav<select id="status"></select></label>
+          </div>
+          <div class="row-head"><strong>Položky</strong><button id="addRow" class="subtle">+ Pridať položku</button></div>
+          <div class="table-scroll"><table><thead><tr><th>Popis</th><th>Množstvo</th><th>MJ</th><th>JC práca</th><th>JC materiál</th><th>JC spolu</th><th>Spolu</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
+          <div class="bottom">
+            <div class="options">
+              <label>Prirážka práca %<input id="workMarkup" type="number" min="0" step=".1" value="0"></label>
+              <label>Prirážka materiál %<input id="materialMarkup" type="number" min="0" step=".1" value="0"></label>
+              <label>Zaokrúhliť spolu na<input id="rounding" type="number" min="0.01" step=".01" value=".01"></label>
+              <label class="check"><input id="includeVat" type="checkbox" checked> S DPH 23 %</label>
+            </div>
+            <div class="totals"><div><span>Bez DPH</span><strong id="subtotal">0,00 €</strong></div><div><span>DPH</span><strong id="vat">0,00 €</strong></div><div class="grand"><span>Spolu</span><strong id="grand">0,00 €</strong></div></div>
+          </div>
+          <label>Poznámka<textarea id="note" rows="3" placeholder="Voliteľné"></textarea></label>
+          <div class="actions"><button id="saveBtn" class="primary">Uložiť dokument</button><button id="duplicateBtn" class="subtle">Duplikovať</button><button id="printBtn" class="subtle">Tlač / PDF</button><button id="copyMailBtn" class="subtle" hidden>Skopírovať objednávku do e-mailu</button><button id="deleteBtn" class="danger">Odstrániť</button></div>
+          <p id="message" role="status" class="feedback"></p>
+        </div>
+      </section>
+    </section>
+  </main>
+</div><div id="printArea"></div>
+</body></html>
