@@ -5,6 +5,19 @@ import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, znak => {
+    const mapa: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    }
+    return mapa[znak] || znak
+  })
+}
+
 export default function DashboardPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
@@ -684,6 +697,159 @@ export default function DashboardPage() {
     return true
   })
 
+  function exportovatDennyPrehladPdf() {
+    const okno = window.open('', '_blank', 'width=1280,height=900')
+    if (!okno) {
+      alert('Pre export PDF povoľ v prehliadači vyskakovacie okná pre túto stránku.')
+      return
+    }
+
+    const obdobie =
+      filterDennehoPrehladu === 'prva' ? '1. - 15.' :
+      filterDennehoPrehladu === 'druha' ? '16. - koniec mesiaca' :
+      'Celý mesiac'
+
+    const riadky = dennyPrehladNaZobrazenie.map(den => {
+      const neprítomní = den.skupinyNepritomnosti.length > 0
+        ? den.skupinyNepritomnosti
+            .map((skupina: any) => {
+              const mena = skupina.polozky.map((polozka: any) => escapeHtml(polozka.meno)).join(', ')
+              return `<strong>${escapeHtml(skupina.dovod)}:</strong> ${mena}`
+            })
+            .join('<br>')
+        : '—'
+
+      const nezapísaní = den.nezapisani.length > 0
+        ? den.nezapisani.map((meno: string) => escapeHtml(meno)).join(', ')
+        : '—'
+
+      const pracovníci = den.mena.length > 0
+        ? den.mena.map((meno: string) => escapeHtml(meno)).join(', ')
+        : 'Nikto'
+
+      const trieda =
+        den.denVTyzdni === 'Ne' ? 'nedela' :
+        den.denVTyzdni === 'So' ? 'sobota' :
+        ''
+
+      return `
+        <tr class="${trieda}">
+          <td class="datum"><strong>${escapeHtml(formatujDatumSK(den.datum))}</strong><br><span>${escapeHtml(den.denVTyzdni)}</span></td>
+          <td class="pocet">${den.pocet}</td>
+          <td>${pracovníci}</td>
+          <td>${neprítomní}</td>
+          <td>${nezapísaní}</td>
+        </tr>
+      `
+    }).join('')
+
+    const vygenerované = new Intl.DateTimeFormat('sk-SK', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date())
+
+    const názovSúboru = `pracovnici-podla-dni-${filterMesiac}-${filterDennehoPrehladu}.pdf`
+
+    okno.document.open()
+    okno.document.write(`<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(názovSúboru)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 9mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #1d1d1f;
+      font-family: Arial, "Helvetica Neue", sans-serif;
+      font-size: 9pt;
+      line-height: 1.35;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .hlavicka {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+    h1 { margin: 0; font-size: 17pt; line-height: 1.1; }
+    .podnadpis { margin-top: 4px; color: #6e6e73; font-size: 9pt; }
+    .meta { color: #86868b; font-size: 8pt; text-align: right; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    thead { display: table-header-group; }
+    th {
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      padding: 6px 7px;
+      color: #515154;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      text-align: left;
+    }
+    td {
+      border: 1px solid #dedee2;
+      padding: 6px 7px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    tr.sobota td { background: #fff7ed; }
+    tr.nedela td { background: #fef2f2; }
+    th:nth-child(1), td:nth-child(1) { width: 12%; }
+    th:nth-child(2), td:nth-child(2) { width: 7%; text-align: center; }
+    th:nth-child(3), td:nth-child(3) { width: 29%; }
+    th:nth-child(4), td:nth-child(4) { width: 26%; }
+    th:nth-child(5), td:nth-child(5) { width: 26%; }
+    .datum span { color: #86868b; font-size: 8pt; }
+    .pocet { font-size: 11pt; font-weight: 700; }
+    .poznamka {
+      margin-top: 8px;
+      color: #86868b;
+      font-size: 7.5pt;
+    }
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hlavicka">
+    <div>
+      <h1>Pracovníci v práci podľa dní</h1>
+      <div class="podnadpis">${escapeHtml(nazovVybranehoMesiaca)} · ${escapeHtml(obdobie)} · každý pracovník sa za deň počíta iba raz</div>
+    </div>
+    <div class="meta">Vygenerované: ${escapeHtml(vygenerované)}</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Deň</th>
+        <th>V práci</th>
+        <th>Pracovníci</th>
+        <th>Neprítomní</th>
+        <th>Nezapísaní</th>
+      </tr>
+    </thead>
+    <tbody>${riadky}</tbody>
+  </table>
+  <div class="poznamka">Sobota je zvýraznená oranžovo, nedeľa červeno. Nezapísaní sa nezobrazujú pre budúce dni ani nedele.</div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 250);
+    });
+  </script>
+</body>
+</html>`)
+    okno.document.close()
+  }
+
   const dnesText = datumDoLocalString(new Date())
   const vceraDatum = new Date()
   vceraDatum.setDate(vceraDatum.getDate() - 1)
@@ -1278,7 +1444,23 @@ export default function DashboardPage() {
                 <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>{nazovVybranehoMesiaca} · každý pracovník sa za deň počíta iba raz</div>
               </div>
 
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={exportovatDennyPrehladPdf}
+                  style={{
+                    ...buttonSecondaryStyle,
+                    padding: '6px 12px',
+                    fontSize: '9px',
+                    color: '#0071e3',
+                    borderColor: '#b9d9f7',
+                    backgroundColor: '#f5faff'
+                  } as any}
+                  title="Exportovať aktuálne zobrazený prehľad do PDF"
+                >
+                  Export PDF
+                </button>
+
                 {[
                   { key: 'cely', label: 'Celý mesiac' },
                   { key: 'prva', label: '1.–15.' },
