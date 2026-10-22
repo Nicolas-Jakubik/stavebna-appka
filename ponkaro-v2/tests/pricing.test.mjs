@@ -22,3 +22,18 @@ test("bez DPH a zaokrúhlenie výslednej sumy", () => {
 test("neplatné množstvo odmietnuť", () => {
   assert.throws(() => lineTotal({ quantity: -1 }), RangeError);
 });
+
+test("skrytá spoločná JC nemení oddelené ceny", () => {
+  const item = { quantity: 2, workUnitPrice: 20, materialUnitPrice: 30, combinedUnitPrice: 999 };
+  const t = totals([item], { includeVat: false, columns: { work: true, material: true, combined: false } });
+  assert.equal(t.total, 100);
+});
+test("objednávka bez zobrazených cien nemá falošný súčet", () => {
+  const item = { quantity: 3, workUnitPrice: 10, materialUnitPrice: 40 };
+  const t = totals([item], { includeVat: false, columns: { work: false, material: false, combined: false } });
+  assert.equal(t.total, 0);
+});
+test("oddiel je mimo kalkulácie", () => {
+  const docs = [{ type: "section", description: "Príprava" }, { type: "item", quantity: 2, combinedUnitPrice: 15 }];
+  assert.equal(totals(docs, { includeVat: false }).total, 30);
+});
