@@ -297,8 +297,18 @@ $("nav").addEventListener("click", (event) => {
 $("newBtn").addEventListener("click", freshDoc);
 $("addRow").addEventListener("click", () => addItem());
 $("addSection").addEventListener("click", () => addSection());
-for (const key of COLUMN_KEYS)
-  document.querySelector('[data-column="' + key + '"]').addEventListener("change", applyColumns);
+for (const key of COLUMN_KEYS) {
+  document.querySelector('[data-column="' + key + '"]').addEventListener("change", () => {
+    if (key === "combined" && getColumns().combined) {
+      document.querySelector('[data-column="work"]').checked = false;
+      document.querySelector('[data-column="material"]').checked = false;
+    } else if ((key === "work" || key === "material") && getColumns()[key]) {
+      document.querySelector('[data-column="combined"]').checked = false;
+    }
+    applyColumns();
+    recalc();
+  });
+}
 $("items").addEventListener("click", (event) => {
   if (!event.target.closest(".row-del")) return;
   event.target.closest("tr").remove();
