@@ -30,12 +30,22 @@
           <div class="fields">
             <label>Zákazka<input id="project" placeholder="napr. Rajchlova – ZB"></label>
             <label id="partnerLabel">Objednávateľ<input id="partner" placeholder="Meno / firma"></label>
+            <label>Zhotoviteľ / objednávajúci<input id="company" placeholder="Názov firmy" value="Stavby – domy s.r.o."></label>
             <label>Názov dokumentu<input id="title" placeholder="napr. Sadrokartónové práce"></label>
             <label>Dátum<input id="date" type="date"></label>
             <label>Stav<select id="status"></select></label>
           </div>
-          <div class="row-head"><strong>Položky</strong><button id="addRow" class="subtle">+ Pridať položku</button></div>
-          <div class="table-scroll"><table><thead><tr><th>Popis</th><th>Množstvo</th><th>MJ</th><th>JC práca</th><th>JC materiál</th><th>JC spolu</th><th>Spolu</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
+          <div class="row-head"><strong>Položky</strong><div class="row-actions"><button id="addSection" class="subtle">+ Oddiel</button><button id="addRow" class="subtle">+ Pridať položku</button></div></div>
+          <details class="column-settings"><summary>Voliteľné stĺpce a PDF</summary>
+            <div class="column-choices">
+              <label class="check"><input type="checkbox" data-column="work" checked> JC práca</label>
+              <label class="check"><input type="checkbox" data-column="material" checked> JC materiál</label>
+              <label class="check"><input type="checkbox" data-column="combined"> JC materiál/práca</label>
+              <label class="check"><input type="checkbox" data-column="total" checked> Spolu</label>
+              <label class="check"><input type="checkbox" id="printBrand" checked> Logo v PDF</label>
+            </div>
+          </details>
+          <div class="table-scroll"><table><thead><tr><th>Popis</th><th>Množstvo</th><th>MJ</th><th class="col-work">JC práca</th><th class="col-material">JC materiál</th><th class="col-combined">JC materiál/práca</th><th class="col-total">Spolu</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
           <div class="bottom">
             <div class="options">
               <label>Prirážka práca %<input id="workMarkup" type="number" min="0" step=".1" value="0"></label>
