@@ -33,7 +33,14 @@ docker run -d --name "$container" \
 
 ready=0
 for attempt in $(seq 1 45); do
-  if docker exec "$container" pg_isready -U postgres -d synthetic_source >/dev/null 2>&1; then
+  # pg_isready can report success from the temporary initdb server before
+  # POSTGRES_DB has been created. Require an actual query against the intended
+  # database AND a live TCP listener before using its data.
+  db_check="$(docker exec "$container" psql -X -A -t -U postgres \
+    -d synthetic_source -c 'SELECT 1' 2>/dev/null || true)"
+  if [[ "$db_check" == 1 ]] && \
+      docker exec "$container" pg_isready -h 127.0.0.1 -p 5432 \
+        -U postgres -d synthetic_source >/dev/null 2>&1; then
     ready=1
     break
   fi
