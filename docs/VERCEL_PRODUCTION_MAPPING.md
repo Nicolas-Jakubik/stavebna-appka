@@ -6,9 +6,21 @@
 
 - Pripojený Vercel účet uvádza jeden tím s názvom **Stavby-DomySRO's projects**, tímové ID `team_J51ayy2Um69GWfW8qecJI3wr`.
 - Zoznam projektov zobrazuje `sd-evidencia` s ID `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`.
-- **Čítanie detailu projektu vrátilo 404** a **zoznam nasadení 403 (forbidden)**. Ani dostupnosť názvu projektu v zozname nie je dôkazom, že vidíme produkčné nasadenie či jeho environment variables.
+- Predchádzajúce čítanie detailu projektu s explicitným tímovým scoping-om vrátilo 404 a zoznam nasadení 403. **Aktuálne sú tieto metadátové požiadavky vyriešené cez ID projektu bez scoping-u; produkčnú verziu sme overili.**
 - Prepojenie Vercel Git contexts nevrátilo žiadne linkedProjects; toto samo o sebe nie je dôkaz, že produkčný projekt Git integráciu nepoužíva.
 - Pripojená Supabase databáza sa volá `MojaFiremnaApp`, projektový ref `pfbgzwehfzgmsqjykvkb`. Metadáta boli overené iba na čítanie. **Nie je dokázané, že produkčný Vercel používa tento ref.**
+
+## Aktualizácia 28.10.2026 – Vercel čítanie vyriešené
+
+**Nový výsledok:** Čítanie projektu a zoznamu nasadení sa podarilo **bez zadania `teamId` ani `slug`**, iba cez ID projektu `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`. Predchádzajúce 404/403 pri explicitnom tímovom scoping-u nie sú dôkazom neprístupnosti projektu.
+
+- **READY produkčné nasadenie**: projekt `sd-evidencia`, GitHub `Nicolas-Jakubik/stavebna-appka`, vetva `main`, commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d` (pred opravami). Toto je metadátový stav nasadenia, nie vykonaný browser smoke test.
+- **Potvrdená produkčná doména projektu:** `stavebna-appka.vercel.app`.
+- **Preview:** v histórii je `READY` testovacie nasadenie na commite `012449354082c5f17068ff7ff20f1ce134ff88a2` z `integration/safe-repairs-batch2-2026-10-28`; nejde o poslednú verziu PR ani o potvrdený prístupný UI test. SSO ochrana je zapnutá pre ne-custom domény.
+- **Výlučne metadáta nastavení:** Vercel potvrdzuje prítomnosť `NEXT_PUBLIC_SUPABASE_URL` pre Production/Preview a `SUPABASE_SERVICE_ROLE_KEY` len pre Production. URL premenná je označená `sensitive`; čítanie individuálnej konfigurácie **nevrátilo jej hodnotu**. **Preto nevieme potvrdiť, či je backendom `MojaFiremnaApp`**. Žiadny secret key ani dešifrované premenné sa nečítali/neposkytovali.
+- **Zostávajúci presný krok:** v nastaveniach projektu manuálne pozrieť *iba* hostname/ref `NEXT_PUBLIC_SUPABASE_URL` v Production a porovnať s potvrdenou DB. Nezdieľať kľúče; nepresúvať ani nemenit deployment.
+
+**STOP:** kým nie je potvrdený projektový ref a hotová skutočná obnoviteľná záloha, PR #102 nenasadzovať. Posledná pripravená verzia ostáva Draft; produkčný SHA `main` je zachovaný.
 
 ## Bezpečná kontrola v používateľskom rozhraní Vercelu
 
@@ -25,7 +37,7 @@ Bezpečne evidovať iba **názov projektu**, **team slug**, **produkčnú domén
 
 ## STOP do potvrdenia
 
-- Vercel produkčné prostredie neoverené; neznámy reálny backend znamená, že nevieme bezpečne vybrať zdroj zálohy.
+- Vercel produkčný deployment/commit **overený z metadát**; backendový Supabase ref je stále neznámy a nevieme bezpečne vybrať zdroj zálohy.
 - Bez potvrdenia backendu **nespúšťať pg_dump proti predpokladanému Supabase projektu**.
 - Nespájať PR #102 s `main`, nenasadzovať, nemenovať domény, nemeniť env variables a neaplikovať migrácie.
 - Po overení napojenia pokračovať iba šifrovanou zálohou a nezávislou skúšobnou obnovou podľa `backup-and-restore-runbook.md`.
