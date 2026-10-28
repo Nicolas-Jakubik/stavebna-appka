@@ -80,6 +80,16 @@ test('admin gateway security and PostgREST compatibility', async t => {
         assert.equal(new URL(calls.at(-1).url).pathname, `/rest/v1/${table}`)
       }
     })
+    await t.test('unscoped, broad or ambiguous DELETE requests cannot reach the database', async () => {
+      const before = calls.length
+      for (const query of [
+        '', '?id=gt.1', '?id=eq.0', '?id=eq.-1',
+        '?id=eq.1&id=eq.2', '?id=eq.1.2', '?or=(id.gt.0)',
+      ]) {
+        assert.equal((await route.DELETE(req('DELETE', {}, undefined, query), context('dochadzka'))).status, 400)
+      }
+      assert.equal(calls.length, before)
+    })
     await t.test('authenticated insert, update and delete reach the correct table', async () => {
       for (const method of ['POST', 'PATCH', 'DELETE']) {
         const body = method === 'DELETE' ? undefined : '[{"meno":"Test"}]'
