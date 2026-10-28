@@ -2,7 +2,7 @@
 
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28, continuation checkpoint in PR #102.
-**Approximate prepared-repairs progress:** 55% (planning estimate; code + test CI verified); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
+**Approximate prepared-repairs progress:** 65% (planning estimate; core code and CI verified, real integration checks remain); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
@@ -32,6 +32,10 @@
 - #101 CI run 40667032448 succeeded: tests, TypeScript and build. Legacy lint issues are non-blocking.
 - #102 first integrated CI on commit `1f0c9f922f633a8c222b77b8871d456b81c4646c`: application run **40668438176 passed**; backup script run **40668438145 passed**.
 - #102 subsequent commit `6858fb52d504b33662bb999def4452a5f823b633`: catches rejected finance page requests and includes a new regression test. Follow-up application run **40668625265** and final pre-checkpoint run **40668709706** succeeded (tests, TypeScript and build); the backup script run **40668709641** succeeded. Documentation-only changes may start a fresh CI run.
+- #102 extra admin mutation hardening in commits `fe071d4` and `6d408c6`: PATCH requires exact row ID; existing uniquely keyed finance row updates and specific historical rename paths remain allowed. DELETE rejects extraneous/broad filters. Initial test fixture used an INSERT array for PATCH and failed; corrected regression fixture passed in application CI **40669929374**.
+- #102 payroll pagination commit `b3c76aca24783927143b14d5291b55e4336e9cb4`: both selected half-month and entire month load all attendance pages in stable ID order, with fail-closed rendering and PDF guard on error. Application CI **40670091691 succeeded**, backup script CI **40670091869 succeeded**.
+- Supabase metadata was **read only**, from a connected project called `MojaFiremnaApp`; its schema includes a UNIQUE `financie_stavby.zakazka_id`. Its relationship to the currently deployed Vercel application's real environment **has not been proven**; verify before any backup/restore planning.
+- Remaining audit finding: some dashboard attendance reads still lack pagination and may truncate above the default row limit. Do not claim full 100% safety.
 - Package lock verified: Next.js **16.4.3**, Sharp **0.35.5**.
 - Vercel preview/status for `sd-evidencia` is **failure** with a build-rate-limit URL. Do not interpret GitHub CI success as successful preview or deployment.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
@@ -42,8 +46,8 @@
 1. Create a genuinely private encrypted backup using a trusted computer and separate DB credentials; restore to isolated database and verify integrity.
 2. Test recorder access links and admin roles with representative mobile/desktop browsers.
 3. Compare historical pay reports to original records before approving changes.
-4. Review paging with >1,000 rows in a nonproduction environment.
-5. **Code reconciliation completed in draft #102**, but confirm final CI for latest HEAD and do isolated mobile/browser/integration tests; review Vercel preview build-rate-limit.
+4. Test both finance and payroll paging with >1,000 rows in a nonproduction environment, and finish reviewing unpaginated dashboard reads.
+5. **Code reconciliation and CI completed in draft #102** through `b3c76aca`. Still perform isolated mobile/browser/integration tests and resolve Vercel preview build-rate-limit. Do not infer production readiness from CI alone.
 6. Proposed release/rollback acceptance matrix is prepared in [`docs/SAFE_RELEASE_CHECKLIST.md`](SAFE_RELEASE_CHECKLIST.md). It still requires approval and evidence of backup/restore/browser/data checks before any production change. **Do not claim repairs are live until deployment is confirmed.**
 
 ## Resume in a new ChatGPT conversation
