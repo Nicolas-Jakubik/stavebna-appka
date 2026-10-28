@@ -2,7 +2,7 @@
 
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28, continuation checkpoint in PR #102.
-**Approximate prepared-repairs progress:** 65% (planning estimate; core code and CI verified, real integration checks remain); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
+**Approximate prepared-repairs progress:** 80% (planning estimate; pagination and safe-read guards verified by CI, real integration checks remain); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
@@ -35,7 +35,10 @@
 - #102 extra admin mutation hardening in commits `fe071d4` and `6d408c6`: PATCH requires exact row ID; existing uniquely keyed finance row updates and specific historical rename paths remain allowed. DELETE rejects extraneous/broad filters. Initial test fixture used an INSERT array for PATCH and failed; corrected regression fixture passed in application CI **40669929374**.
 - #102 payroll pagination commit `b3c76aca24783927143b14d5291b55e4336e9cb4`: both selected half-month and entire month load all attendance pages in stable ID order, with fail-closed rendering and PDF guard on error. Application CI **40670091691 succeeded**, backup script CI **40670091869 succeeded**.
 - Supabase metadata was **read only**, from a connected project called `MojaFiremnaApp`; its schema includes a UNIQUE `financie_stavby.zakazka_id`. Its relationship to the currently deployed Vercel application's real environment **has not been proven**; verify before any backup/restore planning.
-- Remaining audit finding: some dashboard attendance reads still lack pagination and may truncate above the default row limit. Do not claim full 100% safety.
+- #102 dashboard pagination commits `bbd5765c09d4bb9b7b556982cf3650eeca46dd51` and `9bde5dedcc1044a9caf8b03df76465a408d8c831`: full history for conflict checks, selected periods, options, absences and yesterday; UI hides totals/operations when any required dataset is incomplete; consistent row-ID comparison. Application CI [40670935123](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40670935123) **passed**.
+- #102 project and employee list fixes: `3b262280e714345f3d1a68c66f2e0f2cbf7215a2` and `864fd22805ac06fa0a37d0f6ae264c244abdd69e` paginate complete attendance and absence lists and hide misleading partial metrics on failure. Application CI [40671261083](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40671261083) **passed** (tests, TypeScript and build); backup script CI [40671261027](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40671261027) **passed**. Neither creates a real database backup.
+- Vercel connector listed a project named `sd-evidencia`, but project detail lookup returned 404 and deployments listing returned **403 permission denied**. The connected account cannot reliably verify the currently live deployment or database binding; this remains a release blocker.
+- Further audit: recorder's short-range attendance read and other pages can still have default 1,000-row limits; do not claim all paths verified or full 100% safety.
 - Package lock verified: Next.js **16.4.3**, Sharp **0.35.5**.
 - Vercel preview/status for `sd-evidencia` is **failure** with a build-rate-limit URL. Do not interpret GitHub CI success as successful preview or deployment.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
@@ -46,8 +49,8 @@
 1. Create a genuinely private encrypted backup using a trusted computer and separate DB credentials; restore to isolated database and verify integrity.
 2. Test recorder access links and admin roles with representative mobile/desktop browsers.
 3. Compare historical pay reports to original records before approving changes.
-4. Test both finance and payroll paging with >1,000 rows in a nonproduction environment, and finish reviewing unpaginated dashboard reads.
-5. **Code reconciliation and CI completed in draft #102** through `b3c76aca`. Still perform isolated mobile/browser/integration tests and resolve Vercel preview build-rate-limit. Do not infer production readiness from CI alone.
+4. Test finance, payroll, dashboard, project/employee history paging with >1,000 rows on isolated nonproduction data; review remaining recorder reads and other capped queries.
+5. **Code reconciliation and CI completed in draft #102** through `864fd228` for the audited admin views. Still perform isolated mobile/browser/integration tests, confirm Vercel access and resolve Preview build-rate-limit. Do not infer production readiness from CI alone.
 6. Proposed release/rollback acceptance matrix is prepared in [`docs/SAFE_RELEASE_CHECKLIST.md`](SAFE_RELEASE_CHECKLIST.md). It still requires approval and evidence of backup/restore/browser/data checks before any production change. **Do not claim repairs are live until deployment is confirmed.**
 
 ## Resume in a new ChatGPT conversation
