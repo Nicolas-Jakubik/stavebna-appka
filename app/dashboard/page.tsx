@@ -5,6 +5,7 @@ import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { datumNaSlovensku, mesiacNaSlovensku } from '../../lib/businessDate'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -29,7 +30,7 @@ export default function DashboardPage() {
   const controlRequest = useRef(0)
   const periodRequest = useRef(0)
   const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
-  const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
+  const [filterMesiac, setFilterMesiac] = useState(mesiacNaSlovensku())
   const [filterDen, setFilterDen] = useState('')
   const [filterZakazka, setFilterZakazka] = useState('')
   const [filterMeno, setFilterMeno] = useState('')
@@ -58,12 +59,12 @@ export default function DashboardPage() {
   const [ukladaNepritomnost, setUkladaNepritomnost] = useState(false)
   const [chybaNepritomnosti, setChybaNepritomnosti] = useState('')
   const [novaNepritomnost, setNovaNepritomnost] = useState({
-    datum: new Date().toISOString().split('T')[0],
+    datum: datumNaSlovensku(),
     dovod: '',
     mena: [] as string[]
   })
   const [noveZaznamy, setNoveZaznamy] = useState([
-    { datum: new Date().toISOString().split('T')[0], mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
+    { datum: datumNaSlovensku(), mena: [] as string[], zakazka: '', prichod: '', odchod: '' }
   ])
 
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
@@ -567,7 +568,7 @@ export default function DashboardPage() {
   }
 
   function pridatPrazdnyZaznam() {
-    setNoveZaznamy([...noveZaznamy, { datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
+    setNoveZaznamy([...noveZaznamy, { datum: datumNaSlovensku(), mena: [], zakazka: '', prichod: '', odchod: '' }])
   }
 
   function zmenaNovehoZaznamu(index: number, pole: string, hodnota: string) {
@@ -642,7 +643,7 @@ export default function DashboardPage() {
     }
     else {
       setUkazatFormular(false)
-      setNoveZaznamy([{ datum: new Date().toISOString().split('T')[0], mena: [], zakazka: '', prichod: '', odchod: '' }])
+      setNoveZaznamy([{ datum: datumNaSlovensku(), mena: [], zakazka: '', prichod: '', odchod: '' }])
       await Promise.all([nacitaj(), nacitajFiltre(), nacitajNezapisanychVcera(), nacitajKontrolneZaznamy()])
     }
   }
