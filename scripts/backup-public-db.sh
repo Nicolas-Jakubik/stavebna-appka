@@ -9,10 +9,11 @@ umask 077
 : "${PGDATABASE:?Set PGDATABASE}"
 : "${PGPASSWORD:?Set PGPASSWORD locally; never paste it into chat or source control}"
 : "${BACKUP_DIR:?Set BACKUP_DIR to a private location OUTSIDE the Git repository}"
+: "${BACKUP_AGE_RECIPIENT:?Set BACKUP_AGE_RECIPIENT to a public age recipient; private identity must be kept offline}"
 
 export PGSSLMODE="${PGSSLMODE:-require}"
 
-for command_name in pg_dump pg_restore; do
+for command_name in pg_dump pg_restore age; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     printf 'Missing required PostgreSQL command: %s\n' "$command_name" >&2
     exit 2
@@ -32,34 +33,51 @@ if [[ -n "$source_directory" ]]; then
 fi
 
 timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
-target="$target_directory/firemnaappka-public-$timestamp.dump"
+target="$target_directory/firemnaappka-public-$timestamp.dump.age"
 if [[ -e "$target" ]]; then
   printf 'A backup already exists at the destination; refusing to overwrite it.\n' >&2
   exit 2
 fi
 
-temporary="$(mktemp "$target_directory/.firemnaappka-backup.XXXXXXXX")"
+temporary="$(mktemp "$target_directory/.firemnaappka-encrypted.XXXXXXXX")"
 manifest="$(mktemp "$target_directory/.firemnaappka-manifest.XXXXXXXX")"
 cleanup() { rm -f -- "$temporary" "$manifest"; }
 trap cleanup EXIT
 
-# No production changes. Credentials are read from PG* environment variables,
-# never passed in command-line arguments or written to the backup manifest.
-pg_dump --no-password --format=custom --no-owner --no-acl --schema=public --file="$temporary"
-pg_restore --list "$temporary" > "$manifest"
-
-if ! grep -Eq 'TABLE DATA[[:space:]]+public[[:space:]]+dochadzka' "$manifest"; then
-  printf 'The archive does not contain the required public.dochadzka table data.\n' >&2
+# pg_dump streams directly into age encryption. No plaintext dump is written.
+# No production mutations. The recipient is public; private keys stay offline.
+pg_dump --no-password --format=custom --no-owner --no-acl --schema=public \
+  | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "$temporary"
+if [[ ! -s "$temporary" ]]; then
+  printf 'Encrypted backup is empty.\n' >&2
   exit 1
+fi
+
+# Optional format verification without creating a plaintext file.
+# This is NOT a substitute for an isolated restore.
+if [[ -n "${BACKUP_AGE_IDENTITY:-}" ]]; then
+  if [[ ! -f "$BACKUP_AGE_IDENTITY" ]]; then
+    printf 'BACKUP_AGE_IDENTITY is not a readable file.\n' >&2
+    exit 2
+  fi
+  age --decrypt --identity "$BACKUP_AGE_IDENTITY" "$temporary" \
+    | pg_restore --list - > "$manifest"
+  if ! grep -Eq 'TABLE DATA[[:space:]]+public[[:space:]]+dochadzka' "$manifest"; then
+    printf 'The decrypted archive lacks public.dochadzka table data.\n' >&2
+    exit 1
+  fi
 fi
 
 mv -- "$temporary" "$target"
 chmod 600 "$target"
-printf 'Private backup archive created: %s\n' "$target"
+printf 'Encrypted private backup archive created: %s\n' "$target"
 if command -v shasum >/dev/null 2>&1; then
   shasum -a 256 "$target"
 elif command -v sha256sum >/dev/null 2>&1; then
   sha256sum "$target"
 fi
-printf '%s\n' 'IMPORTANT: Archive listing was validated, but a full restore test was NOT performed.'
+printf '%s\n' 'IMPORTANT: A full restore test in an isolated PostgreSQL 17 database is still required.'
+if [[ -z "${BACKUP_AGE_IDENTITY:-}" ]]; then
+  printf '%s\n' 'IMPORTANT: Archive format check was skipped because BACKUP_AGE_IDENTITY is unset.'
+fi
 printf '%s\n' 'IMPORTANT: This backs up only the public schema, not Supabase Auth or Storage.'
