@@ -2,6 +2,7 @@
 
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28.
+**Approximate prepared-repairs progress:** 45%; **production-deployed fixes:** 0%. These percentages are estimates, not a release-completion guarantee.
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
@@ -27,7 +28,7 @@
 - Individual PR checks for #95–#97 and combined #98 succeeded.
 - #99 CI passed after lockfile was regenerated.
 - #100 backup script syntax and fail-closed-without-credentials checks passed; **real restore remains untested**.
-- #101 has its own CI; inspect its latest run before reporting success.
+- #101 CI run 40667032448 succeeded: tests, TypeScript and build. Legacy lint issues are non-blocking.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
 - CI passing does NOT verify real mobile/browser workflows or restored production data.
 
