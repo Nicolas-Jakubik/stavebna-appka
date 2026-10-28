@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
+import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
@@ -146,8 +147,14 @@ export default function MzdyPage() {
 
   const mapaCistychHodin = vytvorMapuCistychHodin(mesacneZaznamy)
   const hodinyZaznamu = (z: any) => hodinyZaznamuZMapy(z, mapaCistychHodin)
+  const aktualneSadzby = new Map<string, number>(
+    databazoviZamestnanci.map(z => [String(z.meno), Number(z.sadzba)])
+  )
+  const sadzbaZaznamu = (z: any) => hodinovaSadzbaZaznamu(z.sadzba_snapshot, aktualneSadzby.get(z.meno))
 
   const zamestnanciHodiny: Record<string, number> = {}
+  const zamestnanciMzdy: Record<string, number> = {}
+  const sadzbyPracovnikov: Record<string, Set<number>> = {}
   const stavbyData: Record<string, number> = {}
 
   zaznamy.forEach((z) => {
@@ -155,6 +162,10 @@ export default function MzdyPage() {
     
     if (!zamestnanciHodiny[z.meno]) zamestnanciHodiny[z.meno] = 0
     zamestnanciHodiny[z.meno] += hodiny
+    const sadzba = sadzbaZaznamu(z)
+    zamestnanciMzdy[z.meno] = (zamestnanciMzdy[z.meno] || 0) + hodiny * sadzba
+    if (!sadzbyPracovnikov[z.meno]) sadzbyPracovnikov[z.meno] = new Set()
+    sadzbyPracovnikov[z.meno].add(sadzba)
 
     if (!stavbyData[z.zakazka]) stavbyData[z.zakazka] = 0
     stavbyData[z.zakazka] += hodiny
@@ -162,11 +173,7 @@ export default function MzdyPage() {
 
   const pocetPracovnikovVyplata = Object.keys(zamestnanciHodiny).length
   const celkoveOdpracovaneHodiny = Object.values(zamestnanciHodiny).reduce((sucet, hodiny) => sucet + hodiny, 0)
-  const celkovaSumaNaVyplatu = Object.entries(zamestnanciHodiny).reduce((sucet, [meno, hodiny]) => {
-    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-    const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
-    return sucet + hodiny * sadzba
-  }, 0)
+  const celkovaSumaNaVyplatu = Object.values(zamestnanciMzdy).reduce((sucet, suma) => sucet + suma, 0)
 
   const suhrnPolovice = (prvaPolovica: boolean) => mesacneZaznamy.reduce(
     (suhrn, z) => {
@@ -175,8 +182,7 @@ export default function MzdyPage() {
       if (!patriDoObdobia) return suhrn
 
       const hodiny = hodinyZaznamu(z)
-      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
-      const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+      const sadzba = sadzbaZaznamu(z)
 
       suhrn.hodiny += hodiny
       suhrn.suma += hodiny * sadzba
@@ -192,22 +198,28 @@ export default function MzdyPage() {
     suma: suhrnPrvaPolovica.suma + suhrnDruhaPolovica.suma
   }
 
-  const pracovniciMesacne: Record<string, { prvaHodiny: number; druhaHodiny: number; sadzba: number }> = {}
+  const pracovniciMesacne: Record<string, { prvaHodiny: number; druhaHodiny: number; prvaSuma: number; druhaSuma: number }> = {}
 
   mesacneZaznamy.forEach((z) => {
     if (!pracovniciMesacne[z.meno]) {
-      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
       pracovniciMesacne[z.meno] = {
         prvaHodiny: 0,
         druhaHodiny: 0,
-        sadzba: dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+        prvaSuma: 0,
+        druhaSuma: 0
       }
     }
 
     const den = Number(String(z.datum).slice(8, 10))
     const hodiny = hodinyZaznamu(z)
-    if (den <= 15) pracovniciMesacne[z.meno].prvaHodiny += hodiny
-    else pracovniciMesacne[z.meno].druhaHodiny += hodiny
+    const suma = hodiny * sadzbaZaznamu(z)
+    if (den <= 15) {
+      pracovniciMesacne[z.meno].prvaHodiny += hodiny
+      pracovniciMesacne[z.meno].prvaSuma += suma
+    } else {
+      pracovniciMesacne[z.meno].druhaHodiny += hodiny
+      pracovniciMesacne[z.meno].druhaSuma += suma
+    }
   })
 
   const pracovniciMesacneZoradeni = Object.entries(pracovniciMesacne)
@@ -505,9 +517,7 @@ export default function MzdyPage() {
               {Object.entries(zamestnanciHodiny)
                 .sort(([menoA], [menoB]) => menoA.localeCompare(menoB, 'sk'))
                 .map(([meno, hodiny]) => {
-                  const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-                  const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
-                  const suma = hodiny * sadzba
+                  const suma = zamestnanciMzdy[meno] || 0
 
                   return (
                     <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
