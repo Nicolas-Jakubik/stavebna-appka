@@ -8,6 +8,7 @@
 - [ ] Prevedený **skutočný** `pg_dump` schémy `public` pomocou `scripts/backup-public-db.sh`; hash archívu bezpečne zapísaný do súkromného protokolu.
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
+- [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Až potom zvoliť zdroj zálohy.
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
 - [ ] Vercel Preview `sd-evidencia` úspešne zostavený a prístupný: hlásenie `build-rate-limit` blokuje spoľahlivé overenie.
 - [ ] Výsledky skúšok schválené, uložení odkazy na testy a potvrdený výslovný súhlas s nasadením.
@@ -16,10 +17,11 @@
 | Oblasť | Čo overiť | Kritérium |
 | --- | --- | --- |
 | Zapisovateľ | iPhone Safari, Android Chrome, desktop; nový prístupový odkaz; zotrvanie cookie po zavretí prehliadača podľa nastavenia | Prihlásený zapisovateľ zapisuje; anonymný používateľ nevidí/nezapisuje údaje |
-| Administrátor | Prihlásenie, čítanie a editácia; samostatne otestovať tlačidlá mazania na testovacích riadkoch | GET/PATCH fungujú s oprávnením; DELETE bez presného `id=eq.<ID>` je odmietnuté |
+| Administrátor | Prihlásenie, čítanie a editácia; vylúčiť PATCH bez filtra, testovať cielené ID a zámerné historické premenovanie; otestovať mazanie na testovacích riadkoch | Neobmedzený PATCH/DELETE je odmietnutý, povolené operácie fungujú bez nečakaných zmien |
 | Dochádzka | Rozdelenie jednej smeny medzi stavby, duplicita/prekryv, dátumy a časy | Nedôjde k nechcenému prepísaniu údajov ani duplicitnému zápisu |
-| Výplaty | Septembrové/októbrové pôvodné výpisy a snapshot sadzby; 1. a 2. polovica mesiaca; PDF | Kontrolné súčty sedia na pôvodné záznamy a sadzby platné pri zápise |
+| Výplaty | Septembrové/októbrové pôvodné výpisy a snapshot sadzby; 1. a 2. polovica mesiaca; PDF; dataset >1 000 riadkov a prerušenie neskorej stránky | Kontrolné súčty sedia, stránkovanie je úplné a pri chybe nie je možné vytvoriť zavádzajúce PDF |
 | Financie | Dataset s 1 184+ záznamami, presne 1 000 a prerušenie druhej stránky | Všetky riadky sú započítané; pri neúplnosti sa súčty **nezobrazia** |
+| Dashboard | Kontrola duplicít a prekryvov, filtre a prehľad aj pri viac než 1 000 historických záznamoch | Žiadna čiastočná kontrola sa nesmie považovať za úplnú; zostáva auditovať/potenciálne opraviť |
 | Základné operácie | Zoznam stavieb, pracovníkov, neprítomností, mobilné načítanie | Bez regresie, bez úpravy produkčných údajov |
 
 ## Pripravenosť na nasadenie – bez plánovanej odstávky
@@ -41,7 +43,9 @@
 - Izolovaná obnova: **NEOVERENÉ**
 - Browser/mobile testy: **NEOVERENÉ**
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**
-- Test nad 1 000 riadkov v izolácii: **NEOVERENÉ**
+- Test nad 1 000 riadkov v izolácii: **NEOVERENÉ** (automatické jednotkové testy helpera prešli, ale nie živý dataset)
+- Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
+- Dashboard nad 1 000 záznamov: **ZOSTÁVA OPRAVIŤ/OVERIŤ**
 - Vercel Preview: **BLOKOVANÉ LIMITOM**
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
