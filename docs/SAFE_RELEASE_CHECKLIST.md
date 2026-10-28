@@ -48,12 +48,13 @@
 - Záloha a hash: **NEOVERENÉ**; šifrovací postup otestovaný iba na fiktívnych dátach (GitHub Actions [40673195394](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40673195394))
 - Izolovaná obnova: **NEOVERENÉ**
 - Browser/mobile testy: **NEOVERENÉ**
-- Výplaty podľa reálnych záznamov: **NEOVERENÉ**
+- Výplaty podľa reálnych záznamov: **NEOVERENÉ**; syntetický test **1 203 smien / 1 007 pracovníkov** cez autentifikované API prešiel, vrátane snapshot sadzieb, 30-min prestávky, súčtu a odmietnutia výpadku neskorej stránky ([CI 40691279585](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40691279585))
 - Metadata-only SQL check pre RPC/RLS/granty/trigger: **OVERENÉ čítaním pripojeného projektu**, nie potvrdenej produkcie; `scripts/verify-db-readiness.sql` + statické regresné testy.
 - Test nad 1 000 riadkov v izolácii: **NEOVERENÉ**; syntetický test 1 203 riadkov cez klienta a API prešiel v [CI 40674286439](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40674286439), ale test na izolovanej obnovenej DB stále chýba
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
 - Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
 - Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**
+- Výplaty: **PAGINÁCIA DOCHÁDZKY AJ ZOZNAMU PRACOVNÍKOV HOTOVÁ**, syntetické integrácie prešli; skutočný veľký dataset/porovnanie pôvodných výplat stále neoverené.
 - RPC `record_attendance_secure` na pripojenom projekte `MojaFiremnaApp`: **READ-ONLY METADÁTA OVERENÉ** (service_role áno, anon/authenticated nie, `objekt_id` podporované). **NAPOJENIE NA PRODUKČNÝ VERCEL NEOVERENÉ**.
 - Vercel Preview: **READY nasadenie staršej opravnej vetvy nájdené; aktuálna revízia ani browser test NEOVERENÉ.** Produkčný `main` SHA a doména overené v metadátach; Supabase backend ref ešte nie.
 - Duplicitné overlap triggery / drift migračnej histórie: **ZDOKUMENTOVANÉ, POTREBNÝ IZOLOVANÝ TEST**
