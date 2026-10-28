@@ -4,6 +4,7 @@ import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
@@ -14,6 +15,13 @@ export default function MzdyPage() {
   
   const [databazoviZamestnanci, setDatabazoviZamestnancov] = useState<any[]>([])
   const [stavyStavieb, setStavyStavieb] = useState<Record<string, string>>({})
+  const [loadState, setLoadState] = useState<{ key: string; status: 'loading' | 'ready' | 'error' }>({
+    key: '', status: 'loading'
+  })
+  const currentKey = filterMesiac + ':' + filterPolovica
+  const isReady = loadState.key === currentKey && loadState.status === 'ready'
+  const loadError = loadState.key === currentKey && loadState.status === 'error'
+  const isLoading = !isReady && !loadError
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -94,49 +102,67 @@ export default function MzdyPage() {
     if (ulozeneStavy) setStavyStavieb(JSON.parse(ulozeneStavy))
   }, [])
 
-  async function nacitaj() {
-    let query = supabase.from('dochadzka').select('*')
-    const [rok, mesiac] = filterMesiac.split('-')
-    
-    if (rok && mesiac) {
-      const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
-      
-      let odDna = 1;
-      let doDna = pocetDni;
+  useEffect(() => {
+    let cancelled = false
+    const key = filterMesiac + ':' + filterPolovica
+    setLoadState({ key, status: 'loading' })
 
-      if (filterPolovica === 'prva') {
-        doDna = 15;
-      } else if (filterPolovica === 'druha') {
-        odDna = 16;
+    async function load() {
+      try {
+        const [rok, mesiac] = filterMesiac.split('-')
+        if (!/^\d{4}$/.test(rok || '') || !/^(0[1-9]|1[0-2])$/.test(mesiac || '')) {
+          throw new Error('Invalid payroll period')
+        }
+        const lastDay = new Date(Number(rok), Number(mesiac), 0).getDate()
+        const prefix = rok + '-' + mesiac + '-'
+        const fullStart = prefix + '01'
+        const fullEnd = prefix + String(lastDay).padStart(2, '0')
+        const selectedStart = filterPolovica === 'druha' ? prefix + '16' : fullStart
+        const selectedEnd = filterPolovica === 'prva' ? prefix + '15' : fullEnd
+
+        const readAttendance = (dateFrom: string, dateTo: string) =>
+          nacitajVsetkyStrany<any>(async (first, last) => {
+            const { data, error } = await supabase.from('dochadzka')
+              .select('*')
+              .gte('datum', dateFrom)
+              .lte('datum', dateTo)
+              .order('id', { ascending: true })
+              .range(first, last)
+            return { data: data as any[] | null, error }
+          })
+
+        const monthPromise = readAttendance(fullStart, fullEnd)
+        const selectedPromise = filterPolovica === 'cely'
+          ? monthPromise
+          : readAttendance(selectedStart, selectedEnd)
+        const [selected, month, workers] = await Promise.all([
+          selectedPromise,
+          monthPromise,
+          supabase.from('zamestnanci').select('*')
+        ])
+
+        if (cancelled) return
+        if (selected.error || month.error || workers.error ||
+            !selected.data || !month.data || !workers.data) {
+          throw new Error('Incomplete payroll data')
+        }
+        setZaznamy(selected.data)
+        setMesacneZaznamy(month.data)
+        setDatabazoviZamestnancov(workers.data)
+        setLoadState({ key, status: 'ready' })
+      } catch {
+        if (cancelled) return
+        // Never display or print partial wage and hour totals.
+        setZaznamy([])
+        setMesacneZaznamy([])
+        setDatabazoviZamestnancov([])
+        setLoadState({ key, status: 'error' })
       }
-
-      const odDnaText = odDna < 10 ? `0${odDna}` : `${odDna}`;
-      const doDnaText = doDna < 10 ? `0${doDna}` : `${doDna}`;
-
-      query = query.gte('datum', `${rok}-${mesiac}-${odDnaText}`).lte('datum', `${rok}-${mesiac}-${doDnaText}`)
-    }
-    
-    const { data: dochData } = await query
-    setZaznamy(dochData || [])
-
-    if (rok && mesiac) {
-      const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
-      const poslednyDenText = String(pocetDni).padStart(2, '0')
-      const { data: mesacneData } = await supabase
-        .from('dochadzka')
-        .select('*')
-        .gte('datum', `${rok}-${mesiac}-01`)
-        .lte('datum', `${rok}-${mesiac}-${poslednyDenText}`)
-      setMesacneZaznamy(mesacneData || [])
-    } else {
-      setMesacneZaznamy([])
     }
 
-    const { data: zamData } = await supabase.from('zamestnanci').select('*')
-    setDatabazoviZamestnancov(zamData || [])
-  }
-
-  useEffect(() => { nacitaj() }, [filterMesiac, filterPolovica])
+    load()
+    return () => { cancelled = true }
+  }, [filterMesiac, filterPolovica])
 
   function zmenaStavuStavby(stavba: string, hodnota: string) {
     const kluc = `${filterMesiac}_${filterPolovica}_${stavba}`
@@ -243,6 +269,7 @@ export default function MzdyPage() {
   }
 
   function spustitExport() {
+    if (!isReady) return
     if (filterPolovica === 'cely') {
       alert('Pre PDF vyberte 1.–15. alebo 16.–koniec mesiaca.')
       return
@@ -498,6 +525,15 @@ export default function MzdyPage() {
           </div>
         </div>
 
+        {isLoading ? (
+          <div role="status" style={{ ...cardStyle, padding: '28px' }}>Načítavam kompletné údaje dochádzky a výplat…</div>
+        ) : loadError ? (
+          <div role="alert" style={{ ...cardStyle, padding: '28px', color: '#b42318' }}>
+            Výplaty nie sú zobrazené, pretože údaje sa nepodarilo načítať kompletne.
+            Skúste obnoviť stránku. PDF s neúplnými údajmi sa nedá vytvoriť.
+          </div>
+        ) : (
+          <>
         <div className="pdf-vyplata ukazat-iba-pri-tlaci" style={{ width: '100%' }}>
           <div style={{ borderBottom: '2px solid #1d1d1f', paddingBottom: '10px', marginBottom: '18px' }}>
             <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · výplaty</div>
@@ -808,6 +844,8 @@ export default function MzdyPage() {
           <RenderujTabulkuStavieb zoznam={poslaneFaStavby} nadpis="Poslaná FA" predvolenyStav="Poslaná FA" />
           <RenderujTabulkuStavieb zoznam={vyplateneStavby} nadpis="Vyplatené" predvolenyStav="Vyplatená" />
         </div>
+          </>
+        )}
 
       </div>
     </div>
