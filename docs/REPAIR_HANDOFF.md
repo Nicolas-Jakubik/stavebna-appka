@@ -55,3 +55,6 @@ Then say:
 "Pokračuj v opravách FiremnáApka. Načítaj prosím GitHub dokument `docs/REPAIR_HANDOFF.md` vo vetve `integration/verified-repairs-2026-10-28` a skontroluj aktuálny stav PR #95 až #101. Produkciu nemeň bez obnoviteľnej zálohy. Píš percentuálny progres."
 
 **Keep this document and its PR list updated at major milestones.**
+
+
+**Neskorší checkpoint 28.10.2026 (PR #102):** V pripojenom Supabase projekte `MojaFiremnaApp` boli iba čítaním overené RPC `record_attendance_secure(jsonb)`, jej oprávnenia (service_role áno, anon/authenticated nie), RLS na kľúčových tabuľkách, duplicitné overlap triggery a drift historických SQL migrácií. Zálohovací skript v #102 teraz povinne šifruje cez `age`; test s fiktívnym dumpom prešiel. Skutočná záloha a obnova, potvrdenie produkčného Vercelu a izolované browser/mzdové testy stále chýbajú. **90 % pripravené (odhad), 0 % produkčne nasadené.** Pozri `docs/REPAIR_HANDOFF.md`, `docs/SAFE_RELEASE_CHECKLIST.md` a `docs/DB_READONLY_AUDIT_2026-10-28.md` **v integračnej vetve #102**. Nepokračovať zo starej #98 bez tohto checkpointu.
