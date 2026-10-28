@@ -23,6 +23,7 @@ archív `pg_dump` vo formáte custom **priamo zašifrovaný cez age** ako `.dump
 ## Predpoklady
 
 1. Použiť `pg_dump` a `pg_restore` kompatibilné so serverom PostgreSQL 17 a nainštalovať nástroj **age** na šifrovanie.
+   **Bezpečnostná podmienka:** `PGSSLMODE` musí byť `require`, `verify-ca` alebo `verify-full` (preferovať `verify-full` so správnym certifikátom, ak je dostupný). Skript odmietne `disable`, `allow` aj `prefer`. Všetky archívy musia prejsť lokálnym dešifrovaním a testom štruktúry ešte pred označením za vytvorené.
 2. Mať práva na čítanie požadovanej schémy v priamom alebo session
    pripojení k Supabase. Nepoužívať transakčný pooler.
 3. Pripraviť súkromné šifrované úložisko **mimo repo**; overiť voľné
@@ -55,7 +56,7 @@ závisieť od IPv4/IPv6 a režimu poolera.
 
 ## Overenie pred produkčnou zmenou
 
-- Zašifrovaný archív `.dump.age` dešifrovať lokálne pomocou age identity. Skript voliteľne spúšťa `age --decrypt` priamo do `pg_restore --list -` bez zápisu nešifrovaných bajtov na disk a musí nájsť `TABLE DATA public dochadzka`.
+- Zašifrovaný archív `.dump.age` dešifrovať lokálne pomocou age identity. Skript **povinne** spúšťa `age --decrypt` priamo do `pg_restore --list -` bez zápisu nešifrovaných bajtov na disk a musí nájsť `TABLE DATA public dochadzka`. Bez `BACKUP_AGE_IDENTITY` lokálne **odmietne zálohu**. Stále však ide len o formátovú kontrolu, nie test obnovy.
 - Aj po tejto kontrole je **povinná** skutočná obnova do izolovanej databázy. V nej možno na bezpečnom šifrovanom úložisku dočasne dešifrovať dump pre `pg_restore`; do produkčnej DB nikdy neobnovovať naslepo.
 - Súbor presunúť do súkromného šifrovaného úložiska mimo Supabase a
   preveriť, že sa dá znovu stiahnuť.
