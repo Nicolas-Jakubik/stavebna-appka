@@ -19,8 +19,8 @@ chmod 755 "$scratch" "$scratch/tls"
 openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
   -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
   -keyout "$scratch/tls/server.key" -out "$scratch/tls/server.crt" >/dev/null 2>&1
-sudo chown 999:999 "$scratch/tls/server.key"
 chmod 600 "$scratch/tls/server.key"
+sudo chown 999:999 "$scratch/tls/server.key"
 chmod 644 "$scratch/tls/server.crt"
 
 docker run -d --name "$container" \
