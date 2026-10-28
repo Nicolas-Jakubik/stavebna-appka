@@ -65,3 +65,32 @@ test('pracovnik bez sadzby sa oznaci a nevytvori falosny naklad', () => {
   assert.equal(polozky[0].maSadzbu, false)
   assert.equal(mapa.get('A').bezSadzby.has('Adam'), true)
 })
+
+test('financial labor costs use the historical rate rather than the current rate', () => {
+  const rows = [
+    { id: 1, meno: 'Adam', datum: '2026-09-22', zakazka: 'A', prichod: '07:00', odchod: '18:00', sadzba_snapshot: 10 },
+  ]
+  const costs = vypocitajNakladyPracovnikov(rows, [{ meno: 'Adam', sadzba: 12 }])
+  assert.equal(costs[0].hodiny, 10.5)
+  assert.equal(costs[0].sadzba, 10)
+  assert.equal(costs[0].suma, 105)
+})
+
+test('financial costs retain historical rate when an employee no longer exists', () => {
+  const rows = [
+    { id: 1, meno: 'Former employee', datum: '2026-09-22', zakazka: 'A', prichod: '07:00', odchod: '18:00', sadzba_snapshot: 11 },
+  ]
+  const costs = vypocitajNakladyPracovnikov(rows, [])
+  assert.equal(costs[0].maSadzbu, true)
+  assert.equal(costs[0].suma, 115.5)
+})
+
+test('multiple construction jobs keep their own historical rates and one daily break', () => {
+  const rows = [
+    { id: 1, meno: 'Adam', datum: '2026-09-22', zakazka: 'A', prichod: '07:00', odchod: '10:00', sadzba_snapshot: 10 },
+    { id: 2, meno: 'Adam', datum: '2026-09-22', zakazka: 'B', prichod: '10:00', odchod: '13:00', sadzba_snapshot: 12 },
+  ]
+  const costs = vypocitajNakladyPracovnikov(rows, [{ meno: 'Adam', sadzba: 14 }])
+  assert.equal(costs.reduce((sum, row) => sum + row.hodiny, 0), 5.5)
+  assert.equal(costs.reduce((sum, row) => sum + row.suma, 0), 60)
+})
