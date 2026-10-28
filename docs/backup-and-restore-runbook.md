@@ -56,7 +56,7 @@ závisieť od IPv4/IPv6 a režimu poolera.
 
 ## Overenie pred produkčnou zmenou
 
-- Zašifrovaný archív `.dump.age` dešifrovať lokálne pomocou age identity. Skript **povinne** spúšťa `age --decrypt` priamo do `pg_restore --list -` bez zápisu nešifrovaných bajtov na disk a musí nájsť `TABLE DATA public dochadzka`. Bez `BACKUP_AGE_IDENTITY` lokálne **odmietne zálohu**. Stále však ide len o formátovú kontrolu, nie test obnovy.
+- Zašifrovaný archív `.dump.age` dešifrovať lokálne pomocou age identity. Skript **povinne** spúšťa `age --decrypt` priamo do `pg_restore --list` bez zápisu nešifrovaných bajtov na disk a musí nájsť `TABLE DATA public dochadzka`. Bez `BACKUP_AGE_IDENTITY` lokálne **odmietne zálohu**. Stále však ide len o formátovú kontrolu, nie test obnovy.
 - Aj po tejto kontrole je **povinná** skutočná obnova do izolovanej databázy. V nej možno na bezpečnom šifrovanom úložisku dočasne dešifrovať dump pre `pg_restore`; do produkčnej DB nikdy neobnovovať naslepo.
 - Súbor presunúť do súkromného šifrovaného úložiska mimo Supabase a
   preveriť, že sa dá znovu stiahnuť.
