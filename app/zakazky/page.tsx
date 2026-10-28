@@ -5,6 +5,7 @@ import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { datumNaSlovensku } from '../../lib/businessDate'
 
 export default function ZakazkyPage() {
   const [zakazky, setZakazky] = useState<any[]>([])
@@ -136,7 +137,7 @@ export default function ZakazkyPage() {
     if (!cistyNazov) return
 
     setPridavaSa(true)
-    const dnesnyDatum = new Date().toISOString().split('T')[0]
+    const dnesnyDatum = datumNaSlovensku()
     const { error } = await supabase
       .from('zoznam_zakaziek')
       .insert([{ nazov: cistyNazov, stav: 'Aktívna', datum_pridania: dnesnyDatum }])
