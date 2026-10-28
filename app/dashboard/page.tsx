@@ -265,7 +265,11 @@ export default function DashboardPage() {
     }
 
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
+      nacitajVsetkyStrany<any>(async (start, end) => {
+        const { data, error } = await supabase.from('zamestnanci').select('id,meno')
+          .order('id', { ascending: true }).range(start, end)
+        return { data: data as any[] | null, error }
+      }),
       nacitajVsetkyStrany<any>(async (start, end) => {
         const { data, error } = await supabase.from('dochadzka').select('id,meno')
           .eq('datum', datum).order('id', { ascending: true }).range(start, end)
@@ -387,7 +391,11 @@ export default function DashboardPage() {
   async function nacitajFiltre() {
     setFiltersStatus('loading')
     const [workers, attendance] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', {ascending: true}),
+      nacitajVsetkyStrany<any>(async (start, end) => {
+        const { data, error } = await supabase.from('zamestnanci').select('id,meno')
+          .order('id', { ascending: true }).range(start, end)
+        return { data: data as any[] | null, error }
+      }),
       nacitajVsetkyStrany<any>(async (start,end) => {
         const {data,error} = await supabase.from('dochadzka')
           .select('id,meno,zakazka').order('id', {ascending: true}).range(start,end)
