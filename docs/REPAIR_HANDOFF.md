@@ -43,6 +43,9 @@
 - #102 remaining finance inputs `6c1d18127ec2d1ddbbda15db7732215a0841e1a9` and `012449354082c5f17068ff7ff20f1ce134ff88a2`: paginates project list, expenses, receipts, worker payments and both invoice types, preserving deterministic ordering. Latest combined application CI [40672319954](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40672319954) **success**; backup-script-only CI [40672319911](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40672319911) **success**.
 - The `record_attendance_secure` RPC implementation and permissions must be checked on the **actual target database** before deployment. Unit tests with mock RPC are not equivalent to verifying it on the production schema or an isolated restore.
 - Latest PR remains **DRAFT**, production `main` is unchanged. No real database backup/restore or live write test has been carried out.
+- **Read-only Supabase metadata audit 28 Oct 2026:** connected project `MojaFiremnaApp` contains `public.record_attendance_secure(jsonb)`, SECURITY INVOKER, execute allowed for service_role only (anon and authenticated denied). Current live function accepts/validates `objekt_id`. Core five tables have RLS and deny anon read/write. Verified **metadata only**, no rows or live writes.
+- **Schema drift:** GitHub SQL migrations `20260920173140_recorder_server_function.sql` and `20260923063000_fix_recorder_validation.sql` contain old RPC definitions that reject `objekt_id` unlike the connected project. Connected migration-history versions also differ. Two enabled attendance-overlap triggers invoke the **same function** and the third maintains wage snapshot. No triggers altered; isolated reconciliation still required. Audit document: [DB_READONLY_AUDIT_2026-10-28.md](DB_READONLY_AUDIT_2026-10-28.md).
+- **Backup script hardened**: `scripts/backup-public-db.sh` now requires `BACKUP_AGE_RECIPIENT`, streams pg_dump straight to `age` encrypted `.dump.age` in a private directory, optionally validates decrypted archive listings without plaintext files. Synthetic encryption/decryption CI **40673195394 passed**. No actual user data, private key, backup or restore used or created. [Updated backup runbook](backup-and-restore-runbook.md).
 - Package lock verified: Next.js **16.4.3**, Sharp **0.35.5**.
 - Vercel preview/status for `sd-evidencia` is **failure** with a build-rate-limit URL. Do not interpret GitHub CI success as successful preview or deployment.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
@@ -50,8 +53,8 @@
 
 ## Work still required
 
-1. Create a genuinely private encrypted backup using a trusted computer and separate DB credentials; restore to isolated database and verify integrity.
-2. Test recorder access links and admin roles with representative mobile/desktop browsers.
+1. Confirm the production Vercel ↔ Supabase project mapping, then create a genuinely private **age-encrypted** backup on a trusted computer using local credentials; restore to isolated database and verify integrity. Private decryption identity must never be shared in this chat.
+2. Reconcile actual RPC + schema migration drift after isolated restore and test duplicate overlap triggers, recorder access links and admin roles on mobile/desktop browsers.
 3. Compare historical pay reports to original records before approving changes.
 4. Test finance, payroll, dashboard, project/employee history and recorder paging using >1,000 rows on an isolated nonproduction dataset; verify recorder RPC existence/privileges and simulated race conditions there.
 5. **Code reconciliation and CI completed in draft #102** through `01244935` for the audited administrative and recorder views. Still perform isolated mobile/browser/integration tests, confirm Vercel access and resolve Preview build-rate-limit. Do not infer production readiness from CI alone.
