@@ -5,12 +5,13 @@ import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { mesiacNaSlovensku } from '../../lib/businessDate'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [mesacneZaznamy, setMesacneZaznamy] = useState<any[]>([])
-  const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
+  const [filterMesiac, setFilterMesiac] = useState(mesiacNaSlovensku())
   const [filterPolovica, setFilterPolovica] = useState('cely') 
   
   const [databazoviZamestnanci, setDatabazoviZamestnancov] = useState<any[]>([])
