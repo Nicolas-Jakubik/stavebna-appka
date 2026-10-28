@@ -4,12 +4,13 @@
 **Stav k 28.10.2026:** 0 % opráv nasadených. Dokument je plán, nie povolenie nasadenia.
 
 ## Nevyhnutné STOP podmienky
-- [ ] Dôveryhodný počítač a súkromné šifrované úložisko, kde budú uložené zálohy mimo verejného GitHubu, Vercelu a verejných CI artifactov.
+- [ ] Dôveryhodný počítač, mimo GitHubu uložený **age** dešifrovací kľúč (s oddelenou záložnou kópiou), bezpečné šifrované úložisko a overený správny DB projekt. Skript ukladá iba súbor `.dump.age` bez dočasného plaintextu.
 - [ ] Prevedený **skutočný** `pg_dump` schémy `public` pomocou `scripts/backup-public-db.sh`; hash archívu bezpečne zapísaný do súkromného protokolu.
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
 - [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Až potom zvoliť zdroj zálohy.
-- [ ] V skutočnej cieľovej databáze overiť existenciu a bezpečné oprávnenia SQL funkcie `record_attendance_secure`. Overiť, že je dostupná iba cez oprávnenú serverovú rolu a nedovoľuje anonymné/priame nepovolené zápisy; testy zápisov robiť iba na izolovanej obnove.
+- [ ] V **potvrdenej cieľovej produkčnej databáze** zopakovať read-only kontrolu funkcie `record_attendance_secure` a jej grantov. V pripojenom projekte `MojaFiremnaApp` bola metadátová kontrola úspešná (serverová rola áno, anon/authenticated nie); samotná väzba na Vercel **nebola potvrdená**. Funkciu a zápisy vrátane `objekt_id` testovať iba v izolácii.
+- [ ] **Zosúladiť databázové migrácie:** staršie lokálne RPC SQL súbory nepoznajú `objekt_id`, aktuálna pripojená funkcia áno. Duplicitné overlap triggery nemeniť pred izolovaným testom. Pozri [DB_READONLY_AUDIT_2026-10-28.md](DB_READONLY_AUDIT_2026-10-28.md).
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
 - [ ] Vercel Preview `sd-evidencia` úspešne zostavený a prístupný: hlásenie `build-rate-limit` blokuje spoľahlivé overenie.
 - [ ] Výsledky skúšok schválené, uložení odkazy na testy a potvrdený výslovný súhlas s nasadením.
@@ -44,7 +45,7 @@
 - Každý incident zaznamenať (čas, verzia, dopad, spôsob nápravy); ponechať auditnú stopu.
 
 ## Záznam schválenia
-- Záloha a hash: **NEOVERENÉ**
+- Záloha a hash: **NEOVERENÉ**; šifrovací postup otestovaný iba na fiktívnych dátach (GitHub Actions [40673195394](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40673195394))
 - Izolovaná obnova: **NEOVERENÉ**
 - Browser/mobile testy: **NEOVERENÉ**
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**
@@ -52,8 +53,9 @@
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
 - Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
 - Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**
-- RPC `record_attendance_secure` na skutočnej produkčnej DB: **NEOVERENÉ**
+- RPC `record_attendance_secure` na pripojenom projekte `MojaFiremnaApp`: **READ-ONLY METADÁTA OVERENÉ** (service_role áno, anon/authenticated nie, `objekt_id` podporované). **NAPOJENIE NA PRODUKČNÝ VERCEL NEOVERENÉ**.
 - Vercel Preview: **BLOKOVANÉ LIMITOM** (prepojený Vercel konektor pri čítaní detailu projektu vrátil 404 a pri zozname deployov 403; toto oprávnenie/napojenie treba vyriešiť bez zdieľania tajných údajov)
+- Duplicitné overlap triggery / drift migračnej histórie: **ZDOKUMENTOVANÉ, POTREBNÝ IZOLOVANÝ TEST**
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
 Odovzdávací checkpoint: [REPAIR_HANDOFF.md](REPAIR_HANDOFF.md).
