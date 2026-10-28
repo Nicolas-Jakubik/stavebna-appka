@@ -7,6 +7,7 @@ import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import RecorderGate from '../components/RecorderGate'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
+import { datumNaSlovensku } from '../lib/businessDate'
 
 export default function Home() {
   return <RecorderGate><AttendanceForm /></RecorderGate>
@@ -379,7 +380,7 @@ function AttendanceForm() {
   }
 
   function formatujDatum(d: string) {
-    const datumPreFormat = d || new Date().toISOString().split('T')[0]
+    const datumPreFormat = d || datumNaSlovensku()
     const [rok, mesiac, den] = datumPreFormat.split('-')
     return `${den}. ${mesiac}. ${rok}`
   }
