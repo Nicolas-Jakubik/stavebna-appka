@@ -46,3 +46,12 @@ test('invalid responses and hit page limit fail closed', async () => {
   assert.equal(excessive.data,null)
   assert.match(excessive.error.message,/limit/)
 })
+
+test('a rejected request on a later page fails closed instead of leaving the UI loading', async () => {
+  const result = await nacitajVsetkyStrany(async (start) => {
+    if (start === 0) return { data: Array.from({ length: 500 }, (_, i) => i), error: null }
+    throw new Error('network interrupted')
+  })
+  assert.equal(result.data, null)
+  assert.match(result.error.message, /nepodarilo/)
+})

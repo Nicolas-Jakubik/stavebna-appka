@@ -22,7 +22,13 @@ export async function nacitajVsetkyStrany<T>(
 
   const rows: T[] = []
   for (let page = 0; page < maxPages; page++) {
-    const result = await fetchPage(page * pageSize, (page + 1) * pageSize - 1)
+    let result: PagedResult<T>
+    try {
+      result = await fetchPage(page * pageSize, (page + 1) * pageSize - 1)
+    } catch {
+      // A rejected database request must never expose partial finance totals.
+      return { data: null, error: { message: 'Stranku dochadzky sa nepodarilo nacitat.' } }
+    }
     if (result.error) return { data: null, error: result.error }
     if (!Array.isArray(result.data) || result.data.length > pageSize) {
       return { data: null, error: { message: 'Neplatna odpoved databazy pri strankovani.' } }
