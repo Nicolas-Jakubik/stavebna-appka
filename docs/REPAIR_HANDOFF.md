@@ -2,7 +2,7 @@
 
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28, continuation checkpoint in PR #102.
-**Approximate prepared-repairs progress:** 55% (provisional, latest commit tests pending); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
+**Approximate prepared-repairs progress:** 55% (planning estimate; code + test CI verified); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
@@ -31,7 +31,7 @@
 - #100 backup script syntax and fail-closed-without-credentials checks passed; **real restore remains untested**.
 - #101 CI run 40667032448 succeeded: tests, TypeScript and build. Legacy lint issues are non-blocking.
 - #102 first integrated CI on commit `1f0c9f922f633a8c222b77b8871d456b81c4646c`: application run **40668438176 passed**; backup script run **40668438145 passed**.
-- #102 subsequent commit `6858fb52d504b33662bb999def4452a5f823b633`: catches rejected finance page requests and includes a new regression test. CI must be confirmed for the most recent head after this handoff update, not assumed from the first successful run.
+- #102 subsequent commit `6858fb52d504b33662bb999def4452a5f823b633`: catches rejected finance page requests and includes a new regression test. Follow-up application run **40668625265** and final pre-checkpoint run **40668709706** succeeded (tests, TypeScript and build); the backup script run **40668709641** succeeded. Documentation-only changes may start a fresh CI run.
 - Package lock verified: Next.js **16.4.3**, Sharp **0.35.5**.
 - Vercel preview/status for `sd-evidencia` is **failure** with a build-rate-limit URL. Do not interpret GitHub CI success as successful preview or deployment.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
@@ -44,7 +44,7 @@
 3. Compare historical pay reports to original records before approving changes.
 4. Review paging with >1,000 rows in a nonproduction environment.
 5. **Code reconciliation completed in draft #102**, but confirm final CI for latest HEAD and do isolated mobile/browser/integration tests; review Vercel preview build-rate-limit.
-6. Agree on a safe production release plan and a rollback strategy after the above checks. **Do not claim repairs are live until deployment is confirmed.**
+6. Proposed release/rollback acceptance matrix is prepared in [`docs/SAFE_RELEASE_CHECKLIST.md`](SAFE_RELEASE_CHECKLIST.md). It still requires approval and evidence of backup/restore/browser/data checks before any production change. **Do not claim repairs are live until deployment is confirmed.**
 
 ## Resume in a new ChatGPT conversation
 
