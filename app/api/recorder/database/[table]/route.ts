@@ -32,8 +32,8 @@ export async function GET(request: NextRequest, context: Context) {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     })
     if (!result.ok) return fail(502, 'Údaje sa nepodarilo načítať.')
-    const total = result.headers.get('content-range')?.split('/')[1]
-    if (total && total !== '*' && Number(total) > 1000) return fail(422, 'Vyberte kratšie obdobie.')
+    // One request returns at most 500 rows. Total count may exceed 1,000;
+    // the caller explicitly fetches the next bounded page.
     return new Response(result.body, { headers: { ...headers, 'Content-Type': 'application/json' } })
   } catch { return fail(502, 'Databáza je dočasne nedostupná.') }
 }
