@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -21,6 +22,12 @@ function escapeHtml(value: unknown) {
 export default function DashboardPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [kontrolneZaznamy, setKontrolneZaznamy] = useState<any[]>([])
+  const [controlsStatus, setControlsStatus] = useState<'loading'|'ready'|'error'>('loading')
+  const [filtersStatus, setFiltersStatus] = useState<'loading'|'ready'|'error'>('loading')
+  const [absencesStatus, setAbsencesStatus] = useState<'loading'|'ready'|'error'>('loading')
+  const [periodStatus, setPeriodStatus] = useState<{key: string; status: 'loading'|'ready'|'error'}>({key: '', status: 'loading'})
+  const controlRequest = useRef(0)
+  const periodRequest = useRef(0)
   const [nepritomnosti, setNepritomnosti] = useState<any[]>([])
   const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
   const [filterDen, setFilterDen] = useState('')
@@ -28,6 +35,11 @@ export default function DashboardPage() {
   const [filterMeno, setFilterMeno] = useState('')
   const [filterPolovica, setFilterPolovica] = useState<'cely' | 'prva' | 'druha'>('cely')
   const [filterDennehoPrehladu, setFilterDennehoPrehladu] = useState<'cely' | 'prva' | 'druha'>('cely')
+  const selectedPeriodKey = JSON.stringify([filterMesiac, filterDen, filterZakazka, filterMeno])
+  const periodReady = periodStatus.key === selectedPeriodKey && periodStatus.status === 'ready'
+  const failed = (periodStatus.key === selectedPeriodKey && periodStatus.status === 'error') ||
+    controlsStatus === 'error' || filtersStatus === 'error' || absencesStatus === 'error'
+  const dashboardReady = periodReady && controlsStatus === 'ready' && filtersStatus === 'ready' && absencesStatus === 'ready'
   const [filterProblem, setFilterProblem] = useState('vsetko')
   const [triedenie, setTriedenie] = useState<'datum' | 'meno' | 'zakazka' | 'hodiny'>('datum')
   const [smerTriedenia, setSmerTriedenia] = useState<'asc' | 'desc'>('desc')
@@ -159,7 +171,7 @@ export default function DashboardPage() {
       z.zakazka === zaznam.zakazka &&
       z.prichod === zaznam.prichod &&
       z.odchod === zaznam.odchod &&
-      (!excludeId || z.id !== excludeId)
+      (!excludeId || String(z.id) !== String(excludeId))
     )
   }
 
@@ -167,7 +179,7 @@ export default function DashboardPage() {
     return kontrolneZaznamy.some(z =>
       z.datum === zaznam.datum &&
       z.meno === zaznam.meno &&
-      (!excludeId || z.id !== excludeId)
+      (!excludeId || String(z.id) !== String(excludeId))
     )
   }
 
@@ -177,7 +189,7 @@ export default function DashboardPage() {
     return kontrolneZaznamy.some(z =>
       z.datum === zaznam.datum &&
       z.meno === zaznam.meno &&
-      (!excludeId || z.id !== excludeId) &&
+      (!excludeId || String(z.id) !== String(excludeId)) &&
       z.prichod && z.odchod &&
       intervalySaPrekryvaju(zaznam.prichod, zaznam.odchod, z.prichod, z.odchod) &&
       !(z.zakazka === zaznam.zakazka && z.prichod === zaznam.prichod && z.odchod === zaznam.odchod)
@@ -284,21 +296,24 @@ export default function DashboardPage() {
   }
 
   async function nacitajNepritomnosti() {
-    const { data, error } = await supabase
-      .from('nepritomnosti')
-      .select('id, datum, meno, dovod, created_at')
-      .order('datum', { ascending: false })
-
-    if (error) {
-      console.error('Chyba načítania neprítomností:', error.message)
+    setAbsencesStatus('loading')
+    const result = await nacitajVsetkyStrany<any>(async (start,end) => {
+      const { data, error } = await supabase.from('nepritomnosti')
+        .select('id,datum,meno,dovod,created_at')
+        .order('id', {ascending: true}).range(start,end)
+      return {data: data as any[] | null, error}
+    })
+    if (result.error || !result.data) {
       setNepritomnosti([])
+      setAbsencesStatus('error')
       return
     }
-
-    setNepritomnosti(data || [])
+    setNepritomnosti([...result.data].sort((a,b) => String(b.datum).localeCompare(String(a.datum)) || Number(b.id)-Number(a.id)))
+    setAbsencesStatus('ready')
   }
 
   async function ulozitNepritomnost() {
+    if (!dashboardReady) return
     setChybaNepritomnosti('')
 
     const datum = novaNepritomnost.datum
@@ -349,6 +364,7 @@ export default function DashboardPage() {
   }
 
   async function vymazatNepritomnost(id: string) {
+    if (!dashboardReady) return
     if (!confirm('Naozaj vymazať túto neprítomnosť?')) return
 
     const { error } = await supabase.from('nepritomnosti').delete().eq('id', id)
@@ -361,53 +377,76 @@ export default function DashboardPage() {
   }
 
   async function nacitajFiltre() {
-    const [zamestnanciResult, dochadzkaResult] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('zakazka, meno')
+    setFiltersStatus('loading')
+    const [workers, attendance] = await Promise.all([
+      supabase.from('zamestnanci').select('meno').order('meno', {ascending: true}),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const {data,error} = await supabase.from('dochadzka')
+          .select('id,meno,zakazka').order('id', {ascending: true}).range(start,end)
+        return {data: data as any[] | null,error}
+      })
     ])
-
-    const dochadzkaData = dochadzkaResult.data || []
-    const unikatneZakazky = Array.from(new Set(dochadzkaData.map(z => z.zakazka))).filter(Boolean)
-    setDostupneZakazky(unikatneZakazky.sort() as string[])
-
-    if (!zamestnanciResult.error && zamestnanciResult.data) {
-      const mena = Array.from(new Set(zamestnanciResult.data.map(z => z.meno).filter(Boolean))) as string[]
-      setDostupneMena(mena.sort())
-    } else {
-      const mena = Array.from(new Set(dochadzkaData.map(z => z.meno))).filter(Boolean) as string[]
-      setDostupneMena(mena.sort())
+    if (workers.error || attendance.error || !workers.data || !attendance.data) {
+      setDostupneZakazky([])
+      setDostupneMena([])
+      setFiltersStatus('error')
+      return
     }
+    setDostupneZakazky(Array.from(new Set(attendance.data.map(row=>String(row.zakazka || '')).filter(Boolean))).sort())
+    setDostupneMena(Array.from(new Set(workers.data.map(row=>String(row.meno || '')).filter(Boolean))).sort())
+    setFiltersStatus('ready')
   }
 
   async function nacitajKontrolneZaznamy() {
-    const { data, error } = await supabase
-      .from('dochadzka')
-      .select('id, datum, meno, zakazka, prichod, odchod')
-
-    if (error) console.error('Chyba kontroly duplicít a prekryvov:', error.message)
-    else setKontrolneZaznamy(data || [])
+    const version = ++controlRequest.current
+    setControlsStatus('loading')
+    const result = await nacitajVsetkyStrany<any>(async (start,end) => {
+      const {data,error} = await supabase.from('dochadzka')
+        .select('id,datum,meno,zakazka,prichod,odchod')
+        .order('id', {ascending: true}).range(start,end)
+      return {data: data as any[] | null,error}
+    })
+    if (version !== controlRequest.current) return
+    if (result.error || !result.data) {
+      setKontrolneZaznamy([])
+      setControlsStatus('error')
+      return
+    }
+    setKontrolneZaznamy(result.data)
+    setControlsStatus('ready')
   }
 
   async function nacitaj() {
-    let query = supabase.from('dochadzka').select('*').order('datum', { ascending: false })
-    if (filterDen) query = query.eq('datum', filterDen)
-    else if (filterMesiac) {
-      const [rok, mesiac] = filterMesiac.split('-')
-      if (rok && mesiac) {
-        const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
-        query = query.gte('datum', `${rok}-${mesiac}-01`).lte('datum', `${rok}-${mesiac}-${pocetDni}`)
-      }
+    const version = ++periodRequest.current
+    const key = JSON.stringify([filterMesiac, filterDen, filterZakazka, filterMeno])
+    setPeriodStatus({key,status:'loading'})
+    const [year,month] = filterMesiac.split('-')
+    const lastDay = year && month ? new Date(Number(year),Number(month),0).getDate() : 0
+    const first = lastDay ? filterMesiac + '-01' : ''
+    const last = lastDay ? filterMesiac + '-' + String(lastDay).padStart(2,'0') : ''
+    const result = await nacitajVsetkyStrany<any>(async (start,end) => {
+      let query = supabase.from('dochadzka').select('*')
+      if (filterDen) query = query.eq('datum',filterDen)
+      else if (first && last) query = query.gte('datum',first).lte('datum',last)
+      if (filterZakazka) query = query.eq('zakazka',filterZakazka)
+      if (filterMeno) query = query.eq('meno',filterMeno)
+      const {data,error} = await query.order('id', {ascending:true}).range(start,end)
+      return {data: data as any[] | null,error}
+    })
+    if (version !== periodRequest.current) return
+    if (result.error || !result.data) {
+      setZaznamy([])
+      setPeriodStatus({key,status:'error'})
+      return
     }
-    if (filterZakazka) query = query.eq('zakazka', filterZakazka)
-    if (filterMeno) query = query.eq('meno', filterMeno)
-    const { data, error } = await query
-    if (error) console.error("Chyba Supabase:", error.message)
-    else setZaznamy(data || [])
+    setZaznamy(result.data)
+    setPeriodStatus({key,status:'ready'})
   }
 
   async function vymazat(id: string) {
-    if (!confirm('Naozaj vymazať?')) return
-    await supabase.from('dochadzka').delete().eq('id', id)
+    if (!dashboardReady || !confirm('Naozaj vymazať?')) return
+    const { error } = await supabase.from('dochadzka').delete().eq('id', id)
+    if (error) { alert('Záznam sa nepodarilo vymazať: ' + error.message); return }
     nacitaj()
     nacitajFiltre()
     nacitajNezapisanychVcera()
@@ -470,13 +509,14 @@ export default function DashboardPage() {
   }
 
   async function ulozitUpravu(id: string) {
+    if (!dashboardReady) return
     const error = getTimeValidationError(upravovanePrichod, upravovaneOdchod)
     if (error) {
       setChybaUpravaHodiny(error)
       return
     }
 
-    const povodny = kontrolneZaznamy.find(z => z.id === id) || zaznamy.find(z => z.id === id)
+    const povodny = kontrolneZaznamy.find(z => String(z.id) === String(id)) || zaznamy.find(z => String(z.id) === String(id))
     if (!povodny) {
       setChybaUpravaHodiny('Záznam sa nepodarilo nájsť.')
       return
@@ -532,6 +572,7 @@ export default function DashboardPage() {
   }
 
   async function ulozitVsetkyNoveZaznamy() {
+    if (!dashboardReady) return
     const dataNaVlozenie: any[] = []
 
     for (let i = 0; i < noveZaznamy.length; i++) {
@@ -922,6 +963,19 @@ export default function DashboardPage() {
     filterProblem === 'prekryv' ? 'Prekrývajúce sa časy' :
     filterProblem === 'podozrivy' ? 'Podozrivé časy' :
     ''
+
+  if (!dashboardReady) {
+    return <div className="dashboard-shell" style={{minHeight:'100vh',background:'#f5f5f7',padding:24,display:'flex',gap:24}}>
+      <AdminSidebar active="dashboard" />
+      <main role={failed ? 'alert' : 'status'} style={{width:'100%',maxWidth:900,background:'#fff',borderRadius:14,padding:28,height:'fit-content'}}>
+        <h1 style={{fontSize:22,fontWeight:700}}>Prehľad dochádzky</h1>
+        <p style={{marginTop:12}}>{failed
+          ? 'Údaje sa nepodarilo načítať kompletne. Súhrny, kontrola duplicít, úpravy a PDF sú nedostupné, aby sa nezobrazili nesprávne výsledky.'
+          : 'Načítavam všetky záznamy dochádzky a neprítomností…'}</p>
+        {failed && <button type="button" onClick={() => window.location.reload()} style={{marginTop:12,padding:'10px 16px',borderRadius:8}}>Skúsiť znova</button>}
+      </main>
+    </div>
+  }
 
   return (
     <div className="dashboard-shell" style={{
