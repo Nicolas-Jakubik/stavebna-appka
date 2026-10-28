@@ -90,3 +90,17 @@ jobs:
             exit 11
           fi
           [[ -z "$(find "$scratch/backups" -maxdepth 1 -name '*.dump' -type f -print -quit)" ]] || exit 12
+          # A recipient/private-key mismatch must never be accepted as a backup.
+          age-keygen -o "$scratch/different-identity.txt" 2>/dev/null
+          mismatched_recipient="$(age-keygen -y "$scratch/different-identity.txt")"
+          mkdir -p "$scratch/mismatched-key-backups"
+          if PATH="$scratch/bin:$PATH" \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$scratch/mismatched-key-backups" \
+            BACKUP_AGE_RECIPIENT="$mismatched_recipient" \
+            BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: encrypted archive accepted despite incompatible private identity' >&2
+            exit 13
+          fi
+          [[ -z "$(find "$scratch/mismatched-key-backups" -maxdepth 1 -name '*.dump.age' -type f -print -quit)" ]] || exit 14
