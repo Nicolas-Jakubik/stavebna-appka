@@ -16,14 +16,29 @@ export function validDate(value: unknown): value is string {
 export function recorderReadQuery(table: string, input: URLSearchParams) {
   const columns = Object.hasOwn(RECORDER_COLUMNS, table) ? RECORDER_COLUMNS[table] : undefined
   if (!columns) return null
-  const allowed = new Set(['select', 'order', 'datum', 'meno', 'stav'])
+  const allowed = new Set(['select', 'order', 'datum', 'meno', 'stav', 'offset', 'limit'])
   if ([...input.keys()].some(key => !allowed.has(key))) return null
   const requested = input.get('select')?.split(',').map(s => s.trim()) || []
   if (requested.some(col => !columns.split(',').includes(col))) return null
-  const output = new URLSearchParams({ select: columns, limit: '1000' })
-  if (table === 'zamestnanci') output.set('order', 'meno.asc')
-  if (table === 'zoznam_zakaziek') { output.set('order', 'nazov.asc'); output.set('stav', 'eq.Aktívna') }
-  if (table === 'objekty_stavby') output.set('order', 'poradie.asc,nazov.asc')
+  // A page is at most 500 rows; offsets are limited to 200 pages.
+  // Every page is ordered by the unique row id to avoid skipped/duplicated rows.
+  for (const key of ['select', 'order', 'limit', 'offset', 'meno', 'stav']) {
+    if (input.getAll(key).length > 1) return null
+  }
+  const suppliedLimit = input.get('limit')
+  const suppliedOffset = input.get('offset')
+  if ((suppliedLimit === null) !== (suppliedOffset === null)) return null
+  if (suppliedLimit !== null &&
+      (!/^[1-9]\d{0,2}$/.test(suppliedLimit) || Number(suppliedLimit) > 500 ||
+       !/^(0|[1-9]\d{0,4})$/.test(suppliedOffset || '') ||
+       Number(suppliedOffset) > 99500)) return null
+  const output = new URLSearchParams({
+    select: columns,
+    limit: suppliedLimit || '500',
+    offset: suppliedOffset || '0',
+    order: 'id.asc',
+  })
+  if (table === 'zoznam_zakaziek') output.set('stav', 'eq.Aktívna')
   if (table === 'dochadzka' || table === 'nepritomnosti') {
     const dates = input.getAll('datum')
     if (dates.length === 1 && dates[0].startsWith('eq.') && validDate(dates[0].slice(3))) {
@@ -37,8 +52,7 @@ export function recorderReadQuery(table: string, input: URLSearchParams) {
       output.append('datum', `gte.${start}`)
       output.append('datum', `lte.${end}`)
     } else return null
-    // The UI filters selected names locally. Do not pass raw "in" expressions.
-    output.set('order', 'datum.asc,meno.asc')
+    // Names are filtered locally. The ID order remains stable across pages.
   }
   return output
 }
