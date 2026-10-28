@@ -9,6 +9,7 @@
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
 - [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Až potom zvoliť zdroj zálohy.
+- [ ] V skutočnej cieľovej databáze overiť existenciu a bezpečné oprávnenia SQL funkcie `record_attendance_secure`. Overiť, že je dostupná iba cez oprávnenú serverovú rolu a nedovoľuje anonymné/priame nepovolené zápisy; testy zápisov robiť iba na izolovanej obnove.
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
 - [ ] Vercel Preview `sd-evidencia` úspešne zostavený a prístupný: hlásenie `build-rate-limit` blokuje spoľahlivé overenie.
 - [ ] Výsledky skúšok schválené, uložení odkazy na testy a potvrdený výslovný súhlas s nasadením.
@@ -22,6 +23,8 @@
 | Výplaty | Septembrové/októbrové pôvodné výpisy a snapshot sadzby; 1. a 2. polovica mesiaca; PDF; dataset >1 000 riadkov a prerušenie neskorej stránky | Kontrolné súčty sedia, stránkovanie je úplné a pri chybe nie je možné vytvoriť zavádzajúce PDF |
 | Financie | Dataset s 1 184+ záznamami, presne 1 000 a prerušenie druhej stránky | Všetky riadky sú započítané; pri neúplnosti sa súčty **nezobrazia** |
 | Dashboard | Kontrola duplicít a prekryvov, filtre, neprítomnosti a včerajšok pri viac než 1 000 záznamoch | Jednotlivé záznamy sa načítajú kompletne, bez čiastočných súčtov; kód upravený, izolovaný test čaká |
+| Zapisovateľ | Úplný zoznam pracovníkov/stavieb, týždenný prehľad, kontrola duplicitných smien a 1 001+ záznamov | API vracia max. 500 riadkov na stránku, klient načíta všetky; pri chybe sa zápis zablokuje; serverová RPC funkcia sa musí overiť na testovacej DB |
+| Financie | Náklady, úhrady, faktúry oboch typov, výplaty pracovníkov a projektové súčty aj nad 1 000 riadkov | Žiadne skrátené výsledky ani zavádzajúce súčty, overené na izolovanej DB |
 | Stavby | Počet smien, hodiny a posledná aktivita aj pri viac než 1 000 záznamoch | Kompletné údaje, pri chybe zablokovaný prehľad a úpravy |
 | Pracovníci | Odpracované hodiny, počet smien, posledná aktivita a neprítomnosti nad 1 000 riadkov | Kompletný výpočet, pri chybe nie sú zobrazované neúplné súhrny |
 | Základné operácie | Zoznam stavieb, pracovníkov, neprítomností, mobilné načítanie | Bez regresie, bez úpravy produkčných údajov |
@@ -48,6 +51,8 @@
 - Test nad 1 000 riadkov v izolácii: **NEOVERENÉ** (automatické jednotkové testy helpera prešli, ale nie živý dataset)
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
 - Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
+- Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**
+- RPC `record_attendance_secure` na skutočnej produkčnej DB: **NEOVERENÉ**
 - Vercel Preview: **BLOKOVANÉ LIMITOM** (prepojený Vercel konektor pri čítaní detailu projektu vrátil 404 a pri zozname deployov 403; toto oprávnenie/napojenie treba vyriešiť bez zdieľania tajných údajov)
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
