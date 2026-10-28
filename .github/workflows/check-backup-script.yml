@@ -33,6 +33,29 @@ jobs:
             echo 'ERROR: script would create an unencrypted archive' >&2
             exit 1
           fi
+      - name: Reject backups with missing archive inspection identity
+        run: |
+          if env -u BACKUP_AGE_IDENTITY \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use-no-identity" \
+            BACKUP_AGE_RECIPIENT=unused \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: backup without a locally available age identity was accepted' >&2
+            exit 1
+          fi
+      - name: Reject insecure database connections
+        run: |
+          touch "$RUNNER_TEMP/test-only-age-identity"
+          for mode in disable allow prefer; do
+            if PGSSLMODE="$mode" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use-insecure" \
+              BACKUP_AGE_RECIPIENT=unused BACKUP_AGE_IDENTITY="$RUNNER_TEMP/test-only-age-identity" \
+              bash scripts/backup-public-db.sh; then
+              echo "ERROR: insecure PGSSLMODE=$mode was accepted" >&2
+              exit 1
+            fi
+          done
       - name: Verify encrypted stream and archive inspection with fake data only
         run: |
           sudo apt-get update -qq
