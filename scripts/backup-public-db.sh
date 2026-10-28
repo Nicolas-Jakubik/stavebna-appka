@@ -69,7 +69,7 @@ fi
 # Mandatory encrypted archive inspection without writing plaintext to disk.
 # This only validates archive structure; it is NOT a real isolated restore test.
 age --decrypt --identity "$BACKUP_AGE_IDENTITY" "$temporary" \
-  | pg_restore --list - > "$manifest"
+  | pg_restore --list > "$manifest"
 if ! grep -Eq 'TABLE DATA[[:space:]]+public[[:space:]]+dochadzka' "$manifest"; then
   printf 'The decrypted archive lacks public.dochadzka table data.\n' >&2
   exit 1
