@@ -8,9 +8,9 @@
 - [ ] Prevedený **skutočný** `pg_dump` schémy `public` pomocou `scripts/backup-public-db.sh`; hash archívu bezpečne zapísaný do súkromného protokolu.
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
-- [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Až potom zvoliť zdroj zálohy.
+- [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Vercel projekt je viditeľný v zozname, ale detail 404 a deployments 403; [bezpečný postup](VERCEL_PRODUCTION_MAPPING.md). Až potom zvoliť zdroj zálohy.
 - [ ] V **potvrdenej cieľovej produkčnej databáze** zopakovať read-only kontrolu funkcie `record_attendance_secure` a jej grantov. V pripojenom projekte `MojaFiremnaApp` bola metadátová kontrola úspešná (serverová rola áno, anon/authenticated nie); samotná väzba na Vercel **nebola potvrdená**. Funkciu a zápisy vrátane `objekt_id` testovať iba v izolácii.
-- [ ] **Zosúladiť databázové migrácie:** staršie lokálne RPC SQL súbory nepoznajú `objekt_id`, aktuálna pripojená funkcia áno. Duplicitné overlap triggery nemeniť pred izolovaným testom. Pozri [DB_READONLY_AUDIT_2026-10-28.md](DB_READONLY_AUDIT_2026-10-28.md).
+- [ ] **Zosúladiť históriu migrácií:** pôvodné RPC SQL súbory nepoznajú `objekt_id`, ale neskoršia migrácia `20261001103500_project_objects.sql` podporu obsahuje. Overiť poradie a skutočné aplikované verzie, nemeniť overlap triggery pred izolovaným testom. [Databázový audit](DB_READONLY_AUDIT_2026-10-28.md).
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
 - [ ] Vercel Preview `sd-evidencia` úspešne zostavený a prístupný: hlásenie `build-rate-limit` blokuje spoľahlivé overenie.
 - [ ] Výsledky skúšok schválené, uložení odkazy na testy a potvrdený výslovný súhlas s nasadením.
@@ -49,7 +49,7 @@
 - Izolovaná obnova: **NEOVERENÉ**
 - Browser/mobile testy: **NEOVERENÉ**
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**
-- Test nad 1 000 riadkov v izolácii: **NEOVERENÉ** (automatické jednotkové testy helpera prešli, ale nie živý dataset)
+- Test nad 1 000 riadkov v izolácii: **NEOVERENÉ**; syntetický test 1 203 riadkov cez klienta a API prešiel v [CI 40674286439](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40674286439), ale test na izolovanej obnovenej DB stále chýba
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
 - Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
 - Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**

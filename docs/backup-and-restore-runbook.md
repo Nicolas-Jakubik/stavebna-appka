@@ -63,7 +63,7 @@ závisieť od IPv4/IPv6 a režimu poolera.
   údajmi** obnoviť archív a porovnať počty riadkov, referencie,
   obmedzenia a testy aplikácie. Nikdy nespúšťať `pg_restore --clean`
   na produkčnej databáze.
-- Po obnovení overiť aj aktuálnu funkciu `record_attendance_secure(jsonb)` vrátane `objekt_id`, oprávnenia `anon`/`authenticated`/`service_role` a triggery. **Repozitár obsahuje staršie SQL migrácie, ktoré nie sú zhodné s aktuálnou funkciou v pripojenom projekte; migračné súbory neprehrávať naslepo.**
+- Po obnovení overiť aj aktuálnu funkciu `record_attendance_secure(jsonb)` vrátane `objekt_id`, oprávnenia a triggery. **Staršie RPC migrácie sú prekonané novšou `20261001103500_project_objects.sql`, ktorá `objekt_id` podporuje.** Otvorenou úlohou je zladenie reálne aplikovaných migračných verzií; migrácie neprehrávať naslepo nad obnovenou databázou.
 - Po úspešnom teste uložiť dátum, kontrolný súčet, počet záznamov a
   odkaz na interné úložisko do súkromného protokolu.
 - Až po potvrdení úplnosti zálohy a pripraveného rollback plánu
