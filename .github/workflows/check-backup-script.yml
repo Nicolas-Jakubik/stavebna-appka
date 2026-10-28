@@ -24,3 +24,46 @@ jobs:
             echo 'ERROR: backup command did not require private connection details' >&2
             exit 1
           fi
+      - name: Fail closed without an encryption recipient
+        run: |
+          if env -u BACKUP_AGE_RECIPIENT \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use" \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: script would create an unencrypted archive' >&2
+            exit 1
+          fi
+      - name: Verify encrypted stream and archive inspection with fake data only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+          scratch="$(mktemp -d)"
+          trap 'rm -rf "$scratch"' EXIT
+          mkdir -p "$scratch/bin" "$scratch/backups"
+          age-keygen -o "$scratch/identity.txt" 2>/dev/null
+          recipient="$(age-keygen -y "$scratch/identity.txt")"
+          cat > "$scratch/bin/pg_dump" <<'MOCK_DUMP'
+          #!/usr/bin/env bash
+          printf 'FAKE-DATABASE-DUMP-DO-NOT-USE\n'
+          MOCK_DUMP
+          cat > "$scratch/bin/pg_restore" <<'MOCK_RESTORE'
+          #!/usr/bin/env bash
+          [[ "$1" == "--list" && "$2" == "-" ]] || exit 8
+          [[ "$(cat)" == "FAKE-DATABASE-DUMP-DO-NOT-USE" ]] || exit 9
+          printf '42; 0 0 TABLE DATA public dochadzka postgres\n'
+          MOCK_RESTORE
+          chmod +x "$scratch/bin/pg_dump" "$scratch/bin/pg_restore"
+          PATH="$scratch/bin:$PATH" \
+          PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+          PGPASSWORD=dummy BACKUP_DIR="$scratch/backups" \
+          BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+          bash scripts/backup-public-db.sh
+          archive="$(find "$scratch/backups" -maxdepth 1 -name '*.dump.age' -type f -print -quit)"
+          [[ -n "$archive" ]] || exit 10
+          age --decrypt --identity "$scratch/identity.txt" "$archive" \
+            | grep -qx 'FAKE-DATABASE-DUMP-DO-NOT-USE'
+          if grep -aq 'FAKE-DATABASE-DUMP-DO-NOT-USE' "$archive"; then
+            echo 'ERROR: archive has recognizable plaintext bytes' >&2
+            exit 11
+          fi
+          [[ -z "$(find "$scratch/backups" -maxdepth 1 -name '*.dump' -type f -print -quit)" ]] || exit 12
