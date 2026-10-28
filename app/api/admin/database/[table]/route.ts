@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
+import { validAdminMutationScope } from '../../../../../lib/adminMutationScope'
 
 export const dynamic = 'force-dynamic'
 const TABLES = new Set(['dochadzka', 'zamestnanci', 'zoznam_zakaziek', 'objekty_stavby', 'nepritomnosti', 'financie_stavby', 'naklady_stavby', 'platby_stavby', 'uhrady_pracovnikov', 'faktury_dodavatelov', 'faktury_klientov'])
@@ -27,21 +28,13 @@ async function handle(request: NextRequest, context: Context) {
     return error(403, 'Nepovolený pôvod požiadavky.')
   }
 
-  // All existing delete actions target a single numeric row ID. Never allow a
-  // privileged gateway request to DELETE an entire table or a broad filter.
-  if (request.method === 'DELETE') {
-    const ids = request.nextUrl.searchParams.getAll('id')
-    if (ids.length !== 1 || !/^eq\.[1-9]\d{0,18}$/.test(ids[0])) {
-      return error(400, 'Mazanie vyžaduje presné ID záznamu.')
-    }
-  }
-
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   // Fail closed: never silently fall back to the anonymous database role.
   if (!baseUrl || !key) return error(503, 'Prístup administrácie k databáze nie je nastavený.')
 
   let body: string | undefined
+  let parsedBody: unknown
   if (['POST', 'PATCH'].includes(request.method)) {
     if (!request.headers.get('content-type')?.startsWith('application/json')) {
       return error(415, 'Očakávaný formát JSON.')
@@ -61,7 +54,11 @@ async function handle(request: NextRequest, context: Context) {
       chunks.push(value)
     }
     body = Buffer.concat(chunks).toString('utf8')
-    try { JSON.parse(body) } catch { return error(400, 'Neplatný JSON.') }
+    try { parsedBody = JSON.parse(body) } catch { return error(400, 'Neplatný JSON.') }
+  }
+
+  if (!validAdminMutationScope(request.method, table, request.nextUrl.searchParams, parsedBody)) {
+    return error(400, 'Úprava alebo mazanie vyžaduje presný filter záznamu.')
   }
 
   // Fixed destination and table allowlist: no arbitrary URLs, RPCs or schemas.

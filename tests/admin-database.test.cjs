@@ -90,6 +90,41 @@ test('admin gateway security and PostgREST compatibility', async t => {
       }
       assert.equal(calls.length, before)
     })
+    await t.test('broad PATCH and disguised mass-edit filters are denied', async () => {
+      const before = calls.length
+      const patch = async (query, payload, table = 'dochadzka') =>
+        (await route.PATCH(req('PATCH', {}, JSON.stringify(payload), query), context(table))).status
+      for (const query of [
+        '', '?id=gt.1', '?id=eq.0', '?id=eq.-1', '?id=eq.1&id=eq.2',
+        '?or=(id.gt.0)', '?id=eq.1&or=(id.gt.0)',
+        '?meno=ilike.*', '?meno=eq.', '?zakazka_id=gt.0'
+      ]) assert.equal(await patch(query, { meno: 'Nové' }), 400, query)
+      assert.equal(await patch('?meno=eq.Povodne', { meno: 'Nové', sadzba_snapshot: 500 }), 400)
+      assert.equal(await patch('?zakazka=eq.Stara', { prichod: '08:00' }), 400)
+      assert.equal(await patch('?id=eq.2', { id: 999 }), 400)
+      assert.equal(await patch('?id=eq.2', []), 400)
+      assert.equal(await patch('?zakazka_id=eq.9', { cena_zakazky: 100 }), 400)
+      assert.equal(calls.length, before)
+    })
+    await t.test('DELETE rejects all extra or ambiguous filters', async () => {
+      const before = calls.length
+      for (const query of ['?id=eq.1&or=(id.gt.0)', '?id=eq.1&zakazka_id=gt.0', '?id=eq.1&id=eq.1']) {
+        assert.equal((await route.DELETE(req('DELETE', {}, undefined, query), context('dochadzka'))).status, 400)
+      }
+      assert.equal(calls.length, before)
+    })
+    await t.test('historical renames and individual admin edits remain functional', async () => {
+      for (const [table, query, payload] of [
+        ['dochadzka', '?meno=eq.Povodne', { meno: 'Nové' }],
+        ['dochadzka', '?zakazka=eq.Stara%20stavba', { zakazka: 'Nová stavba' }],
+        ['financie_stavby', '?zakazka_id=eq.9', { cena_zakazky: 100 }],
+        ['naklady_stavby', '?id=eq.4&zakazka_id=eq.9', { suma: 100 }],
+      ]) {
+        assert.equal((await route.PATCH(req('PATCH', {}, JSON.stringify(payload), query), context(table))).status, 200)
+        assert.equal(new URL(calls.at(-1).url).search, query)
+      }
+      assert.equal((await route.DELETE(req('DELETE', {}, undefined, '?id=eq.4&zakazka_id=eq.9'), context('naklady_stavby'))).status, 200)
+    })
     await t.test('authenticated insert, update and delete reach the correct table', async () => {
       for (const method of ['POST', 'PATCH', 'DELETE']) {
         const body = method === 'DELETE' ? undefined : '[{"meno":"Test"}]'
