@@ -75,15 +75,51 @@ test('recorder privileges, validation and server routes', async t => {
     })
     await t.test('read projection, active jobs and credentials are owned by server', async () => {
       assert.equal((await route.GET(req('GET','?select=meno',undefined,{apikey:'evil','accept-profile':'private'}),ctx('zamestnanci'))).status,200)
-      assert.match(calls.at(-1).url,/select=meno&limit=1000/)
+      assert.equal(new URL(calls.at(-1).url).searchParams.get('limit'),'500')
+      assert.equal(new URL(calls.at(-1).url).searchParams.get('order'),'id.asc')
       assert.equal(calls.at(-1).init.headers.apikey,'test-only-server-key')
       assert.equal(calls.at(-1).init.headers['Accept-Profile'],'public')
       await route.GET(req('GET','?select=nazov&stav=eq.Archiv'),ctx('zoznam_zakaziek'))
       assert.equal(new URL(calls.at(-1).url).searchParams.get('stav'),'eq.Aktívna')
       assert.equal((await route.GET(req('GET','?select=id,zakazka_id,nazov,poradie,aktivny'),ctx('objekty_stavby'))).status,200)
-      assert.match(calls.at(-1).url,/order=poradie.asc%2Cnazov.asc/)
+      assert.equal(new URL(calls.at(-1).url).searchParams.get('order'),'id.asc')
       await route.GET(req('GET','?select=meno,datum&datum=gte.2026-09-14&datum=lte.2026-09-19'),ctx('dochadzka'))
       assert.equal(new URL(calls.at(-1).url).searchParams.getAll('datum').length,2)
+    })
+    await t.test('safe pagination accepts 1,500 total rows but only fetches a bounded page', async () => {
+      const oldFetch = global.fetch
+      global.fetch = async (url, init) => {
+        calls.push({url:String(url), init})
+        return Response.json([], {headers: {'content-range':'0-499/1500'}})
+      }
+      try {
+        const response = await route.GET(req('GET','?select=meno,datum&datum=gte.2026-09-14&datum=lte.2026-09-19&limit=500&offset=500'),ctx('dochadzka'))
+        assert.equal(response.status,200)
+        const params = new URL(calls.at(-1).url).searchParams
+        assert.equal(params.get('limit'),'500')
+        assert.equal(params.get('offset'),'500')
+        assert.equal(params.get('order'),'id.asc')
+        assert.deepEqual(await response.json(),[])
+      } finally { global.fetch = oldFetch }
+    })
+    await t.test('unbounded or malformed page requests cannot reach the database', async () => {
+      const before = calls.length
+      const invalid = [
+        '?select=meno&limit=1001&offset=0',
+        '?select=meno&limit=501&offset=0',
+        '?select=meno&limit=0&offset=0',
+        '?select=meno&limit=-1&offset=0',
+        '?select=meno&limit=5&offset=-1',
+        '?select=meno&limit=5&offset=100000',
+        '?select=meno&limit=5&offset=1.2',
+        '?select=meno&limit=5',
+        '?select=meno&offset=0',
+        '?select=meno&limit=500&offset=0&limit=500',
+        '?select=meno&limit=500&offset=0&or=(id.gt.1)',
+      ]
+      for (const query of invalid) assert.equal(
+        (await route.GET(req('GET',query),ctx('zamestnanci'))).status,400,query)
+      assert.equal(calls.length,before)
     })
     await t.test('strict entry validation rejects invalid or mixed batches', () => {
       assert.deepEqual(validation.validateRecorderEntries([entry]),[entry])
