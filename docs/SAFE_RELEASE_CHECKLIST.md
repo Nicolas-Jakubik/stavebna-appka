@@ -21,7 +21,9 @@
 | Dochádzka | Rozdelenie jednej smeny medzi stavby, duplicita/prekryv, dátumy a časy | Nedôjde k nechcenému prepísaniu údajov ani duplicitnému zápisu |
 | Výplaty | Septembrové/októbrové pôvodné výpisy a snapshot sadzby; 1. a 2. polovica mesiaca; PDF; dataset >1 000 riadkov a prerušenie neskorej stránky | Kontrolné súčty sedia, stránkovanie je úplné a pri chybe nie je možné vytvoriť zavádzajúce PDF |
 | Financie | Dataset s 1 184+ záznamami, presne 1 000 a prerušenie druhej stránky | Všetky riadky sú započítané; pri neúplnosti sa súčty **nezobrazia** |
-| Dashboard | Kontrola duplicít a prekryvov, filtre a prehľad aj pri viac než 1 000 historických záznamoch | Žiadna čiastočná kontrola sa nesmie považovať za úplnú; zostáva auditovať/potenciálne opraviť |
+| Dashboard | Kontrola duplicít a prekryvov, filtre, neprítomnosti a včerajšok pri viac než 1 000 záznamoch | Jednotlivé záznamy sa načítajú kompletne, bez čiastočných súčtov; kód upravený, izolovaný test čaká |
+| Stavby | Počet smien, hodiny a posledná aktivita aj pri viac než 1 000 záznamoch | Kompletné údaje, pri chybe zablokovaný prehľad a úpravy |
+| Pracovníci | Odpracované hodiny, počet smien, posledná aktivita a neprítomnosti nad 1 000 riadkov | Kompletný výpočet, pri chybe nie sú zobrazované neúplné súhrny |
 | Základné operácie | Zoznam stavieb, pracovníkov, neprítomností, mobilné načítanie | Bez regresie, bez úpravy produkčných údajov |
 
 ## Pripravenosť na nasadenie – bez plánovanej odstávky
@@ -45,8 +47,8 @@
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**
 - Test nad 1 000 riadkov v izolácii: **NEOVERENÉ** (automatické jednotkové testy helpera prešli, ale nie živý dataset)
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
-- Dashboard nad 1 000 záznamov: **ZOSTÁVA OPRAVIŤ/OVERIŤ**
-- Vercel Preview: **BLOKOVANÉ LIMITOM**
+- Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
+- Vercel Preview: **BLOKOVANÉ LIMITOM** (prepojený Vercel konektor pri čítaní detailu projektu vrátil 404 a pri zozname deployov 403; toto oprávnenie/napojenie treba vyriešiť bez zdieľania tajných údajov)
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
 Odovzdávací checkpoint: [REPAIR_HANDOFF.md](REPAIR_HANDOFF.md).
