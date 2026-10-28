@@ -138,7 +138,13 @@ export default function MzdyPage() {
         const [selected, month, workers] = await Promise.all([
           selectedPromise,
           monthPromise,
-          supabase.from('zamestnanci').select('*')
+          nacitajVsetkyStrany<any>(async (first, last) => {
+            const { data, error } = await supabase.from('zamestnanci')
+              .select('*')
+              .order('id', { ascending: true })
+              .range(first, last)
+            return { data: data as any[] | null, error }
+          })
         ])
 
         if (cancelled) return
