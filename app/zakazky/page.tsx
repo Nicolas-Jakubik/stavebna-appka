@@ -1,12 +1,15 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 
 export default function ZakazkyPage() {
   const [zakazky, setZakazky] = useState<any[]>([])
+  const [dataStatus, setDataStatus] = useState<'loading'|'ready'|'error'>('loading')
+  const readVersion = useRef(0)
   const [novyNazov, setNovyNazov] = useState('')
   const [pridavaSa, setPridavaSa] = useState(false)
   const [hladat, setHladat] = useState('')
@@ -83,50 +86,48 @@ export default function ZakazkyPage() {
   }
 
   async function nacitajZakazky() {
-    const [{ data: dataZakazky, error: chybaZakazky }, { data: dataDochadzka, error: chybaDochadzky }] = await Promise.all([
-      supabase
-        .from('zoznam_zakaziek')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('dochadzka')
-        .select('id, meno, zakazka, datum, prichod, odchod')
+    const version = ++readVersion.current
+    setDataStatus('loading')
+    const [projects, attendance] = await Promise.all([
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const {data,error} = await supabase.from('zoznam_zakaziek').select('*')
+          .order('id', {ascending:true}).range(start,end)
+        return {data: data as any[] | null,error}
+      }),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const {data,error} = await supabase.from('dochadzka')
+          .select('id,meno,zakazka,datum,prichod,odchod')
+          .order('id', {ascending:true}).range(start,end)
+        return {data: data as any[] | null,error}
+      })
     ])
-
-    if (chybaZakazky) {
-      console.error("Chyba načítania zákaziek:", chybaZakazky)
-    } else {
-      setZakazky(dataZakazky || [])
-    }
-
-    if (chybaDochadzky) {
-      console.error("Chyba načítania prepojenia dochádzky:", chybaDochadzky)
+    if (version !== readVersion.current) return
+    if (projects.error || attendance.error || !projects.data || !attendance.data) {
+      setZakazky([])
       setPocetDochadzkyPodlaZakazky({})
       setHodinyPodlaZakazky({})
       setPoslednaAktivitaPodlaZakazky({})
-    } else {
-      const pocty: Record<string, number> = {}
-      const hodiny: Record<string, number> = {}
-      const poslednaAktivita: Record<string, string> = {}
-      const mapaCistychHodin = vytvorMapuCistychHodin(dataDochadzka || [])
-
-      ;(dataDochadzka || []).forEach(zaznam => {
-        const nazov = String(zaznam.zakazka || '').trim()
-        if (!nazov) return
-
-        pocty[nazov] = (pocty[nazov] || 0) + 1
-        hodiny[nazov] = (hodiny[nazov] || 0) + hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
-
-        const datum = String(zaznam.datum || '')
-        if (datum && (!poslednaAktivita[nazov] || datum > poslednaAktivita[nazov])) {
-          poslednaAktivita[nazov] = datum
-        }
-      })
-
-      setPocetDochadzkyPodlaZakazky(pocty)
-      setHodinyPodlaZakazky(hodiny)
-      setPoslednaAktivitaPodlaZakazky(poslednaAktivita)
+      setDataStatus('error')
+      return
     }
+    setZakazky([...projects.data].sort((a,b) =>
+      String(b.created_at || '').localeCompare(String(a.created_at || '')) || Number(b.id)-Number(a.id)))
+    const pocty: Record<string,number> = {}
+    const hodiny: Record<string,number> = {}
+    const poslednaAktivita: Record<string,string> = {}
+    const mapa = vytvorMapuCistychHodin(attendance.data)
+    attendance.data.forEach(row => {
+      const nazov = String(row.zakazka || '').trim()
+      if (!nazov) return
+      pocty[nazov] = (pocty[nazov] || 0) + 1
+      hodiny[nazov] = (hodiny[nazov] || 0) + hodinyZaznamuZMapy(row, mapa)
+      const datum = String(row.datum || '')
+      if (datum && (!poslednaAktivita[nazov] || datum > poslednaAktivita[nazov])) poslednaAktivita[nazov] = datum
+    })
+    setPocetDochadzkyPodlaZakazky(pocty)
+    setHodinyPodlaZakazky(hodiny)
+    setPoslednaAktivitaPodlaZakazky(poslednaAktivita)
+    setDataStatus('ready')
   }
 
   async function pridatZakazku(e: React.FormEvent) {
@@ -298,6 +299,20 @@ export default function ZakazkyPage() {
       : filterStav === 'dokoncene'
         ? dokonceneZakazkyNaZobrazenie.length
         : aktivneZakazkyNaZobrazenie.length + dokonceneZakazkyNaZobrazenie.length
+
+  if (dataStatus !== 'ready') {
+    return <div style={{minHeight:'100vh',padding:24,display:'flex',gap:24,background:'#f5f5f7'}}>
+      <AdminSidebar active="zakazky" />
+      <main role={dataStatus === 'error' ? 'alert' : 'status'}
+        style={{padding:28,background:'#fff',borderRadius:14,width:'100%',height:'fit-content'}}>
+        <h1 style={{fontSize:22,fontWeight:700}}>Stavby</h1>
+        <p>{dataStatus === 'error'
+          ? 'História stavieb a dochádzky sa nenačítala kompletne. Počty ani hodiny sa preto nezobrazujú.'
+          : 'Načítavam kompletný zoznam stavieb a pracovných hodín…'}</p>
+        {dataStatus === 'error' && <button type="button" onClick={() => window.location.reload()}>Skúsiť znova</button>}
+      </main>
+    </div>
+  }
 
   return (
     <div className="simple-admin-shell" style={{
