@@ -8,6 +8,7 @@ import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } 
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 import { vypocitajZiskovost } from '../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
+import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 
 type OfferItem = {
   sekcia: string
@@ -416,9 +417,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .order('datum', { ascending: false })
         .order('id', { ascending: false }),
-      supabase
-        .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot'),
+      nacitajVsetkyStrany<AttendanceRow>(async (start, end) => {
+        const { data, error } = await supabase.from('dochadzka')
+          .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot')
+          .order('id', { ascending: true })
+          .range(start, end)
+        return { data: data as AttendanceRow[] | null, error }
+      }),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
