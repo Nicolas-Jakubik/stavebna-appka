@@ -8,7 +8,7 @@
 - [ ] Prevedený **skutočný** `pg_dump` schémy `public` pomocou `scripts/backup-public-db.sh`; hash archívu bezpečne zapísaný do súkromného protokolu.
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
-- [ ] Overiť, na ktorý Supabase project/ref je napojený **aktuálny produkčný Vercel deploy** (porovnať iba project ref/URL, nikdy neposielať tajné kľúče). Vercel projekt je viditeľný v zozname, ale detail 404 a deployments 403; [bezpečný postup](VERCEL_PRODUCTION_MAPPING.md). Až potom zvoliť zdroj zálohy.
+- [ ] **Potvrdená už produkčná vetva/commit na Verceli:** `main`/`8a2d40d`, projekt aj doména identifikované. Ešte **nepotvrdený Supabase projektový ref**, lebo `NEXT_PUBLIC_SUPABASE_URL` je v konektore označená `sensitive` a jej hodnota nebola vrátená. [Presný postup](VERCEL_PRODUCTION_MAPPING.md). Až potom vybrať zdroj zálohy.
 - [ ] V **potvrdenej cieľovej produkčnej databáze** zopakovať read-only kontrolu funkcie `record_attendance_secure` a jej grantov. V pripojenom projekte `MojaFiremnaApp` bola metadátová kontrola úspešná (serverová rola áno, anon/authenticated nie); samotná väzba na Vercel **nebola potvrdená**. Funkciu a zápisy vrátane `objekt_id` testovať iba v izolácii.
 - [ ] **Zosúladiť históriu migrácií:** pôvodné RPC SQL súbory nepoznajú `objekt_id`, ale neskoršia migrácia `20261001103500_project_objects.sql` podporu obsahuje. Overiť poradie a skutočné aplikované verzie, nemeniť overlap triggery pred izolovaným testom. [Databázový audit](DB_READONLY_AUDIT_2026-10-28.md).
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
@@ -49,12 +49,13 @@
 - Izolovaná obnova: **NEOVERENÉ**
 - Browser/mobile testy: **NEOVERENÉ**
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**
+- Metadata-only SQL check pre RPC/RLS/granty/trigger: **OVERENÉ čítaním pripojeného projektu**, nie potvrdenej produkcie; `scripts/verify-db-readiness.sql` + statické regresné testy.
 - Test nad 1 000 riadkov v izolácii: **NEOVERENÉ**; syntetický test 1 203 riadkov cez klienta a API prešiel v [CI 40674286439](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40674286439), ale test na izolovanej obnovenej DB stále chýba
 - Väzba produkčného Vercelu na správny Supabase project: **NEOVERENÉ**
 - Dashboard/Stavby/Pracovníci nad 1 000 záznamov: **KÓD A CI HOTOVÉ; IZOLOVANÉ INTEGRAČNÉ TESTY NEOVERENÉ**
 - Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**
 - RPC `record_attendance_secure` na pripojenom projekte `MojaFiremnaApp`: **READ-ONLY METADÁTA OVERENÉ** (service_role áno, anon/authenticated nie, `objekt_id` podporované). **NAPOJENIE NA PRODUKČNÝ VERCEL NEOVERENÉ**.
-- Vercel Preview: **BLOKOVANÉ LIMITOM** (prepojený Vercel konektor pri čítaní detailu projektu vrátil 404 a pri zozname deployov 403; toto oprávnenie/napojenie treba vyriešiť bez zdieľania tajných údajov)
+- Vercel Preview: **READY nasadenie staršej opravnej vetvy nájdené; aktuálna revízia ani browser test NEOVERENÉ.** Produkčný `main` SHA a doména overené v metadátach; Supabase backend ref ešte nie.
 - Duplicitné overlap triggery / drift migračnej histórie: **ZDOKUMENTOVANÉ, POTREBNÝ IZOLOVANÝ TEST**
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
