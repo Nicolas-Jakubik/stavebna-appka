@@ -47,7 +47,7 @@ trap cleanup EXIT
 # pg_dump streams directly into age encryption. No plaintext dump is written.
 # No production mutations. The recipient is public; private keys stay offline.
 pg_dump --no-password --format=custom --no-owner --no-acl --schema=public \
-  | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "$temporary"
+  | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" > "$temporary"
 if [[ ! -s "$temporary" ]]; then
   printf 'Encrypted backup is empty.\n' >&2
   exit 1
