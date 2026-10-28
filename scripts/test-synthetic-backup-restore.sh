@@ -119,6 +119,11 @@ archive="$(find "$scratch/backups" -maxdepth 1 -type f -name '*.dump.age' -print
 
 # Restore only into a new isolated database in the same ephemeral CI server.
 docker exec "$container" createdb -U postgres synthetic_restored
+# PostgreSQL 17 pre-creates public in new databases. The source archive contains
+# CREATE SCHEMA public, so remove ONLY the default empty schema from this
+# freshly created, disposable CI database before restoring.
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d synthetic_restored \
+  -c 'DROP SCHEMA public CASCADE;'
 age --decrypt --identity "$BACKUP_AGE_IDENTITY" "$archive" |
   PGDATABASE=synthetic_restored pg_restore \
     --exit-on-error --no-owner --no-acl --dbname=synthetic_restored
