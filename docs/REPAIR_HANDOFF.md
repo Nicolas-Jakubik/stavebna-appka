@@ -1,5 +1,8 @@
 # SD-EVIDENCIA-OPRAVY-2026-10-28
 
+> **Pokračovanie (28. 10. 2026):** Aktuálny kontrolný návrh je **[draft PR #102](https://github.com/Nicolas-Jakubik/stavebna-appka/pull/102)**, vetva `integration/safe-repairs-batch2-2026-10-28`. Spojil opravy #95–#101 a doplnil ošetrenie odmietnutej stránky databázových údajov. Najnovší odovzdávací dokument je [tu](https://github.com/Nicolas-Jakubik/stavebna-appka/blob/integration/safe-repairs-batch2-2026-10-28/docs/REPAIR_HANDOFF.md). **Pripravené približne 55 % (odhad), nasadené 0 %.** Nič nemergovať/nasadzovať bez skutočnej obnoviteľnej zálohy a izolovaného testu. Údaje nižšie sú historický checkpoint 45 %, neznamenajú, že sa majú opakovať hotové práce.
+
+
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28.
 **Approximate prepared-repairs progress:** 45%; **production-deployed fixes:** 0%. These percentages are estimates, not a release-completion guarantee.
