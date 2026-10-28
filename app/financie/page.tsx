@@ -557,6 +557,11 @@ export default function FinanciePage() {
           <div style={{ ...cardStyle, padding: '28px', color: '#86868b', fontSize: '12px' }}>
             Načítavam finančný prehľad…
           </div>
+        ) : error ? (
+          <div style={{ ...cardStyle, padding: '28px', color: '#b42318', fontSize: '13px' }}>
+            Finančné súčty nie sú zobrazené, pretože časť údajov sa nepodarilo načítať.
+            Obnovte stránku alebo skúste neskôr.
+          </div>
         ) : (
           <>
             <div className="finances-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
