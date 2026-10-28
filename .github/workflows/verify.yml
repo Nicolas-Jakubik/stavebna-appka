@@ -2,7 +2,7 @@ name: Verify application
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, integration/verified-repairs-2026-10-28]
   workflow_dispatch:
 
 permissions:
