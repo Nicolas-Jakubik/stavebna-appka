@@ -670,8 +670,8 @@ export default function MzdyPage() {
                   <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6' }}>Pre tento mesiac nie sú žiadne dáta.</td></tr>
                 ) : (
                   pracovniciMesacneZoradeni.map(([meno, data]) => {
-                    const prvaSuma = data.prvaHodiny * data.sadzba
-                    const druhaSuma = data.druhaHodiny * data.sadzba
+                    const prvaSuma = data.prvaSuma
+                    const druhaSuma = data.druhaSuma
                     const spoluHodiny = data.prvaHodiny + data.druhaHodiny
                     const spoluSuma = prvaSuma + druhaSuma
 
@@ -733,9 +733,9 @@ export default function MzdyPage() {
                   <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Pre vybrané obdobie nie sú žiadne dáta.</td></tr>
                 ) : (
                   Object.entries(zamestnanciHodiny).map(([meno, hodiny]) => {
-                    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-                    const sadzba = dbZamestnanec ? dbZamestnanec.sadzba : 0
-                    const mzda = hodiny * sadzba
+                    const mzda = zamestnanciMzdy[meno] || 0
+                    const sadzby = [...(sadzbyPracovnikov[meno] || [])]
+                    const sadzba = sadzby.length === 1 ? sadzby[0] : null
                     const rozdiel = hodiny - fondVybranehoObdobia
                     
                     return (
@@ -758,7 +758,7 @@ export default function MzdyPage() {
                           </span>
                         </td>
                         <td className="vyplaty-mobile-cell" data-label="Sadzba" style={{ padding: '12px', textAlign: 'right', color: '#86868b', fontSize: '11px' }}>
-                          {sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
+                          {sadzba === null ? 'Rôzne sadzby' : sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
                         </td>
                         <td className="vyplaty-mobile-cell" data-label="Na výplatu" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '750', textAlign: 'right', fontSize: '14px' }}>{mzda.toFixed(2)} €</td>
                       </tr>
