@@ -71,7 +71,7 @@ jobs:
           MOCK_DUMP
           cat > "$scratch/bin/pg_restore" <<'MOCK_RESTORE'
           #!/usr/bin/env bash
-          [[ "$1" == "--list" && "$2" == "-" ]] || exit 8
+          [[ "$1" == "--list" && "$#" -eq 1 ]] || exit 8
           [[ "$(cat)" == "FAKE-DATABASE-DUMP-DO-NOT-USE" ]] || exit 9
           printf '42; 0 0 TABLE DATA public dochadzka postgres\n'
           MOCK_RESTORE
