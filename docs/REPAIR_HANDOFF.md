@@ -2,7 +2,7 @@
 
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-28, continuation checkpoint in PR #102.
-**Approximate prepared-repairs progress:** 80% (planning estimate; pagination and safe-read guards verified by CI, real integration checks remain); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
+**Approximate prepared-repairs progress:** 90% (planning estimate for code preparation only; actual restore, live-environment integration tests and release gates still outstanding); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
@@ -38,7 +38,11 @@
 - #102 dashboard pagination commits `bbd5765c09d4bb9b7b556982cf3650eeca46dd51` and `9bde5dedcc1044a9caf8b03df76465a408d8c831`: full history for conflict checks, selected periods, options, absences and yesterday; UI hides totals/operations when any required dataset is incomplete; consistent row-ID comparison. Application CI [40670935123](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40670935123) **passed**.
 - #102 project and employee list fixes: `3b262280e714345f3d1a68c66f2e0f2cbf7215a2` and `864fd22805ac06fa0a37d0f6ae264c244abdd69e` paginate complete attendance and absence lists and hide misleading partial metrics on failure. Application CI [40671261083](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40671261083) **passed** (tests, TypeScript and build); backup script CI [40671261027](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40671261027) **passed**. Neither creates a real database backup.
 - Vercel connector listed a project named `sd-evidencia`, but project detail lookup returned 404 and deployments listing returned **403 permission denied**. The connected account cannot reliably verify the currently live deployment or database binding; this remains a release blocker.
-- Further audit: recorder's short-range attendance read and other pages can still have default 1,000-row limits; do not claim all paths verified or full 100% safety.
+- #102 recorder server paging commits `a92b915`, `689458c`, `0cd4ff5`: bounded 500-row server-backed reads with validated `limit`/`offset`, stable `id` order and rejected invalid requests; removed earlier global 1,000-row-denial; regression coverage of larger total datasets. Server + tests CI **40671950403 passed**. The first intermediate CI failed before test updates and is superseded.
+- #102 recorder UI `c5733805734049f61ada25f43733346b1e45f919`: paginates worker/project/object selectors, weekly attendance and absence checks, and selected-day duplicate/conflict checks; fail-closed on incomplete data. Application CI **40672011721 passed** (tests, TypeScript, build).
+- #102 remaining finance inputs `6c1d18127ec2d1ddbbda15db7732215a0841e1a9` and `012449354082c5f17068ff7ff20f1ce134ff88a2`: paginates project list, expenses, receipts, worker payments and both invoice types, preserving deterministic ordering. Latest combined application CI [40672319954](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40672319954) **success**; backup-script-only CI [40672319911](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40672319911) **success**.
+- The `record_attendance_secure` RPC implementation and permissions must be checked on the **actual target database** before deployment. Unit tests with mock RPC are not equivalent to verifying it on the production schema or an isolated restore.
+- Latest PR remains **DRAFT**, production `main` is unchanged. No real database backup/restore or live write test has been carried out.
 - Package lock verified: Next.js **16.4.3**, Sharp **0.35.5**.
 - Vercel preview/status for `sd-evidencia` is **failure** with a build-rate-limit URL. Do not interpret GitHub CI success as successful preview or deployment.
 - Legacy lint warnings/errors remain. Lint is currently non-blocking in these PR workflows; tests, TypeScript and build remain mandatory.
@@ -49,8 +53,8 @@
 1. Create a genuinely private encrypted backup using a trusted computer and separate DB credentials; restore to isolated database and verify integrity.
 2. Test recorder access links and admin roles with representative mobile/desktop browsers.
 3. Compare historical pay reports to original records before approving changes.
-4. Test finance, payroll, dashboard, project/employee history paging with >1,000 rows on isolated nonproduction data; review remaining recorder reads and other capped queries.
-5. **Code reconciliation and CI completed in draft #102** through `864fd228` for the audited admin views. Still perform isolated mobile/browser/integration tests, confirm Vercel access and resolve Preview build-rate-limit. Do not infer production readiness from CI alone.
+4. Test finance, payroll, dashboard, project/employee history and recorder paging using >1,000 rows on an isolated nonproduction dataset; verify recorder RPC existence/privileges and simulated race conditions there.
+5. **Code reconciliation and CI completed in draft #102** through `01244935` for the audited administrative and recorder views. Still perform isolated mobile/browser/integration tests, confirm Vercel access and resolve Preview build-rate-limit. Do not infer production readiness from CI alone.
 6. Proposed release/rollback acceptance matrix is prepared in [`docs/SAFE_RELEASE_CHECKLIST.md`](SAFE_RELEASE_CHECKLIST.md). It still requires approval and evidence of backup/restore/browser/data checks before any production change. **Do not claim repairs are live until deployment is confirmed.**
 
 ## Resume in a new ChatGPT conversation
@@ -63,4 +67,4 @@ Then say:
 
 "Pokračuj v opravách FiremnáApka. Načítaj prosím GitHub dokument `docs/REPAIR_HANDOFF.md` vo vetve `integration/verified-repairs-2026-10-28` a skontroluj aktuálny stav PR #95 až #101. Produkciu nemeň bez obnoviteľnej zálohy. Píš percentuálny progres."
 
-**Resume from draft PR #102, not from #98 or #101; do not redo their completed changes.** Keep this document and its PR list updated at major milestones.
+**Resume from draft PR #102, not from #98 or #101; do not redo their completed changes.** Pending work: verified, encrypted backup+isolated restore; actual Vercel/Supabase binding; RPC on target DB; browser/mobile tests; historical pay reconciliation; independent large-dataset integration test and approved release. Keep this document and its PR list updated at major milestones.
