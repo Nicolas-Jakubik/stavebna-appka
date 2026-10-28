@@ -28,6 +28,9 @@ test('newest recorder object migration contains server-only object-aware RPC', (
 test('private backup always requires encryption before persisting an archive', () => {
   const src=fs.readFileSync(path.join(__dirname,'../scripts/backup-public-db.sh'),'utf8')
   assert.match(src,/BACKUP_AGE_RECIPIENT/)
+  assert.match(src,/BACKUP_AGE_IDENTITY:\?/)
+  assert.match(src,/require\|verify-ca\|verify-full/)
+  assert.match(src,/age --decrypt --identity/)
   assert.match(src,/pg_dump[\s\S]*\|\s*age --encrypt/)
   assert.match(src,/\.dump\.age/)
   assert.doesNotMatch(src,/pg_dump[^\n]*--file=/)
