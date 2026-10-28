@@ -127,7 +127,7 @@ test('admin gateway security and PostgREST compatibility', async t => {
     })
     await t.test('authenticated insert, update and delete reach the correct table', async () => {
       for (const method of ['POST', 'PATCH', 'DELETE']) {
-        const body = method === 'DELETE' ? undefined : '[{"meno":"Test"}]'
+        const body = method === 'DELETE' ? undefined : method === 'POST' ? '[{"meno":"Test"}]' : '{"meno":"Test"}'
         assert.equal((await route[method](req(method, {}, body, '?id=eq.1'), context('zamestnanci'))).status, 200)
         assert.equal(calls.at(-1).init.method, method)
         assert.equal(calls.at(-1).init.body, body)
