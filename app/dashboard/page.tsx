@@ -266,13 +266,21 @@ export default function DashboardPage() {
 
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno').eq('datum', datum),
-      supabase.from('nepritomnosti').select('meno').eq('datum', datum)
+      nacitajVsetkyStrany<any>(async (start, end) => {
+        const { data, error } = await supabase.from('dochadzka').select('id,meno')
+          .eq('datum', datum).order('id', { ascending: true }).range(start, end)
+        return { data: data as any[] | null, error }
+      }),
+      nacitajVsetkyStrany<any>(async (start, end) => {
+        const { data, error } = await supabase.from('nepritomnosti').select('id,meno')
+          .eq('datum', datum).order('id', { ascending: true }).range(start, end)
+        return { data: data as any[] | null, error }
+      })
     ])
 
-    if (zamestnanciResult.error || dochadzkaResult.error) {
-      const sprava = zamestnanciResult.error?.message || dochadzkaResult.error?.message || 'Nepodarilo sa načítať kontrolu dochádzky.'
-      setChybaKontroly(sprava)
+    if (zamestnanciResult.error || dochadzkaResult.error || nepritomnostiResult.error ||
+        !zamestnanciResult.data || !dochadzkaResult.data || !nepritomnostiResult.data) {
+      setChybaKontroly('Dennú kontrolu sa nepodarilo načítať kompletne. Obnovte prehľad.')
       setNezapisaniVcera([])
       setNacitavaKontrola(false)
       return
@@ -286,7 +294,7 @@ export default function DashboardPage() {
       (dochadzkaResult.data || []).map(z => z.meno).filter(Boolean)
     )
     const ospravedlneni = new Set(
-      (nepritomnostiResult.error ? [] : (nepritomnostiResult.data || []))
+      nepritomnostiResult.data
         .map(z => z.meno)
         .filter(Boolean)
     )
