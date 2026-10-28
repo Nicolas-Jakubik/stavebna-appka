@@ -27,6 +27,15 @@ async function handle(request: NextRequest, context: Context) {
     return error(403, 'Nepovolený pôvod požiadavky.')
   }
 
+  // All existing delete actions target a single numeric row ID. Never allow a
+  // privileged gateway request to DELETE an entire table or a broad filter.
+  if (request.method === 'DELETE') {
+    const ids = request.nextUrl.searchParams.getAll('id')
+    if (ids.length !== 1 || !/^eq\.[1-9]\d{0,18}$/.test(ids[0])) {
+      return error(400, 'Mazanie vyžaduje presné ID záznamu.')
+    }
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   // Fail closed: never silently fall back to the anonymous database role.

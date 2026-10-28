@@ -77,6 +77,7 @@ type AttendanceRow = {
   zakazka: string
   prichod: string
   odchod: string
+  sadzba_snapshot: number | string | null
 }
 
 type EmployeeRow = {
@@ -417,7 +418,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .order('id', { ascending: false }),
       supabase
         .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id'),
+        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot'),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
