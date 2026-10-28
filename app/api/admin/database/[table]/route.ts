@@ -31,7 +31,7 @@ async function handle(request: NextRequest, context: Context) {
   // privileged gateway request to DELETE an entire table or a broad filter.
   if (request.method === 'DELETE') {
     const ids = request.nextUrl.searchParams.getAll('id')
-    if (ids.length !== 1 || !/^eq\\.[1-9]\\d{0,18}$/.test(ids[0])) {
+    if (ids.length !== 1 || !/^eq\.[1-9]\d{0,18}$/.test(ids[0])) {
       return error(400, 'Mazanie vyžaduje presné ID záznamu.')
     }
   }
