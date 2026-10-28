@@ -22,9 +22,13 @@ done
 mkdir -p -- "$BACKUP_DIR"
 target_directory="$(cd "$BACKUP_DIR" && pwd -P)"
 source_directory="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-if [[ -n "$source_directory" && ("$target_directory" == "$source_directory" || "$target_directory" == "$source_directory/"*) ]]; then
-  printf 'Refusing to place a sensitive backup inside the Git repository.\n' >&2
-  exit 2
+if [[ -n "$source_directory" ]]; then
+  case "$target_directory/" in
+    "$source_directory/"*)
+      printf 'Refusing to place a sensitive backup inside the Git repository.\\n' >&2
+      exit 2
+      ;;
+  esac
 fi
 
 timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
