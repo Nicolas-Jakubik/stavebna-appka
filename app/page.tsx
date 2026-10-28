@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import RecorderGate from '../components/RecorderGate'
+import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 
 export default function Home() {
   return <RecorderGate><AttendanceForm /></RecorderGate>
@@ -21,6 +22,7 @@ function AttendanceForm() {
   const [datum, setDatum] = useState('')
   const [status, setStatus] = useState('')
   const [odosiela, setOdosiela] = useState(false)
+  const [referencneUdajePripravene, setReferencneUdajePripravene] = useState(false)
   const [posledneZapisy, setPosledneZapisy] = useState<any[]>([])
   
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
@@ -55,30 +57,33 @@ function AttendanceForm() {
 
   useEffect(() => {
     async function nacitajData() {
-      const [
-        { data: zakazkyData },
-        { data: objektyData },
-        { data: zamData },
-      ] = await Promise.all([
-        supabase
-          .from('zoznam_zakaziek')
-          .select('id,nazov')
-          .eq('stav', 'Aktívna')
-          .order('nazov', { ascending: true }),
-        supabase
-          .from('objekty_stavby')
-          .select('id,zakazka_id,nazov,poradie,aktivny')
-          .order('poradie', { ascending: true })
-          .order('nazov', { ascending: true }),
-        supabase
-          .from('zamestnanci')
-          .select('meno')
-          .order('meno', { ascending: true }),
+      // Read a consistent, bounded page sequence for every selector.
+      const readAll = (table: 'zoznam_zakaziek' | 'objekty_stavby' | 'zamestnanci', fields: string) =>
+        nacitajVsetkyStrany<any>(async (start, end) => {
+          const { data, error } = await supabase.from(table)
+            .select(fields).order('id', { ascending: true }).range(start, end)
+          return { data: data as any[] | null, error }
+        })
+      const [projects, objects, workers] = await Promise.all([
+        readAll('zoznam_zakaziek', 'id,nazov'),
+        readAll('objekty_stavby', 'id,zakazka_id,nazov,poradie,aktivny'),
+        readAll('zamestnanci', 'meno'),
       ])
-
-      if (zakazkyData) setAktivneZakazky(zakazkyData)
-      if (objektyData) setObjektyStavby(objektyData.filter((objekt: any) => objekt.aktivny !== false))
-      if (zamData) setZoznamZamestnancov(zamData)
+      if (projects.error || objects.error || workers.error ||
+          !projects.data || !objects.data || !workers.data) {
+        setAktivneZakazky([])
+        setObjektyStavby([])
+        setZoznamZamestnancov([])
+        setReferencneUdajePripravene(false)
+        setStatus('⚠️ Nepodarilo sa načítať kompletný zoznam pracovníkov a stavieb. Obnovte stránku.')
+        return
+      }
+      setAktivneZakazky([...projects.data].sort((a,b) => String(a.nazov).localeCompare(String(b.nazov),'sk')))
+      setObjektyStavby(objects.data.filter((object: any) => object.aktivny !== false)
+        .sort((a,b) => Number(a.poradie || 0) - Number(b.poradie || 0) ||
+          String(a.nazov).localeCompare(String(b.nazov),'sk')))
+      setZoznamZamestnancov([...workers.data].sort((a,b) => String(a.meno).localeCompare(String(b.meno),'sk')))
+      setReferencneUdajePripravene(true)
     }
     nacitajData()
     nacitajKontroluZapisov()
@@ -100,22 +105,34 @@ function AttendanceForm() {
 
     setStavDnesnehoDna(prev => ({ ...prev, nacitava: true, chyba: false }))
 
-    const [
-      { data: zamestnanciData, error: chybaZamestnancov },
-      { data: dochadzkaData, error: chybaDochadzky },
-      { data: nepritomnostiData, error: chybaNepritomnosti }
-    ] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu),
-      supabase.from('nepritomnosti').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu)
+    const [workers, attendance, absence] = await Promise.all([
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('zamestnanci').select('meno')
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('dochadzka').select('meno,datum')
+          .gte('datum', odDatumu).lte('datum', doDatumu)
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('nepritomnosti').select('meno,datum')
+          .gte('datum', odDatumu).lte('datum', doDatumu)
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
     ])
-
-    if (chybaZamestnancov || chybaDochadzky || chybaNepritomnosti) {
-      console.error('Chyba kontroly zápisov:', chybaZamestnancov || chybaDochadzky || chybaNepritomnosti)
+    if (workers.error || attendance.error || absence.error ||
+        !workers.data || !attendance.data || !absence.data) {
       setStavDnesnehoDna({ nacitava: false, chyba: true, kompletne: false, chybaMena: [] })
       setTyzdennyPrehlad([])
       return
     }
+    const zamestnanciData = workers.data
+    const dochadzkaData = attendance.data
+    const nepritomnostiData = absence.data
 
     const mena = (zamestnanciData || [])
       .map(z => String(z.meno || '').trim())
@@ -169,13 +186,14 @@ function AttendanceForm() {
   async function najdiKonflikt(datumKontroly: string) {
     if (vybraneMena.length === 0) return ''
 
-    const { data, error } = await supabase
-      .from('dochadzka')
-      .select('meno, zakazka, datum, prichod, odchod')
-      .eq('datum', datumKontroly)
-      .in('meno', vybraneMena)
-
-    if (error) return 'Nepodarilo sa overiť existujúce zápisy. Skúste to znova.'
+    const { data, error } = await nacitajVsetkyStrany<any>(async (start,end) => {
+      const { data, error } = await supabase.from('dochadzka')
+        .select('meno,zakazka,datum,prichod,odchod')
+        .eq('datum',datumKontroly)
+        .order('id', {ascending: true}).range(start,end)
+      return { data: data as any[] | null, error }
+    })
+    if (error || !data) return 'Nepodarilo sa kompletne overiť existujúce zápisy. Skúste to znova.'
 
     for (const meno of vybraneMena) {
       const zaznamyPracovnika = (data || []).filter(z => z.meno === meno)
@@ -203,6 +221,7 @@ function AttendanceForm() {
 
   async function otvoritKontrolu(e: React.FormEvent) {
     e.preventDefault()
+    if (!referencneUdajePripravene) { setStatus('⚠️ Údaje nie sú kompletné. Obnovte stránku.'); return }
     setStatus('')
 
     if (vybraneMena.length === 0) {
@@ -240,6 +259,7 @@ function AttendanceForm() {
   // Uloženie pre všetkých vybraných zamestnancov
   async function potvrditAOdoslat() {
     if (odosiela) return
+    if (!referencneUdajePripravene) { setStatus('⚠️ Údaje nie sú kompletné. Obnovte stránku.'); return }
     setOdosiela(true)
     setStatus('Kontrolujem a odosielam...')
     
