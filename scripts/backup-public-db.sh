@@ -10,8 +10,21 @@ umask 077
 : "${PGPASSWORD:?Set PGPASSWORD locally; never paste it into chat or source control}"
 : "${BACKUP_DIR:?Set BACKUP_DIR to a private location OUTSIDE the Git repository}"
 : "${BACKUP_AGE_RECIPIENT:?Set BACKUP_AGE_RECIPIENT to a public age recipient; private identity must be kept offline}"
+: "${BACKUP_AGE_IDENTITY:?Set BACKUP_AGE_IDENTITY to a local private age identity for mandatory archive verification}"
+
+if [[ ! -r "$BACKUP_AGE_IDENTITY" || ! -f "$BACKUP_AGE_IDENTITY" ]]; then
+  printf 'Missing or unreadable age identity; refusing an unverified backup.\n' >&2
+  exit 2
+fi
 
 export PGSSLMODE="${PGSSLMODE:-require}"
+case "$PGSSLMODE" in
+  require|verify-ca|verify-full) ;;
+  *)
+    printf 'Refusing insecure database TLS mode. Use require, verify-ca or verify-full.\n' >&2
+    exit 2
+    ;;
+esac
 
 for command_name in pg_dump pg_restore age; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -53,19 +66,13 @@ if [[ ! -s "$temporary" ]]; then
   exit 1
 fi
 
-# Optional format verification without creating a plaintext file.
-# This is NOT a substitute for an isolated restore.
-if [[ -n "${BACKUP_AGE_IDENTITY:-}" ]]; then
-  if [[ ! -f "$BACKUP_AGE_IDENTITY" ]]; then
-    printf 'BACKUP_AGE_IDENTITY is not a readable file.\n' >&2
-    exit 2
-  fi
-  age --decrypt --identity "$BACKUP_AGE_IDENTITY" "$temporary" \
-    | pg_restore --list - > "$manifest"
-  if ! grep -Eq 'TABLE DATA[[:space:]]+public[[:space:]]+dochadzka' "$manifest"; then
-    printf 'The decrypted archive lacks public.dochadzka table data.\n' >&2
-    exit 1
-  fi
+# Mandatory encrypted archive inspection without writing plaintext to disk.
+# This only validates archive structure; it is NOT a real isolated restore test.
+age --decrypt --identity "$BACKUP_AGE_IDENTITY" "$temporary" \
+  | pg_restore --list - > "$manifest"
+if ! grep -Eq 'TABLE DATA[[:space:]]+public[[:space:]]+dochadzka' "$manifest"; then
+  printf 'The decrypted archive lacks public.dochadzka table data.\n' >&2
+  exit 1
 fi
 
 mv -- "$temporary" "$target"
@@ -77,7 +84,4 @@ elif command -v sha256sum >/dev/null 2>&1; then
   sha256sum "$target"
 fi
 printf '%s\n' 'IMPORTANT: A full restore test in an isolated PostgreSQL 17 database is still required.'
-if [[ -z "${BACKUP_AGE_IDENTITY:-}" ]]; then
-  printf '%s\n' 'IMPORTANT: Archive format check was skipped because BACKUP_AGE_IDENTITY is unset.'
-fi
 printf '%s\n' 'IMPORTANT: This backs up only the public schema, not Supabase Auth or Storage.'
