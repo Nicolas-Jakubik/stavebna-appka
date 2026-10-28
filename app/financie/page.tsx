@@ -10,6 +10,7 @@ import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierIn
 import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
 import { vypocitajZiskovost } from '../../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../../lib/financeAlerts'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 
 type Project = {
   id: number | string
@@ -146,7 +147,13 @@ export default function FinanciePage() {
         supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
         supabase.from('naklady_stavby').select('zakazka_id,datum,kategoria,suma,uhradene'),
         supabase.from('platby_stavby').select('zakazka_id,suma'),
-        supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod,sadzba_snapshot'),
+        nacitajVsetkyStrany<Attendance>(async (start, end) => {
+          const { data, error } = await supabase.from('dochadzka')
+            .select('id,meno,datum,zakazka,prichod,odchod,sadzba_snapshot')
+            .order('id', { ascending: true })
+            .range(start, end)
+          return { data: data as Attendance[] | null, error }
+        }),
         supabase.from('zamestnanci').select('meno,sadzba'),
         supabase.from('uhrady_pracovnikov').select('zakazka_id,meno,suma'),
         supabase.from('faktury_dodavatelov').select('id,zakazka_id,dodavatel,cislo_faktury,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
