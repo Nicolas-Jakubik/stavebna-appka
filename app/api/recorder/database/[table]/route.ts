@@ -1,15 +1,23 @@
 import { NextRequest } from 'next/server'
 import { recorderReadQuery, validateRecorderEntries } from '../../../../../lib/recorderValidation'
 import { serverDatabase } from '../../../../../lib/serverDatabase'
+import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
+import { RECORDER_COOKIE, verifyRecorderToken } from '../../../../../lib/recorderSession'
 
-const headers = { 'Cache-Control': 'no-store' }
+const headers = { 'Cache-Control': 'private, no-store', Vary: 'Cookie' }
 type Context = { params: Promise<{ table: string }> }
 function fail(status: number, message: string, code = `RECORDER_${status}`) {
   return Response.json({ message, code }, { status, headers })
 }
-// Verejné zapisovanie je zámerné. Endpoint sprístupňuje iba úzky whitelist údajov
-// a zápis dochádzky cez serverovú validáciu/RPC; admin operácie zostávajú oddelené.
+// A recorder link is exchanged for an HttpOnly session cookie.
+// Authorization must be checked on every privileged request, not just in the UI.
+async function hasRecorderAccess(request: NextRequest) {
+  if (verifyRecorderToken(request.cookies.get(RECORDER_COOKIE)?.value)) return true
+  return verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)
+}
+
 export async function GET(request: NextRequest, context: Context) {
+  if (!await hasRecorderAccess(request)) return fail(401, 'Otvorte súkromný odkaz od správcu.')
   const { table } = await context.params
   const query = recorderReadQuery(table, request.nextUrl.searchParams)
   if (!query) return fail(400, 'Nepovolený dotaz.')
@@ -31,6 +39,7 @@ export async function GET(request: NextRequest, context: Context) {
 }
 
 export async function POST(request: NextRequest, context: Context) {
+  if (!await hasRecorderAccess(request)) return fail(401, 'Otvorte súkromný odkaz od správcu.')
   if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
     return fail(403, 'Nepovolený pôvod požiadavky.')
   }

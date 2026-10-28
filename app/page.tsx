@@ -5,9 +5,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
+import RecorderGate from '../components/RecorderGate'
 
 export default function Home() {
-  return <AttendanceForm />
+  return <RecorderGate><AttendanceForm /></RecorderGate>
 }
 
 function AttendanceForm() {
