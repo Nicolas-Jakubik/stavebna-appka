@@ -315,6 +315,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([])
   const [clientInvoices, setClientInvoices] = useState<ClientInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [message, setMessage] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [financeOpen, setFinanceOpen] = useState(false)
@@ -381,6 +382,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   async function loadFinance() {
     setLoading(true)
+    setLoadError(false)
     setMessage('')
 
     const [
@@ -449,6 +451,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     if (financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
       console.error('Chyba načítania financií:', financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
+      setLoadError(true)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -1453,6 +1456,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   if (loading) {
     return <div style={{ ...cardStyle, padding: '28px', color: '#86868b', fontSize: '12px' }}>Načítavam finančný prehľad…</div>
+  }
+
+  if (loadError) {
+    return <div role="alert" style={{ ...cardStyle, padding: '28px', color: '#b42318', fontSize: '13px' }}>
+      Finančný prehľad nie je kompletný, preto sú súčty skryté. Obnovte stránku alebo skúste neskôr.
+    </div>
   }
 
   return (
