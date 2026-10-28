@@ -42,7 +42,7 @@ test('upstream errors never return a misleading partial dataset', async () => {
 test('invalid responses and hit page limit fail closed', async () => {
   const invalid = await nacitajVsetkyStrany(async () => ({ data: null, error: null }))
   assert.equal(invalid.data,null)
-  const excessive = await nacitajVsetkyStrany(async () => ({ data: [1,2,3], error: null }),2,3)
+  const excessive = await nacitajVsetkyStrany(async () => ({ data: [1,2], error: null }),2,3)
   assert.equal(excessive.data,null)
   assert.match(excessive.error.message,/limit/)
 })
