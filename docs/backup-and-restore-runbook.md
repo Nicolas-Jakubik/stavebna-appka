@@ -77,6 +77,11 @@ z uzavretého CI prostredia s privátnymi tajnými premennými a šifrovaným
 cieľom. **Verejné GitHub Actions artifacts nie sú vhodné na uchovávanie
 neosobitne šifrovaných výplatných/dochádzkových údajov.**
 
+## Zistenie pri prvom skutočnom syntetickom restore
+
+- Dátový archív poskytovaný na štandardnom vstupe sa kontroluje príkazom `pg_restore --list` **bez** argumentu `-`. Variant `pg_restore --list -` bol chybný (PG17 hľadal súbor s názvom `-`) a bol opravený v skutočnom skripte, nie iba v simulátore.
+- Úplne nová databáza PostgreSQL 17 už obsahuje prázdnu schému `public`; súčasný archivovaný dump ju môže vytvoriť znova. V CI sa pred obnovou odstránila schéma `public` **výlučne z novovytvorenej izolovanej testovacej databázy**, nikdy zo zdroja. V reálnom restore sa najprv musí dôsledne overiť cieľ, jeho izolácia a prípadná existencia schémy. **Nikdy neodstraňovať schému alebo tabuľky v živej firemnej databáze.**
+
 ## Význam testov
 
-Testovacie GitHub Actions môžu použiť len fiktívny `pg_dump` a testovací age kľúč, aby overili šifrovaciu cestu. **Tento test nie je dôkaz skutočnej zálohy.** Kým nebude potvrdená správna produkčná DB a úspešný izolovaný restore, nasadenie zostáva zablokované.
+Prvý CI workflow používa fiktívny `pg_dump` a testovací age kľúč na overenie šifrovacej cesty. **Nový samostatný workflow `.github/workflows/test-synthetic-restore.yml` používa skutočný PostgreSQL 17 `pg_dump`/`pg_restore` a age šifrovanie**, ale iba na výslovne vytvorenej **fiktívnej** databáze s vymyslenými pracovníkmi, stavbami, objektmi a dochádzkou. Úspešná izolovaná obnova overuje aj cudzí kľúč a kontrolný súčet dochádzky: [GitHub CI 40696663182](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40696663182). **Nejde o dôkaz skutočnej zálohy firmy ani o obnovu produkčných dát.** Kým nebude potvrdená správna produkčná DB a úspešný izolovaný restore, nasadenie zostáva zablokované.

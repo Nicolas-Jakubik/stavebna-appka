@@ -7,6 +7,7 @@
 - [ ] Dôveryhodný počítač, mimo GitHubu uložený **age** dešifrovací kľúč (s oddelenou záložnou kópiou), bezpečné šifrované úložisko a overený správny DB projekt. Skript ukladá iba súbor `.dump.age` bez dočasného plaintextu.
 - [ ] Pred spustením zálohy nastaviť lokálny súkromný `BACKUP_AGE_IDENTITY` a TLS `PGSSLMODE=require` / `verify-ca` / `verify-full`. Skript odmieta neoverené archívy a nezabezpečené pripojenia. Odporúča sa `verify-full` pri správne nastavenej dôveryhodnej certifikačnej autorite.
 - [ ] Prevedený **skutočný** `pg_dump` schémy `public` pomocou `scripts/backup-public-db.sh`; hash archívu bezpečne zapísaný do súkromného protokolu.
+- [x] **Len syntetický CI test:** úspešné šifrovanie a izolovaná obnova testovacej PG17 databázy s vymyslenou dochádzkou; [CI 40696663182](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40696663182). **Toto nezaškrtáva nasledujúcu povinnú skúšku firemnej zálohy.**
 - [ ] `pg_restore` do **samostatnej neprodukčnej** PostgreSQL 17 databázy. Overené počty záznamov (najmä `dochadzka`), kontrolné súčty/základné kľúče, väzby a používateľsky dôležité výstupy. Samotné `pg_restore --list` nie je test obnovy.
 - [ ] Zdokumentované, čo je mimo exportu: Supabase Auth, Storage súbory, projektové nastavenia, Vercel secrets. Ak sú potrebné pre prevádzku, samostatne zazálohovať a otestovať obnovu.
 - [ ] **Potvrdená už produkčná vetva/commit na Verceli:** `main`/`8a2d40d`, projekt aj doména identifikované. Ešte **nepotvrdený Supabase projektový ref**, lebo `NEXT_PUBLIC_SUPABASE_URL` je v konektore označená `sensitive` a jej hodnota nebola vrátená. [Presný postup](VERCEL_PRODUCTION_MAPPING.md). Až potom vybrať zdroj zálohy.
@@ -46,8 +47,8 @@
 - Každý incident zaznamenať (čas, verzia, dopad, spôsob nápravy); ponechať auditnú stopu.
 
 ## Záznam schválenia
-- Záloha a hash: **NEOVERENÉ**; posledný skript má povinné šifrované dešifrovanie/archívny listing a TLS, ale iba syntetický test CI; šifrovací postup otestovaný iba na fiktívnych dátach (GitHub Actions [40673195394](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40673195394))
-- Izolovaná obnova: **NEOVERENÉ**
+- Záloha a hash **skutočnej databázy: NEOVERENÉ**; posledný skript má povinné dešifrovanie/archívny listing a TLS; **reálne PostgreSQL 17 nástroje boli testované iba na fiktívnych dátach** (GitHub Actions [40673195394](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40673195394))
+- Izolovaná obnova **skutočnej produkčnej zálohy: NEOVERENÉ**. Obnova v PostgreSQL 17 nad výlučne fiktívnymi tabuľkami/dochádzkou s reálnym `pg_dump | age | pg_restore` **ÚSPEŠNÁ**: [GitHub CI 40696663182](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40696663182). Test overuje aj zamestnancov, stavby, objekty, historické sadzby a cudzí kľúč. Nepovažovať za zálohu firmy.
 - Browser/mobile testy: **NEOVERENÉ**
 - Výplaty podľa reálnych záznamov: **NEOVERENÉ**; syntetický test **1 203 smien / 1 007 pracovníkov** cez autentifikované API prešiel, vrátane snapshot sadzieb, 30-min prestávky, súčtu a odmietnutia výpadku neskorej stránky ([CI 40691279585](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40691279585))
 - Metadata-only SQL check pre RPC/RLS/granty/trigger: **OVERENÉ čítaním pripojeného projektu**, nie potvrdenej produkcie; `scripts/verify-db-readiness.sql` + statické regresné testy.
