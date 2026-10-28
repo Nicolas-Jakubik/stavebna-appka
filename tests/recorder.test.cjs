@@ -140,6 +140,90 @@ test('recorder privileges, validation and server routes', async t => {
       global.fetch = async () => Response.json({code:'23505',message:'overlap'},{status:409})
       assert.equal((await route.POST(req('POST','',[entry]),ctx('dochadzka'))).status,409)
     })
+    await t.test('SDK -> protected recorder API -> database returns all 1203 rows across three bounded pages', async () => {
+      const { nacitajVsetkyStrany } = require('../lib/paginatedRows.ts')
+      const { supabase } = require('../lib/recorderClient.ts')
+      const source = Array.from({ length: 1203 }, (_, i) => ({
+        meno: 'Worker-' + String(i+1).padStart(4, '0'),
+        datum: '2026-09-20',
+        zakazka: 'Test Project',
+        prichod: '07:00',
+        odchod: '16:00',
+        objekt_id: null,
+      }))
+      const pageRequests = []
+      const oldFetch = global.fetch
+      global.fetch = async (input, init) => {
+        const target = String(input)
+        if (target.startsWith('/api/recorder/database/dochadzka?')) {
+          const u = new URL(target, origin)
+          return route.GET(new NextRequest(u.href, {
+            headers: {cookie, origin, 'content-type':'application/json'}
+          }), ctx('dochadzka'))
+        }
+        const u = new URL(target)
+        assert.equal(u.origin, 'https://database.example')
+        assert.equal(u.pathname, '/rest/v1/dochadzka')
+        assert.equal(u.searchParams.get('order'), 'id.asc')
+        assert.equal(u.searchParams.get('limit'), '500')
+        assert.equal(u.searchParams.getAll('datum').length, 2)
+        const offset = Number(u.searchParams.get('offset'))
+        const limit = Number(u.searchParams.get('limit'))
+        pageRequests.push(offset)
+        return Response.json(source.slice(offset, offset + limit), {
+          headers: {'content-range':offset+'-'+(offset+limit-1)+'/'+source.length},
+        })
+      }
+      try {
+        const result = await nacitajVsetkyStrany(async (start,end) => {
+          const { data,error } = await supabase.from('dochadzka')
+            .select('meno,datum')
+            .gte('datum','2026-09-14').lte('datum','2026-09-20')
+            .order('id', {ascending: true}).range(start,end)
+          return {data,error}
+        })
+        assert.equal(result.error,null)
+        assert.equal(result.data.length,1203)
+        assert.equal(new Set(result.data.map(row => row.meno)).size,1203)
+        assert.deepEqual(pageRequests,[0,500,1000])
+      } finally {
+        global.fetch=oldFetch
+      }
+    })
+    await t.test('recorder API failure on later page never yields partial results', async () => {
+      const { nacitajVsetkyStrany } = require('../lib/paginatedRows.ts')
+      const { supabase } = require('../lib/recorderClient.ts')
+      const oldFetch = global.fetch
+      let serverCalls = 0
+      global.fetch = async (input, init) => {
+        const target = String(input)
+        if (target.startsWith('/api/recorder/database/dochadzka?')) {
+          const u = new URL(target,origin)
+          return route.GET(new NextRequest(u.href,{headers:{cookie,origin}}),ctx('dochadzka'))
+        }
+        const u = new URL(target)
+        const offset=Number(u.searchParams.get('offset'))
+        serverCalls++
+        if (offset !== 0) return Response.json({message:'database temporarily down'},{status:503})
+        return Response.json(Array.from({length:500},(_,i)=>({
+          meno:'Test-'+i,datum:'2026-09-20',zakazka:'Test Project',
+          prichod:'07:00',odchod:'16:00',objekt_id:null,
+        })))
+      }
+      try {
+        const result = await nacitajVsetkyStrany(async (start,end) => {
+          const {data,error}=await supabase.from('dochadzka')
+            .select('meno,datum').eq('datum','2026-09-20')
+            .order('id',{ascending:true}).range(start,end)
+          return {data,error}
+        })
+        assert.equal(result.data,null)
+        assert.ok(result.error)
+        assert.equal(serverCalls,2)
+      } finally {
+        global.fetch=oldFetch
+      }
+    })
     await t.test('real SDK preserves recorder reads and insert shape', async () => {
       calls=[]
       global.fetch=async(url,init)=>{calls.push({url:String(url),init});return Response.json([])}
