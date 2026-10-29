@@ -5,6 +5,7 @@ export type PracovnyZaznam = {
   zakazka?: string | null
   prichod?: string | null
   odchod?: string | null
+  sadzba_snapshot?: number | string | null
 }
 
 export const PRESTAVKA_MINUTY = 30
