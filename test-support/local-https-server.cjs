@@ -21,7 +21,12 @@ app.prepare().then(() => {
   https.createServer({
     key: fs.readFileSync(keyPath),
     cert: fs.readFileSync(certPath),
-  }, (req, res) => handler(req, res))
+  }, (req, res) => {
+    // In production Vercel forwards HTTPS requests with this header.
+    // Next.js uses it when constructing the Request URL and checking Origin.
+    req.headers['x-forwarded-proto'] = 'https'
+    return handler(req, res)
+  })
     .listen(port, '127.0.0.1', () => {
       console.log('Isolated HTTPS browser smoke app listening on loopback')
     })
