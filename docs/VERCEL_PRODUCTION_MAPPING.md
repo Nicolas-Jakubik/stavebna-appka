@@ -1,65 +1,53 @@
-# FiremnáApka – Vercel → Supabase: kontrola produkčného napojenia
+# SD Evidencia – overenie väzby produkčného Vercelu na správny Supabase
 
-**Kontrolný bod:** SD-EVIDENCIA-OPRAVY-2026-10-28. **Zatiaľ neoverené.** Tento dokument je návod na bezpečnú kontrolu, nie oprávnenie nasadiť PR #102.
+**Projekt:** SD-EVIDENCIA-OPRAVY-2026-10-28  
+**Stav:** NEOVERENÉ – STOP pred skutočnou produkčnou zálohou aj pred nasadením PR #102.  
+**Aktualizácia:** 29.10.2026; predchádzajúce neuskutočniteľné pokyny nahradené týmto dokumentom.
 
-## Posledné overenie 29.10.2026 – rozhodujúci výsledok
+## Čo je preukázané (bez produkčných zásahov)
 
-**Produkcia na Verceli je overená, produkčná databáza zostáva NEOVERENÁ.** Aktuálne produkčné metadáta: projekt `sd-evidencia` (`prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`), vetva `main`, git SHA `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`, stav `READY`. Draft PR #102 a produkcia sú oddelené. `NEXT_PUBLIC_SUPABASE_URL` má vo Verceli typ `sensitive` a ciele Production/Preview; dostupná metadátová odpoveď hodnotu neodhaľuje.
+| Otázka | Výsledok |
+| --- | --- |
+| Vercel projekt | `sd-evidencia`, ID `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh` |
+| Produkčná doména | `stavebna-appka.vercel.app` |
+| GitHub zdroj | `Nicolas-Jakubik/stavebna-appka`, `main` |
+| Posledné overené Production nasadenie | READY, commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d` |
+| Opravný PR | #102, stále DRAFT, bez merge na `main` |
+| Vercel env metadáta | `NEXT_PUBLIC_SUPABASE_URL` existuje pre Production/Preview; typ `sensitive` a `decrypted=false` |
+| Pripojený Supabase | `MojaFiremnaApp`, project ref `pfbgzwehfzgmsqjykvkb`, ACTIVE_HEALTHY |
+| Väzba Production → tento konkrétny Supabase ref | **NEPOTVRDENÁ** |
 
-**Prečo nepokračovať v hľadaní vo verejnom HTML/JS:** skutočný klient zapisovateľa v `lib/recorderClient.ts` a admin klient v `lib/adminSupabase.ts` využívajú iba interné Next.js serverové trasy `/api/recorder/database/...` a `/api/admin/database/...` s fiktívnymi hostmi `recorder.invalid` / `admin.invalid`. Až serverové trasy čítajú `NEXT_PUBLIC_SUPABASE_URL` a service-role credentials. Preto z hlavnej verejnej obrazovky **nemožno spoľahlivo zistiť produkčný Supabase ref**. Existuje aj legacy súbor `lib/supabase.js`; nevyvodzovať z jednotlivých súborov úplné správanie všetkých obrazoviek.
+Konzistentné staršie projektové záznamy spájajú FiremnúApku so Supabase `MojaFiremnaApp`, **ale nejde o nezávislý dôkaz hodnoty historického Vercel Production deployment environmentu**. Nekombinovať nepriamo súvisiace indície do tvrdenia o potvrdenej zhode.
 
-Verejný statický výpis úvodnej stránky vrátil obsah zapisovateľa, ale bez Supabase hostname. Samostatný read-only browser pokus našiel len nekonzistentné 404 na skúšaných generických Next chunk cestách a nevrátil hostname. **Tieto 404 nepreukazujú produkčný výpadok**, nesúvisia s potvrdeným READY metadátovým stavom a nie sú dôvodom meniť nasadenie. Automatické prezeranie týmto **nepotvrdilo** backend; ďalšie rovnaké skúšanie nie je release gate.
+## Prečo Vercel Settings/API nemôže poskytnúť odpoveď
 
-**Oprava neuskutočniteľného kontrolného kroku (29.10.2026):** `NEXT_PUBLIC_SUPABASE_URL` je na tomto projekte označená `sensitive`. Opakované read-only Vercel volanie `get_project_env` aj `filter_project_envs(decrypt=true)` nevrátilo plaintext (decrypted=false). Vercel od augusta 2026 klasifikuje staré `Sensitive` hodnoty ako `Secret`: nedajú sa po uložení zobraziť v dashboarde ani cez API, iba nahradiť; [oficiálny changelog](https://vercel.com/changelog/environment-variables-now-use-config-and-secret-types), [dokumentácia](https://vercel.com/docs/environment-variables/sensitive-environment-variables). **Predchádzajúci návod na manuálne prečítanie hostname cez Settings bol nesprávny, nie je vykonateľný a nesmie sa znovu požadovať od používateľa.** Potvrdenie potrebuje osobitný, bezpečný runtime dôkaz (napr. dočasný diagnostický test vo výhradne izolovanom Preview vypisujúci iba zhodu ref, bez kľúčov alebo URL; Preview výsledok sám osebe nepreukáže historický snapshot Production deployu), alebo riadne autorizovanú kontrolu existujúcej produkčnej runtime konfigurácie bez odhalenia tajomstiev. Nenasadzovať diagnostiku na `main` ani nevytvárať verejný endpoint prezrádzajúci konfiguráciu. **Nezmeniť tajnú premennú iba kvôli jej prečítaniu.**
+Vercel 24.08.2026 preklasifikoval existujúce *Sensitive* env premenné na *Secret*. Takéto hodnoty sú **po uložení write-only**, v Dashboarde ani cez Vercel API sa nedajú znova zobraziť; nasadený program ich naďalej môže čítať. Metadátové volania `get_project_env` a `filter_project_envs(decrypt=true)` vrátili iba `decrypted=false`, bez URL.
 
-**Po zhode:** pripraviť iba súkromnú age šifrovanú zálohu tej istej DB na dôveryhodnom zariadení a jej kontrolnú obnovu do izolovaného prostredia; až potom test historických výplat a prehliadačov, následne výslovné schválenie release. **Žiadny krok tohto overenia neoprávňuje meniť live databázu alebo produkciu.**
+- [Oficiálny Vercel changelog](https://vercel.com/changelog/environment-variables-now-use-config-and-secret-types)
+- [Oficiálna dokumentácia Sensitive env](https://vercel.com/docs/environment-variables/sensitive-environment-variables)
+- [Dôležité: env zmeny sa spätne neaplikujú na staré deploymenty](https://vercel.com/docs/environment-variables)
 
-## Čo sa podarilo zistiť cez pripojené nástroje
+**Nežiadať používateľa otvárať tajnú hodnotu v Settings alebo posielať .env. Nikdy nemeniť ani nahrádzať túto premennú iba na overenie adresy; zmena konfigurácie pre nové nasadenia nemusí dokazovať nastavenie starého Production deploymentu.**
 
-- Pripojený Vercel účet uvádza jeden tím s názvom **Stavby-DomySRO's projects**, tímové ID `team_J51ayy2Um69GWfW8qecJI3wr`.
-- Zoznam projektov zobrazuje `sd-evidencia` s ID `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`.
-- Predchádzajúce čítanie detailu projektu s explicitným tímovým scoping-om vrátilo 404 a zoznam nasadení 403. **Aktuálne sú tieto metadátové požiadavky vyriešené cez ID projektu bez scoping-u; produkčnú verziu sme overili.**
-- Prepojenie Vercel Git contexts nevrátilo žiadne linkedProjects; toto samo o sebe nie je dôkaz, že produkčný projekt Git integráciu nepoužíva.
-- Pripojená Supabase databáza sa volá `MojaFiremnaApp`, projektový ref `pfbgzwehfzgmsqjykvkb`. Metadáta boli overené iba na čítanie. **Nie je dokázané, že produkčný Vercel používa tento ref.**
+## Už vyskúšané read-only možnosti
 
-## Aktualizácia 28.10.2026 – Vercel čítanie vyriešené
+1. Vercel projekt, produkčné nasadenie a metadáta env: skontrolované; URL nedostupná.
+2. GitHub `main`: `lib/supabase.js`, `lib/recorderClient.ts`, `lib/adminSupabase.ts`, `app/api/recorder/database/[table]/route.ts` – nie je tam priamo zapísaný Supabase hostname. Admin/recorder klienti komunikujú cez same-origin serverové API.
+3. Verejná domovská stránka načítaná read-only browserom. Z HTML extrakcie nebolo možné získať reálne použité JS súbory (`script[src]` počet 0), teda **žiadna zhoda ani nezhoda** hostname sa nepreukázala. V minulosti skúšané odhadnuté chunk URL vrátili 404, ktoré **nedokazujú chybu aplikácie**. Rovnaké skúšanie neopakovať.
+4. CI testy a Vercel READY sú dôkazom zostavenia/testov syntetických dát, **nie** väzby na firemnú databázu.
+5. Preview má vlastný env kontext a nemusí dostať Production-only service-role credentials. **Preview zhoda by nedokazovala konfiguráciu existujúceho Production deploymentu.**
 
-**Nový výsledok:** Čítanie projektu a zoznamu nasadení sa podarilo **bez zadania `teamId` ani `slug`**, iba cez ID projektu `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`. Predchádzajúce 404/403 pri explicitnom tímovom scoping-u nie sú dôkazom neprístupnosti projektu.
+## Ďalší legitímny postup – bez zmeny živej aplikácie
 
-- **READY produkčné nasadenie**: projekt `sd-evidencia`, GitHub `Nicolas-Jakubik/stavebna-appka`, vetva `main`, commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d` (pred opravami). Toto je metadátový stav nasadenia, nie vykonaný browser smoke test.
-- **Potvrdená produkčná doména projektu:** `stavebna-appka.vercel.app`.
-- **Preview aktualizované 29.10.2026:** `READY` zostavenie pre posledný **kódový commit** `fe141cf712d0682debe792e6a2281fd26d4bf1b8`, náhľad `sd-evidencia-izba68fhk-stavby-domysro.vercel.app` z `integration/safe-repairs-batch2-2026-10-28`. Následné zmeny dokumentácie vytvoria nový SHA a môžu dostať nový preview. **READY neznamená vykonané browser/mobile testy.** SSO ochrana je zapnutá pre ne-custom domény.
-- **Výlučne metadáta nastavení:** Vercel potvrdzuje prítomnosť `NEXT_PUBLIC_SUPABASE_URL` pre Production/Preview a `SUPABASE_SERVICE_ROLE_KEY` len pre Production. URL premenná je označená `sensitive`; čítanie individuálnej konfigurácie **nevrátilo jej hodnotu**. **Preto nevieme potvrdiť, či je backendom `MojaFiremnaApp`**. Žiadny secret key ani dešifrované premenné sa nečítali/neposkytovali.
-- **Zostávajúci presný krok:** v nastaveniach projektu manuálne pozrieť *iba* hostname/ref `NEXT_PUBLIC_SUPABASE_URL` v Production a porovnať s potvrdenou DB. Nezdieľať kľúče; nepresúvať ani nemenit deployment.
+- Hľadať existujúcu dôveryhodnú **netechnickú dôkazovú stopu** pôvodného nasadenia: predchádzajúci bezpečný interný záznam project ref, verifikované deployment/config poznámky alebo správu prevádzkovateľa s presným ref. Nikdy nie kľúč, cookie, heslo alebo URL obsahujúce prihlasovacie údaje. Tento dôkaz musí byť pre ten istý nasadený Production deployment, inak ide iba o indíciu.
+- Ak spoľahlivá stopa neexistuje, **zastaviť identifikačný gate** a pripraviť osobitný minimálny diagnostický návrh pre čítanie identity **v skutočnom Production runtime**, ktorý by vracal výhradne `zhoda / nezhoda`, nemal verejný endpoint ani prístup k firemným riadkom. Jeho spustenie/deployment je **produkčná zmena**, a vyžaduje osobitné bezpečnostné posúdenie, plán návratu a **výslovný súhlas vlastníka**. Bez toho nič nespúšťať.
+- Produkčný `main`, domény, env premenné, heslá, Firewall, Supabase ani firemné záznamy sa nesmú modifikovať automaticky. Nevykonávať akékoľvek migrácie alebo skúšobné dochádzkové zápisy.
 
-**STOP:** kým nie je potvrdený projektový ref a hotová skutočná obnoviteľná záloha, PR #102 nenasadzovať. Posledná pripravená verzia ostáva Draft; produkčný SHA `main` je zachovaný.
+## STOP / nadväzné uvoľnenie
 
-## Aktualizácia 29.10.2026 – pokus o minimálne overenie bez kľúčov
+1. Preukázať **presnú** identitu backendu produkčného deploymentu, nie iba názov spojeného projektu.
+2. Až potom na dôveryhodnom zariadení vytvoriť súkromnú **age-šifrovanú zálohu potvrdenej databázy**, podľa [backup-and-restore-runbook.md](backup-and-restore-runbook.md), bez zverejnenia prístupových údajov.
+3. Skutočný dump obnoviť do **oddeleného** PostgreSQL a overiť počty, checksumy, väzby, RPC, historické výplaty a úplnosť stránkovania. Syntetická PG17 obnova nie je plnohodnotná náhrada.
+4. Otestovať zariadenia/mobile/desktop a až nakoniec vyžiadať samostatné schválenie release. Pripravený postup: [SAFE_RELEASE_CHECKLIST.md](SAFE_RELEASE_CHECKLIST.md).
 
-Prostredníctvom pripojeného Vercel nástroja bol čítaný **iba jednotlivý záznam** pre `NEXT_PUBLIC_SUPABASE_URL` (Production aj Preview). Výsledok obsahoval názov, ID a ciele premennej, ale **žiadnu hodnotu** (`decrypted=false`). Nepoužilo sa plošné dešifrovanie env premenných ani čítanie `SUPABASE_SERVICE_ROLE_KEY`, hesiel a ostatných tajomstiev. Preto **nie je možné z tohto výsledku dokázať**, že živá aplikácia používa pripojený projekt `MojaFiremnaApp` (`pfbgzwehfzgmsqjykvkb`). Nasadenie a zálohu skutočných údajov naďalej blokuje manuálne potvrdenie iba **verejného project ref** v nastaveniach Vercelu.
-
-**Ďalší read-only pokus 29.10.2026:** verejná úvodná stránka `stavebna-appka.vercel.app` neposkytla v extrahovanom HTML identifikátor projektu Supabase; Gitom vytvorený Vercel deployment neposkytuje cez API zoznam zdrojových súborov (404). Nebolo získané nič, čo by spoľahlivo zodpovedalo pripojeniu v produkčnom behu. Preto **netvrdiť žiadnu zhodu projektu** len podľa stránky, GitHub kódu alebo existencie premenných. Manuálne porovnať **iba hostname/ref** cez Settings → Environment Variables, bez zdieľania tajných kľúčov.
-
-## Bezpečná kontrola v používateľskom rozhraní Vercelu
-
-1. Otvoriť Vercel Dashboard a vybrať tím **Stavby-DomySRO's projects**. V zozname projektov nájsť `sd-evidencia`. Ak projekt chýba alebo prístup nie je povolený, nezakladať ďalší projekt s rovnakým názvom, nepresúvať projekt a nemanipulovať s produkčnými doménami.
-2. V detaile projektu preveriť **Settings → Git**: pripojené úložisko musí zodpovedať `Nicolas-Jakubik/stavebna-appka`; produkčná vetva musí zodpovedať očakávanej `main`. Odchýlky zaznamenať, nič neprepájať automaticky.
-3. V **Deployments** zistiť posledné úspešné *Production* nasadenie a jeho commit SHA. Zaznamenať iba projektový názov, cieľ, SHA a stav, nie tokeny či obsah build logov s tajomstvami.
-4. V **Settings → Environment Variables** preveriť, či existuje `NEXT_PUBLIC_SUPABASE_URL` pre prostredie *Production*. Porovnať **iba projektový ref (hostname)** s očakávaným Supabase projektom. **Nikdy nezobrazovať, nekopírovať ani nezdieľať** `SUPABASE_SERVICE_ROLE_KEY`, heslá, cookies či `.env` obsah. Pri rozdiele ref okamžite zastaviť prípravu zálohy a overiť správny zdroj.
-5. **READY Preview na kódovom commite `fe141cf` je potvrdené v metadátach**. Otestovať jeho prístupnosť cez povolené SSO a konkrétne obrazovky na iPhone/Androide/desktope; tie sú **stále neoverené**. GitHub CI a READY build nie sú potvrdením správnosti prevádzky.
-6. Ak chýba oprávnenie (napr. 403), skontrolovať členstvo a rolu v tíme alebo upraviť autorizáciu pripojenia **cez Vercel účet**, nie zdieľaním osobného tokenu v konverzácii. Nemeňte produkciu len kvôli opraveniu čítacích oprávnení.
-
-## Povolené záznamy na odovzdanie
-
-Bezpečne evidovať iba **názov projektu**, **team slug**, **produkčnú doménu**, **GitHub repo**, **production branch**, **verejný Supabase project ref**, **SHA produkčného commitu** a **stav nasadenia**. Nikdy neevidovať tajné kľúče, session cookies, kópie `.env`, databázové heslá alebo osobné údaje pracovníkov.
-
-## STOP do potvrdenia
-
-- Vercel produkčný deployment/commit **overený z metadát**; backendový Supabase ref je stále neznámy a nevieme bezpečne vybrať zdroj zálohy.
-- Bez potvrdenia backendu **nespúšťať pg_dump proti predpokladanému Supabase projektu**.
-- Nespájať PR #102 s `main`, nenasadzovať, nemenovať domény, nemeniť env variables a neaplikovať migrácie.
-- Po overení napojenia pokračovať iba šifrovanou zálohou a nezávislou skúšobnou obnovou podľa `backup-and-restore-runbook.md`.
-
-## Aktualizácia overenia 29.10.2026 – API skutočne nedokáže vrátiť citlivú hodnotu
-
-GitHub PR #102 ostáva OPEN/DRAFT na `e3d669b5140267f3662d7f764654e01d28ebde71` v čase kontroly; štyri workflows na HEAD uspeli (application `40915579204`, recorder SQL `40915579262`, synthetic restore `40915579178`, backup script `40915579509`). Produkčný Vercel projekt je stále `sd-evidencia`, `main` / `8a2d40d`, stav READY. Pripojený Supabase projekt `MojaFiremnaApp` je ACTIVE_HEALTHY, ale prepojenie nie je potvrdené. **Žiadny produkčný deployment, DB zápis, záloha, obnova, firewall ani env hodnota sa nemenili.**
+**Žiadna z uvedených read-only kontrol nie je povolením mergovať PR #102 či meniť produkciu.**
