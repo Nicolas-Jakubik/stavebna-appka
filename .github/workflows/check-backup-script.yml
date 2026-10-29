@@ -143,3 +143,24 @@ jobs:
             echo 'ERROR: backup archive was created under the Git checkout' >&2
             exit 1
           fi
+          # A symlink outside the checkout must not disguise the real script.
+          ln -s "$GITHUB_WORKSPACE/scripts/backup-public-db.sh" "$scratch/linked-backup.sh"
+          if (
+            cd "$scratch"
+            env PATH="$scratch/bin:$PATH" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy PGSSLMODE=require BACKUP_DIR="$destination" \
+              BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+              bash "$scratch/linked-backup.sh"
+          ) >"$scratch/symlink-guard.log" 2>&1; then
+            echo 'ERROR: symlinked backup script bypassed repository destination protection' >&2
+            exit 1
+          fi
+          if ! grep -q 'Refusing to place a sensitive backup inside the Git repository' "$scratch/symlink-guard.log"; then
+            echo 'ERROR: symlink guard failed for an unrelated reason' >&2
+            exit 1
+          fi
+          if [[ -n "$(find "$destination" -maxdepth 1 -type f -name '*.dump.age' -print -quit 2>/dev/null)" ]]; then
+            echo 'ERROR: symlinked backup created an archive inside the Git checkout' >&2
+            exit 1
+          fi
