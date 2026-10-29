@@ -104,3 +104,42 @@ jobs:
             exit 13
           fi
           [[ -z "$(find "$scratch/mismatched-key-backups" -maxdepth 1 -name '*.dump.age' -type f -print -quit)" ]] || exit 14
+
+      - name: Reject in-repository backups when script is launched outside the checkout
+        run: |
+          scratch="$(mktemp -d)"
+          destination="$GITHUB_WORKSPACE/.ci-backup-guard-must-reject"
+          trap 'rm -rf -- "$scratch" "$destination"' EXIT
+          mkdir -p "$scratch/bin"
+          age-keygen -o "$scratch/identity.txt" >/dev/null 2>&1
+          recipient="$(age-keygen -y "$scratch/identity.txt")"
+          # The fake tools cannot contact any real database.
+          cat > "$scratch/bin/pg_dump" <<'NO_REAL_DUMP'
+          #!/usr/bin/env bash
+          printf 'FAKE-DUMP-NEVER-USE\n'
+          NO_REAL_DUMP
+          cat > "$scratch/bin/pg_restore" <<'NO_REAL_RESTORE'
+          #!/usr/bin/env bash
+          [[ "$1" == '--list' ]] || exit 1
+          printf '12; 0 0 TABLE DATA public dochadzka fake\n'
+          NO_REAL_RESTORE
+          chmod +x "$scratch/bin/pg_dump" "$scratch/bin/pg_restore"
+          if (
+            cd "$scratch"
+            env PATH="$scratch/bin:$PATH" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy PGSSLMODE=require BACKUP_DIR="$destination" \
+              BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+              bash "$GITHUB_WORKSPACE/scripts/backup-public-db.sh"
+          ) >"$scratch/guard.log" 2>&1; then
+            echo 'ERROR: backup under Git checkout was accepted from an outside cwd' >&2
+            exit 1
+          fi
+          if ! grep -q 'Refusing to place a sensitive backup inside the Git repository' "$scratch/guard.log"; then
+            echo 'ERROR: guard test failed for another reason; repository protection not demonstrated' >&2
+            exit 1
+          fi
+          if [[ -n "$(find "$destination" -maxdepth 1 -type f -name '*.dump.age' -print -quit 2>/dev/null)" ]]; then
+            echo 'ERROR: backup archive was created under the Git checkout' >&2
+            exit 1
+          fi
