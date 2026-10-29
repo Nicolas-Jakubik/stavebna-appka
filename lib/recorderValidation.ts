@@ -71,7 +71,7 @@ export function validateRecorderEntries(body: unknown): Entry[] | null {
 
     const objektId = row.objekt_id
     if (objektId !== undefined && objektId !== null &&
-        (typeof objektId !== 'number' || !Number.isInteger(objektId) || objektId <= 0)) return null
+        (typeof objektId !== 'number' || !Number.isSafeInteger(objektId) || objektId <= 0)) return null
 
     if (typeof row.meno !== 'string' || !row.meno.trim() || row.meno.length > 200 ||
         typeof row.zakazka !== 'string' || !row.zakazka.trim() || row.zakazka.length > 300 ||
