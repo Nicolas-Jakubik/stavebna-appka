@@ -126,7 +126,7 @@ test('recorder privileges, validation and server routes', async t => {
       const withObject = {...entry,objekt_id:3}
       assert.deepEqual(validation.validateRecorderEntries([withObject]),[withObject])
       assert.deepEqual(validation.validateRecorderEntries([{...entry,objekt_id:null}]),[{...entry,objekt_id:null}])
-      for(const value of [[],{},[entry,entry],[{...entry,sadzba:100}],[{...entry,objekt_id:'3'}],[{...entry,objekt_id:-1}],[{...entry,datum:'2026-02-30'}],[{...entry,prichod:'07:01'}],[{...entry,prichod:['07:00']}],[{...entry,odchod:'07:00'}],[entry,{...entry,meno:'Other',zakazka:'Other'}]]) assert.equal(validation.validateRecorderEntries(value),null)
+      for(const value of [[],{},[entry,entry],[{...entry,sadzba:100}],[{...entry,objekt_id:'3'}],[{...entry,objekt_id:-1}],[{...entry,objekt_id:Number.MAX_SAFE_INTEGER+1}],[{...entry,datum:'2026-02-30'}],[{...entry,prichod:'07:01'}],[{...entry,prichod:['07:00']}],[{...entry,odchod:'07:00'}],[entry,{...entry,meno:'Other',zakazka:'Other'}]]) assert.equal(validation.validateRecorderEntries(value),null)
     })
     await t.test('writes only insert attendance through the atomic RPC', async () => {
       assert.equal(route.DELETE,undefined)
