@@ -39,6 +39,7 @@ test('admin login refuses cross-origin, originless and wrong-format bodies befor
       const res=await login.POST(request(origin+'/api/admin/login',JSON.stringify({password:process.env.ADMIN_PASSWORD}),headers))
       assert.equal(res.status,403)
       assert.equal(res.headers.get('set-cookie'),null)
+      assert.match(res.headers.get('cache-control')||'',/no-store/i)
     }
     assert.equal((await login.POST(request(origin+'/api/admin/login','{}',{'content-type':'text/plain'}))).status,415)
     assert.equal((await login.POST(request(origin+'/api/admin/login','x'.repeat(2200)))).status,413)
@@ -47,6 +48,8 @@ test('admin login refuses cross-origin, originless and wrong-format bodies befor
     assert.equal(ok.status,200)
     assert.match(ok.headers.get('set-cookie'),/HttpOnly/i)
     assert.match(ok.headers.get('set-cookie'),/SameSite=lax/i)
+    assert.match(ok.headers.get('cache-control')||'',/no-store/i)
+    assert.equal(ok.headers.get('vary'),'Origin')
     assert.equal((await ok.json()).ok,true)
   } finally {
     if (old===undefined) delete process.env.ADMIN_PASSWORD
@@ -60,4 +63,6 @@ test('logout refuses cross-origin form submits and only deletes the cookie on sa
   const res=await logout.POST(request(origin+'/api/admin/logout',''))
   assert.equal(res.status,200)
   assert.match(res.headers.get('set-cookie'),/Max-Age=0/i)
+  assert.match(res.headers.get('cache-control')||'',/no-store/i)
+  assert.equal(res.headers.get('vary'),'Origin')
 })
