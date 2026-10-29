@@ -16,11 +16,15 @@
 
 - **READY produkčné nasadenie**: projekt `sd-evidencia`, GitHub `Nicolas-Jakubik/stavebna-appka`, vetva `main`, commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d` (pred opravami). Toto je metadátový stav nasadenia, nie vykonaný browser smoke test.
 - **Potvrdená produkčná doména projektu:** `stavebna-appka.vercel.app`.
-- **Preview:** v histórii je `READY` testovacie nasadenie na commite `012449354082c5f17068ff7ff20f1ce134ff88a2` z `integration/safe-repairs-batch2-2026-10-28`; nejde o poslednú verziu PR ani o potvrdený prístupný UI test. SSO ochrana je zapnutá pre ne-custom domény.
+- **Preview aktualizované 29.10.2026:** `READY` zostavenie pre posledný **kódový commit** `fe141cf712d0682debe792e6a2281fd26d4bf1b8`, náhľad `sd-evidencia-izba68fhk-stavby-domysro.vercel.app` z `integration/safe-repairs-batch2-2026-10-28`. Následné zmeny dokumentácie vytvoria nový SHA a môžu dostať nový preview. **READY neznamená vykonané browser/mobile testy.** SSO ochrana je zapnutá pre ne-custom domény.
 - **Výlučne metadáta nastavení:** Vercel potvrdzuje prítomnosť `NEXT_PUBLIC_SUPABASE_URL` pre Production/Preview a `SUPABASE_SERVICE_ROLE_KEY` len pre Production. URL premenná je označená `sensitive`; čítanie individuálnej konfigurácie **nevrátilo jej hodnotu**. **Preto nevieme potvrdiť, či je backendom `MojaFiremnaApp`**. Žiadny secret key ani dešifrované premenné sa nečítali/neposkytovali.
 - **Zostávajúci presný krok:** v nastaveniach projektu manuálne pozrieť *iba* hostname/ref `NEXT_PUBLIC_SUPABASE_URL` v Production a porovnať s potvrdenou DB. Nezdieľať kľúče; nepresúvať ani nemenit deployment.
 
 **STOP:** kým nie je potvrdený projektový ref a hotová skutočná obnoviteľná záloha, PR #102 nenasadzovať. Posledná pripravená verzia ostáva Draft; produkčný SHA `main` je zachovaný.
+
+## Aktualizácia 29.10.2026 – pokus o minimálne overenie bez kľúčov
+
+Prostredníctvom pripojeného Vercel nástroja bol čítaný **iba jednotlivý záznam** pre `NEXT_PUBLIC_SUPABASE_URL` (Production aj Preview). Výsledok obsahoval názov, ID a ciele premennej, ale **žiadnu hodnotu** (`decrypted=false`). Nepoužilo sa plošné dešifrovanie env premenných ani čítanie `SUPABASE_SERVICE_ROLE_KEY`, hesiel a ostatných tajomstiev. Preto **nie je možné z tohto výsledku dokázať**, že živá aplikácia používa pripojený projekt `MojaFiremnaApp` (`pfbgzwehfzgmsqjykvkb`). Nasadenie a zálohu skutočných údajov naďalej blokuje manuálne potvrdenie iba **verejného project ref** v nastaveniach Vercelu.
 
 ## Bezpečná kontrola v používateľskom rozhraní Vercelu
 
@@ -28,7 +32,7 @@
 2. V detaile projektu preveriť **Settings → Git**: pripojené úložisko musí zodpovedať `Nicolas-Jakubik/stavebna-appka`; produkčná vetva musí zodpovedať očakávanej `main`. Odchýlky zaznamenať, nič neprepájať automaticky.
 3. V **Deployments** zistiť posledné úspešné *Production* nasadenie a jeho commit SHA. Zaznamenať iba projektový názov, cieľ, SHA a stav, nie tokeny či obsah build logov s tajomstvami.
 4. V **Settings → Environment Variables** preveriť, či existuje `NEXT_PUBLIC_SUPABASE_URL` pre prostredie *Production*. Porovnať **iba projektový ref (hostname)** s očakávaným Supabase projektom. **Nikdy nezobrazovať, nekopírovať ani nezdieľať** `SUPABASE_SERVICE_ROLE_KEY`, heslá, cookies či `.env` obsah. Pri rozdiele ref okamžite zastaviť prípravu zálohy a overiť správny zdroj.
-5. Skontrolovať dostupnosť a typ posledného Vercel náhľadu. Predchádzajúca chyba `build-rate-limit` znamená, že platný Preview nebol potvrdený. GitHub CI green neznamená úspešné produkčné ani Preview nasadenie.
+5. **READY Preview na kódovom commite `fe141cf` je potvrdené v metadátach**. Otestovať jeho prístupnosť cez povolené SSO a konkrétne obrazovky na iPhone/Androide/desktope; tie sú **stále neoverené**. GitHub CI a READY build nie sú potvrdením správnosti prevádzky.
 6. Ak chýba oprávnenie (napr. 403), skontrolovať členstvo a rolu v tíme alebo upraviť autorizáciu pripojenia **cez Vercel účet**, nie zdieľaním osobného tokenu v konverzácii. Nemeňte produkciu len kvôli opraveniu čítacích oprávnení.
 
 ## Povolené záznamy na odovzdanie

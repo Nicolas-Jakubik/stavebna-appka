@@ -14,7 +14,8 @@
 - [ ] V **potvrdenej cieľovej produkčnej databáze** zopakovať read-only kontrolu funkcie `record_attendance_secure` a jej grantov. V pripojenom projekte `MojaFiremnaApp` bola metadátová kontrola úspešná (serverová rola áno, anon/authenticated nie); samotná väzba na Vercel **nebola potvrdená**. Funkciu a zápisy vrátane `objekt_id` testovať iba v izolácii.
 - [ ] **Zosúladiť históriu migrácií:** pôvodné RPC SQL súbory nepoznajú `objekt_id`, ale neskoršia migrácia `20261001103500_project_objects.sql` podporu obsahuje. Overiť poradie a skutočné aplikované verzie, nemeniť overlap triggery pred izolovaným testom. [Databázový audit](DB_READONLY_AUDIT_2026-10-28.md).
 - [ ] Neprodukčné testovacie prostredie oddelené od produkcie (žiadne produkčné service-role kľúče v Preview). K 28.10.2026 pri projekte `MojaFiremnaApp` nebola nájdená Supabase vývojová databázová vetva.
-- [ ] Vercel Preview `sd-evidencia` úspešne zostavený a prístupný: hlásenie `build-rate-limit` blokuje spoľahlivé overenie.
+- [x] **Iba zostavenie Preview:** Vercel potvrdil `READY` náhľad pre posledný kódový commit `fe141cf` ([deployment](https://vercel.com/stavby-domysro/stavebna-appka)); staršia `build-rate-limit` prekážka už neblokuje overenie buildu.
+- [ ] **Prístup a funkčnosť Preview:** skutočné manuálne testy prehliadačov/mobilov, SSO ochrany, prihlásenia, dochádzky a výplat stále **NEOVERENÉ**. Nenasadzovať len na základe `READY`.
 - [ ] Výsledky skúšok schválené, uložení odkazy na testy a potvrdený výslovný súhlas s nasadením.
 
 ## Testovacia matica v izolovanom prostredí
@@ -60,8 +61,10 @@
 - Slovenské predvolené dátumy: **UPRAVENÉ** pre dashboard, nové stavby, výplaty a zapisovateľa, bez UTC posunu po polnoci; testy na prelom mesiaca/roka a DST doplnené. Skutočný mobilný/browser test ešte neprebehol.
 - RPC SQL z najnovšej migrácie: **ÚSPEŠNE VYKONANÉ v izolovanom PostgreSQL 17 iba na fiktívnych dátach**; test objektov, prístupových rolí, dvoch overlap triggerov a dvoch súbežných zápisov ([CI 40874960863](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40874960863)). Ide o syntetickú schému, **nie o skutočnú produkčnú obnovu**.
 - RPC `record_attendance_secure` na pripojenom projekte `MojaFiremnaApp`: **READ-ONLY METADÁTA OVERENÉ** (service_role áno, anon/authenticated nie, `objekt_id` podporované). **NAPOJENIE NA PRODUKČNÝ VERCEL NEOVERENÉ**.
-- Vercel Preview: **READY nasadenie staršej opravnej vetvy nájdené; aktuálna revízia ani browser test NEOVERENÉ.** Produkčný `main` SHA a doména overené v metadátach; Supabase backend ref ešte nie.
-- Duplicitné overlap triggery: **SYNTHETICKÁ DVOJTRIGGEROVÁ TOPOLOGIA OTESTOVANÁ**; originálne funkcie a metadáta pripojenej DB stále treba preveriť na **skutočnej izolovanej obnove**. Drift migračnej histórie stále **NEVYRIEŠENÝ**.
+- Vercel Preview: **READY zostavenie posledného kódového commitu `fe141cf` overené; interaktívny browser/mobile test NEOVERENÝ.** Produkčný `main` SHA aj doména overené v metadátach; produkčný Supabase backend ref ešte nie.
+- Duplicitné overlap triggery: **SYNTHETICKÁ DVOJTRIGGEROVÁ TOPOLOGIA OTESTOVANÁ** vrátane priamych admin INSERT/UPDATE, konfliktov a bezpečných nadväzujúcich smien ([CI 40876525477](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40876525477)); produkčnú originálnu schému stále preveriť na **skutočnej izolovanej obnove**. Drift migračnej histórie stále **NEVYRIEŠENÝ**.
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
 Odovzdávací checkpoint: [REPAIR_HANDOFF.md](REPAIR_HANDOFF.md).
+
+- Identifikátor objektu pri zápise dochádzky: **DOPLNENÁ OCHRANA PROTI NEPRESNÝM ČÍSLAM** (`Number.isSafeInteger`, test vstupu nad `Number.MAX_SAFE_INTEGER`). Aplikačné CI [40876525373](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40876525373) úspešné; reálna DB nebola upravovaná.
