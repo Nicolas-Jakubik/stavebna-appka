@@ -63,7 +63,7 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal(calls.length,before)
     })
     await t.test('authorized recorder is still restricted to safe fields, dates and tables', async () => {
-      assert.equal((await route.GET(req('GET','?select=meno'),ctx('zamestnanci'))).status,200)
+      assert.equal((await route.GET(req('GET','?select=meno,aktivny'),ctx('zamestnanci'))).status,200)
       const before = calls.length
       for(const table of ['secrets','__proto__','toString','rpc/function']) assert.equal((await route.GET(req('GET',''),ctx(table))).status,400)
       for(const query of ['?select=sadzba','?select=*,zamestnanci(*)','?select=meno&or=(true)','?select=meno','?datum=gte.2020-01-01&datum=lte.2026-01-01']) assert.equal((await route.GET(req('GET',query),ctx('dochadzka'))).status,400)
@@ -74,9 +74,10 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal((await route.GET(req('GET','?select=meno',undefined,{cookie:adminCookie}),ctx('zamestnanci'))).status,200)
     })
     await t.test('read projection, active jobs and credentials are owned by server', async () => {
-      assert.equal((await route.GET(req('GET','?select=meno',undefined,{apikey:'evil','accept-profile':'private'}),ctx('zamestnanci'))).status,200)
+      assert.equal((await route.GET(req('GET','?select=meno,aktivny',undefined,{apikey:'evil','accept-profile':'private'}),ctx('zamestnanci'))).status,200)
       assert.equal(new URL(calls.at(-1).url).searchParams.get('limit'),'500')
       assert.equal(new URL(calls.at(-1).url).searchParams.get('order'),'id.asc')
+      assert.equal(new URL(calls.at(-1).url).searchParams.get('select'),'meno,aktivny')
       assert.equal(calls.at(-1).init.headers.apikey,'test-only-server-key')
       assert.equal(calls.at(-1).init.headers['Accept-Profile'],'public')
       await route.GET(req('GET','?select=nazov&stav=eq.Archiv'),ctx('zoznam_zakaziek'))

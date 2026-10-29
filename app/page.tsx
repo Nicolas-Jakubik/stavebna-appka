@@ -8,6 +8,7 @@ import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import RecorderGate from '../components/RecorderGate'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 import { datumNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../lib/businessDate'
+import { lenAktivniPracovnici } from '../lib/activeWorkers'
 
 export default function Home() {
   return <RecorderGate><AttendanceForm /></RecorderGate>
@@ -68,7 +69,7 @@ function AttendanceForm() {
       const [projects, objects, workers] = await Promise.all([
         readAll('zoznam_zakaziek', 'id,nazov'),
         readAll('objekty_stavby', 'id,zakazka_id,nazov,poradie,aktivny'),
-        readAll('zamestnanci', 'meno'),
+        readAll('zamestnanci', 'meno,aktivny'),
       ])
       if (projects.error || objects.error || workers.error ||
           !projects.data || !objects.data || !workers.data) {
@@ -83,7 +84,7 @@ function AttendanceForm() {
       setObjektyStavby(objects.data.filter((object: any) => object.aktivny !== false)
         .sort((a,b) => Number(a.poradie || 0) - Number(b.poradie || 0) ||
           String(a.nazov).localeCompare(String(b.nazov),'sk')))
-      setZoznamZamestnancov([...workers.data].sort((a,b) => String(a.meno).localeCompare(String(b.meno),'sk')))
+      setZoznamZamestnancov([...lenAktivniPracovnici(workers.data)].sort((a,b) => String(a.meno).localeCompare(String(b.meno),'sk')))
       setReferencneUdajePripravene(true)
     }
     nacitajData()
@@ -101,7 +102,7 @@ function AttendanceForm() {
 
     const [workers, attendance, absence] = await Promise.all([
       nacitajVsetkyStrany<any>(async (start,end) => {
-        const { data, error } = await supabase.from('zamestnanci').select('meno')
+        const { data, error } = await supabase.from('zamestnanci').select('meno,aktivny')
           .order('id', {ascending: true}).range(start,end)
         return { data: data as any[] | null, error }
       }),
@@ -124,7 +125,7 @@ function AttendanceForm() {
       setTyzdennyPrehlad([])
       return
     }
-    const zamestnanciData = workers.data
+    const zamestnanciData = lenAktivniPracovnici(workers.data)
     const dochadzkaData = attendance.data
     const nepritomnostiData = absence.data
 

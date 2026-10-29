@@ -6,6 +6,7 @@ import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vyt
 import AdminSidebar from '../../components/AdminSidebar'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { datumNaSlovensku, mesiacNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../../lib/businessDate'
+import { lenAktivniPracovnici } from '../../lib/activeWorkers'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -258,7 +259,7 @@ export default function DashboardPage() {
 
     const [zamestnanciResult, dochadzkaResult, nepritomnostiResult] = await Promise.all([
       nacitajVsetkyStrany<any>(async (start, end) => {
-        const { data, error } = await supabase.from('zamestnanci').select('id,meno')
+        const { data, error } = await supabase.from('zamestnanci').select('id,meno,aktivny')
           .order('id', { ascending: true }).range(start, end)
         return { data: data as any[] | null, error }
       }),
@@ -283,7 +284,7 @@ export default function DashboardPage() {
     }
 
     const vsetci = Array.from(
-      new Set((zamestnanciResult.data || []).map(z => z.meno).filter(Boolean))
+      new Set(lenAktivniPracovnici(zamestnanciResult.data).map(z => z.meno).filter(Boolean))
     ) as string[]
 
     const zapisani = new Set(

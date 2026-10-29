@@ -1,5 +1,5 @@
 export const RECORDER_COLUMNS: Record<string, string> = {
-  zamestnanci: 'meno',
+  zamestnanci: 'meno,aktivny',
   zoznam_zakaziek: 'id,nazov',
   objekty_stavby: 'id,zakazka_id,nazov,poradie,aktivny',
   dochadzka: 'meno,zakazka,datum,prichod,odchod,objekt_id',
