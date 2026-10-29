@@ -130,6 +130,67 @@ BEGIN
   END IF;
 END
 $adjacent$;
+-- Admin-style direct edits do not go through the recorder RPC. Test that
+-- the *actual* overlap triggers still protect these paths, including when
+-- attendance is intentionally split between two adjacent project shifts.
+INSERT INTO public.dochadzka(meno,zakazka,datum,prichod,odchod,objekt_id)
+VALUES ('CI Worker A','CI Project A','2026-10-24','07:00','12:00',1),
+       ('CI Worker A','CI Project B','2026-10-24','12:00','18:00',2);
+
+DO $direct_changes$
+DECLARE
+  afternoon_id bigint;
+  denied_update boolean := false;
+  denied_insert boolean := false;
+BEGIN
+  SELECT id INTO STRICT afternoon_id
+  FROM public.dochadzka
+  WHERE meno='CI Worker A' AND datum='2026-10-24'
+    AND zakazka='CI Project B';
+
+  BEGIN
+    UPDATE public.dochadzka
+    SET prichod='11:45'
+    WHERE id=afternoon_id;
+  EXCEPTION WHEN unique_violation THEN
+    denied_update := true;
+  END;
+  IF NOT denied_update THEN
+    RAISE EXCEPTION 'Direct attendance UPDATE bypassed overlap triggers';
+  END IF;
+
+  IF (SELECT prichod FROM public.dochadzka WHERE id=afternoon_id)
+      <> time '12:00' THEN
+    RAISE EXCEPTION 'Failed direct UPDATE modified the recorded start';
+  END IF;
+
+  BEGIN
+    INSERT INTO public.dochadzka
+      (meno,zakazka,datum,prichod,odchod,objekt_id)
+    VALUES ('CI Worker A','CI Project B','2026-10-24','11:45','12:45',2);
+  EXCEPTION WHEN unique_violation THEN
+    denied_insert := true;
+  END;
+  IF NOT denied_insert THEN
+    RAISE EXCEPTION 'Direct attendance INSERT bypassed overlap triggers';
+  END IF;
+
+  IF (SELECT count(*) FROM public.dochadzka
+    WHERE meno='CI Worker A' AND datum='2026-10-24') <> 2 THEN
+    RAISE EXCEPTION 'Direct mutation added/removed attendance unexpectedly';
+  END IF;
+
+  UPDATE public.dochadzka
+  SET prichod='12:15'
+  WHERE id=afternoon_id;
+
+  IF (SELECT prichod FROM public.dochadzka WHERE id=afternoon_id)
+      <> time '12:15' THEN
+    RAISE EXCEPTION 'Non-overlapping admin correction was not preserved';
+  END IF;
+END
+$direct_changes$;
+
 RESET ROLE;
 
-SELECT 'PASS: real repository RPC validation, service-only privileges and overnight overlap checks' AS result;
+SELECT 'PASS: recorder RPC, direct admin INSERT/UPDATE overlap, object validation and privileges' AS result;
