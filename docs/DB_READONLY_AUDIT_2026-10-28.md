@@ -37,6 +37,12 @@ order by tgname;
 
 SQL vyššie iba číta katalógové metadáta; nesmie sa z neho odvodiť, že je bezpečné nasadiť bez skúšobnej obnovy a reálnych používateľských testov.
 
+## Dodatočný bezpečný SQL test – 29.10.2026
+
+Doplnili sme `scripts/test-synthetic-recorder-rpc.sh` a `tests/fixtures/recorder-rpc-integration.sql`, ktoré na **izolovanom kontajneri PostgreSQL 17 bez sieťového pripojenia** spúšťajú aktuálny SQL text `record_attendance_secure` vyňatý priamo z najnovšej Git migrácie a skutočný migračný trigger na prekrývanie smien. Preverujú skutočné volania RPC s objektmi, neaktívnymi pracovníkmi/stavbami, chyby SQLSTATE 22023/23505, nočné smeny, atómovosť dávok, prístupové práva rolí a simultánne rovnaké zápisy. Pridaný druhý **testovací** overlap trigger simuluje topológiu s dvoma kontrolami nájdenú v metadátach pripojeného projektu. [GitHub CI 40874960863 – SUCCESS](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40874960863).
+
+**Dôležitý limit:** test bežal iba na minimalistickej umelej schéme, nie na pripojenej ani reálnej produkčnej databáze, a nenahrádza obnovu a testy údajov firmy. Pôvodná read-only DB kontrola stále platí; žiadne live zápisy ani trigger DDL neprebehli.
+
 ## Povinné pred produkciou
 
 - Overiť správne Vercel nasadenie a skutočný projekt Supabase (bez zverejnenia service-role kľúčov).

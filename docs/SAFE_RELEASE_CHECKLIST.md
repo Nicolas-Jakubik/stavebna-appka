@@ -58,9 +58,10 @@
 - Zapisovateľ a všetky zdroje financií nad 1 000 riadkov: **KÓD A CI HOTOVÉ; IZOLOVANÉ TESTY NEDOKONČENÉ**
 - Výplaty: **PAGINÁCIA DOCHÁDZKY AJ ZOZNAMU PRACOVNÍKOV HOTOVÁ**, syntetické integrácie prešli; skutočný veľký dataset/porovnanie pôvodných výplat stále neoverené.
 - Slovenské predvolené dátumy: **UPRAVENÉ** pre dashboard, nové stavby, výplaty a zapisovateľa, bez UTC posunu po polnoci; testy na prelom mesiaca/roka a DST doplnené. Skutočný mobilný/browser test ešte neprebehol.
+- RPC SQL z najnovšej migrácie: **ÚSPEŠNE VYKONANÉ v izolovanom PostgreSQL 17 iba na fiktívnych dátach**; test objektov, prístupových rolí, dvoch overlap triggerov a dvoch súbežných zápisov ([CI 40874960863](https://github.com/Nicolas-Jakubik/stavebna-appka/actions/runs/40874960863)). Ide o syntetickú schému, **nie o skutočnú produkčnú obnovu**.
 - RPC `record_attendance_secure` na pripojenom projekte `MojaFiremnaApp`: **READ-ONLY METADÁTA OVERENÉ** (service_role áno, anon/authenticated nie, `objekt_id` podporované). **NAPOJENIE NA PRODUKČNÝ VERCEL NEOVERENÉ**.
 - Vercel Preview: **READY nasadenie staršej opravnej vetvy nájdené; aktuálna revízia ani browser test NEOVERENÉ.** Produkčný `main` SHA a doména overené v metadátach; Supabase backend ref ešte nie.
-- Duplicitné overlap triggery / drift migračnej histórie: **ZDOKUMENTOVANÉ, POTREBNÝ IZOLOVANÝ TEST**
+- Duplicitné overlap triggery: **SYNTHETICKÁ DVOJTRIGGEROVÁ TOPOLOGIA OTESTOVANÁ**; originálne funkcie a metadáta pripojenej DB stále treba preveriť na **skutočnej izolovanej obnove**. Drift migračnej histórie stále **NEVYRIEŠENÝ**.
 - Súhlas s produkčným nasadením: **NEUDELENÝ**
 
 Odovzdávací checkpoint: [REPAIR_HANDOFF.md](REPAIR_HANDOFF.md).
