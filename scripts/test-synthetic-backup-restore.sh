@@ -83,6 +83,30 @@ INSERT INTO public.dochadzka VALUES
   (3,'Synthetic Worker One','2026-10-02','Synthetic House B',202,'07:00','18:00',12.50);
 INSERT INTO public.nepritomnosti VALUES
   (1,'Synthetic Worker Two','2026-10-02','Synthetic only');
+
+-- More than 1,000 actual PostgreSQL rows, not mocked API records.
+-- 1,200 additional fake entries simulate a sizable attendance archive.
+-- IDs intentionally have a gap to detect offset/ordering mistakes.
+INSERT INTO public.dochadzka
+  (id,meno,datum,zakazka,objekt_id,prichod,odchod,sadzba_snapshot)
+SELECT
+  100 + g,
+  CASE WHEN g % 2 = 0 THEN 'Synthetic Worker Two' ELSE 'Synthetic Worker One' END,
+  date '2026-10-03' + ((g - 1) / 75),
+  CASE WHEN g % 2 = 0 THEN 'Synthetic House B' ELSE 'Synthetic House A' END,
+  CASE WHEN g % 2 = 0 THEN 202 ELSE 101 END,
+  time '07:00',
+  time '19:00',
+  CASE WHEN g % 3 = 0 THEN 11.00 ELSE 13.50 END
+FROM generate_series(1,1200) AS g;
+
+DO $fixture$
+BEGIN
+  IF (SELECT count(*) FROM public.dochadzka) <> 1203 THEN
+    RAISE EXCEPTION 'Incorrect synthetic source fixture size';
+  END IF;
+END
+$fixture$;
 SYNTHETIC_SQL
 
 # The actual production backup script is exercised unchanged.
@@ -153,9 +177,28 @@ SELECT
 "
 source="$(docker exec "$container" psql -X -A -t -U postgres -d synthetic_source -c "$verify_sql")"
 restored="$(docker exec "$container" psql -X -A -t -U postgres -d synthetic_restored -c "$verify_sql")"
-if [[ "$source" != "$restored" || "$restored" != 2\|2\|2\|3\|1\|1\|2\|1\|* ]]; then
+if [[ "$source" != "$restored" || "$restored" != 2\|2\|2\|1203\|1\|1\|602\|1\|* ]]; then
   printf 'Synthetic restored attendance, workers, objects, snapshots or FK do not match.\n' >&2
   exit 1
 fi
+# Test actual SQL pagination over the restored PostgreSQL tables.
+# Each ordered 500-row page must be complete, unique and jointly exhaustive.
+page_check_sql="
+SELECT count(*)::text || '|' || count(DISTINCT id)::text || '|' ||
+       min(id)::text || '|' || max(id)::text
+FROM (
+  (SELECT id FROM public.dochadzka ORDER BY id LIMIT 500 OFFSET 0)
+  UNION ALL
+  (SELECT id FROM public.dochadzka ORDER BY id LIMIT 500 OFFSET 500)
+  UNION ALL
+  (SELECT id FROM public.dochadzka ORDER BY id LIMIT 500 OFFSET 1000)
+) AS all_pages"
+paging="$(docker exec "$container" psql -X -A -t -U postgres \
+  -d synthetic_restored -c "$page_check_sql")"
+if [[ "$paging" != '1203|1203|1|1300' ]]; then
+  printf 'Restored PostgreSQL attendance paging is incomplete or duplicates IDs: %s\n' "$paging" >&2
+  exit 1
+fi
+printf '%s\n' 'PASS: 1,203 synthetic attendance rows retrieved in 3 complete 500-row pages from restored PostgreSQL 17.'
 printf '%s\n' 'PASS: PostgreSQL 17 synthetic encrypted backup + verified TLS + actual isolated restore + data and FK equality.'
 printf '%s\n' 'This does NOT verify or back up any live company database.'
