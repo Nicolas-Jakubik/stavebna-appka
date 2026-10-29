@@ -32,6 +32,8 @@ test('new recorder selector and day-missing checks both filter status', () => {
   assert.match(recorder,/lenAktivniPracovnici\(workers\.data\)/)
   assert.match(dashboard,/select\('id,meno,aktivny'\)/)
   assert.match(dashboard,/lenAktivniPracovnici\(zamestnanciResult\.data\)/)
+  assert.match(dashboard,/setAktivneMena\(Array\.from\(new Set\(lenAktivniPracovnici\(workers\.data\)/)
+  assert.match(dashboard,/: aktivneMena\s*\.filter\(meno => !menaVPraci/)
   assert.match(schema,/zamestnanci: 'meno,aktivny'/)
   assert.doesNotMatch(schema,/zamestnanci: '.*sadzba/)
 })
