@@ -96,6 +96,44 @@ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 \
   -U postgres -d synthetic_rpc \
   < supabase/migrations/20260922105200_prevent_attendance_overlap.sql
 
+# The connected non-verified-production Supabase project's metadata showed
+# TWO overlap triggers calling the same function. Reproduce that topology
+# synthetically without dropping/altering either live trigger.
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 \
+  -U postgres -d synthetic_rpc <<'DUAL_TRIGGER_SQL'
+CREATE TRIGGER dochadzka_prevent_overlap
+BEFORE INSERT OR UPDATE OF meno, datum, prichod, odchod
+ON public.dochadzka FOR EACH ROW
+EXECUTE FUNCTION public.prevent_attendance_overlap();
+
+DO $check$
+BEGIN
+  IF (SELECT count(*) FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+      WHERE t.tgrelid='public.dochadzka'::regclass
+        AND NOT t.tgisinternal AND t.tgenabled='O'
+        AND p.proname='prevent_attendance_overlap') <> 2 THEN
+    RAISE EXCEPTION 'Expected two enabled identical overlap triggers';
+  END IF;
+END
+$check$;
+DUAL_TRIGGER_SQL
+
+# Verify rejection as the roles themselves, not only via catalog metadata.
+for role in anon authenticated; do
+  if docker exec "$container" psql -X -v ON_ERROR_STOP=1 \
+      -U postgres -d synthetic_rpc \
+      -c "SET ROLE $role; SELECT public.record_attendance_secure('[]'::jsonb);" \
+      >"$scratch/denied-$role.txt" 2>&1; then
+    printf 'ERROR: recorder RPC became callable by %s.\n' "$role" >&2
+    exit 1
+  fi
+  if ! grep -q 'permission denied' "$scratch/denied-$role.txt"; then
+    printf 'ERROR: %s failed for a reason other than lack of permission.\n' "$role" >&2
+    cat "$scratch/denied-$role.txt" >&2
+    exit 1
+  fi
+done
+
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 \
   -U postgres -d synthetic_rpc \
   < tests/fixtures/recorder-rpc-integration.sql
@@ -131,5 +169,5 @@ count="$(docker exec "$container" psql -X -A -t -U postgres \
   exit 1
 }
 
-printf '%s\n' 'PASS: actual repository RPC, server-only grants, object validation, overlap trigger, atomicity and concurrent conflict on synthetic PostgreSQL 17.'
+printf '%s\n' 'PASS: actual repository RPC, denied anon/authenticated calls, dual overlap triggers, object validation, atomicity and concurrent conflict on synthetic PostgreSQL 17.'
 printf '%s\n' 'No production database connection, data, credentials or migrations were used.'
