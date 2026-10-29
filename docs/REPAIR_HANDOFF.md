@@ -6,6 +6,14 @@
 **Repository:** `Nicolas-Jakubik/stavebna-appka`.
 **Production branch:** `main` (baseline commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`).
 
+## 29 Oct 2026 – corrected Vercel backend mapping blocker
+
+- PR #102 remained OPEN/DRAFT, based on `main` SHA `8a2d40d`, on verified source HEAD `e3d669b5140267f3662d7f764654e01d28ebde71`; all four Actions on that commit succeeded: application `40915579204`, synthetic recorder RPC `40915579262`, synthetic encrypted restore `40915579178`, backup script `40915579509`.
+- Vercel `sd-evidencia` still showed a READY Production deployment for `main`/`8a2d40d`. Supabase `MojaFiremnaApp` ref `pfbgzwehfzgmsqjykvkb` remained `ACTIVE_HEALTHY`; they are **not yet proven linked**.
+- Important correction to earlier handoff: Vercel `NEXT_PUBLIC_SUPABASE_URL` has `type=sensitive` and `decrypted=false`; even `filter_project_envs(decrypt=true)` did **not** return its value. Vercel's 24 Aug 2026 changes classify former Sensitive variables as non-retrievable Secrets. **The previous instruction to ask the owner to view the Production hostname in Vercel Settings is impossible and must not be repeated.** See `VERCEL_PRODUCTION_MAPPING.md` and [official changelog](https://vercel.com/changelog/environment-variables-now-use-config-and-secret-types).
+- Production identity must be established by a separate, safely authorized **runtime** comparison without disclosing config or secrets. An isolated Preview probe, if later prepared, proves only its own environment; it does not establish the currently-running older Production deployment's captured env. No Production code/env changes, database writes/backup/restore, or firewall changes. Release stays STOP.
+- This documentation-only correction is newer than `e3d669b`; recheck CI on the current branch HEAD before any later release decision.
+
 ## Safety state
 
 - No PR listed below has been merged to `main` as of this checkpoint. Draft PR #102 is **not** authorized for merge or production.
@@ -88,6 +96,6 @@ Send this exact marker:
 
 Then say:
 
-"Pokračuj v opravách FiremnáApka. Načítaj prosím GitHub dokument `docs/REPAIR_HANDOFF.md` vo vetve `integration/verified-repairs-2026-10-28` a skontroluj aktuálny stav PR #95 až #101. Produkciu nemeň bez obnoviteľnej zálohy. Píš percentuálny progres."
+"Pokračuj v opravách FiremnáApka. Načítaj prosím GitHub dokument `docs/REPAIR_HANDOFF.md` vo vetve `integration/safe-repairs-batch2-2026-10-28` a pokračuj na Draft PR #102 podľa aktuálneho HEAD; nezačínaj audit odznova. Produkciu nemeň bez obnoviteľnej zálohy. Píš percentuálny progres."
 
 **Resume from draft PR #102, not from #98 or #101; do not redo their completed changes.** Pending work: verified, encrypted backup+isolated restore; actual Vercel/Supabase binding; RPC on target DB; browser/mobile tests; historical pay reconciliation; independent large-dataset integration test and approved release. Keep this document and its PR list updated at major milestones.
