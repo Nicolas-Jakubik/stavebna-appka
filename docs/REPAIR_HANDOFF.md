@@ -23,6 +23,14 @@
 - **Remaining hard STOP**: there is no verified original Production runtime-to-Supabase ref. Future minimal diagnostic, if needed, is a separate production-facing change requiring explicit approval and safe no-downtime/rollback plan. **Do not sneak such a diagnostic into PR #102**, change Production env values to inspect them, infer the identity from Preview, or back up an assumed database.
 - Read-only and documentation-only work; no app code, live database rows, logins, Vercel firewall, production deployments, or user secrets changed. Recheck all four workflows on newest documentation SHA.
 
+## 29 Oct 2026 – hardening of private backup destination, no live data touched
+
+- Followed up from PR #102 HEAD `b019df870a472db610dad29091108362b061afcf`; all **four** workflows on that handoff commit passed (application `40919802916`, recorder RPC `40919802968`, synthetic PG17 restore `40919802770`, backup check `40919802747`). This checkpoint's source commits are newer.
+- Found that `scripts/backup-public-db.sh` previously derived the repository root from the caller's current working directory (`git rev-parse --show-toplevel`). Calling it from outside the checkout could disable its safety guard and allow an encrypted but sensitive database archive to be saved under Git checkout by accident.
+- Commit `ea70f11f276ee02b517ae455a06f26e590670a10` now locates the repository root relative to the backup script itself. Commit `df0b9c8020f6b2add0186a6d4daf9fe3d0497bbc` adds a **fake-data** CI regression: execute script from an external working directory with `BACKUP_DIR` inside the checkout, require the exact repository guard rejection and no archive file. CI for backup guard `40920470140` passed; synthetic recorder SQL `40920470085` and isolated PG17 restore `40920470315` passed; application run `40920470060` was still in progress at the checkpoint, verify final outcome separately.
+- Runbook updated in `4a840d9d844b81f4191f461d6a82a327aa6ae054`. No real `pg_dump`, database reads/writes, Production deployment, env rotation or firewall changes. **This does not clear the Vercel Production ↔ Supabase ref identity STOP gate.**
+- Vercel read-only connector check of project's linked connectors returned no connections; this does not prove the app is disconnected (manual environment variables remain possible). Do not speculate that the app's Supabase ref is confirmed.
+
 ## Safety state
 
 - No PR listed below has been merged to `main` as of this checkpoint. Draft PR #102 is **not** authorized for merge or production.
