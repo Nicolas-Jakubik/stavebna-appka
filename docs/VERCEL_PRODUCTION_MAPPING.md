@@ -26,6 +26,8 @@
 
 Prostredníctvom pripojeného Vercel nástroja bol čítaný **iba jednotlivý záznam** pre `NEXT_PUBLIC_SUPABASE_URL` (Production aj Preview). Výsledok obsahoval názov, ID a ciele premennej, ale **žiadnu hodnotu** (`decrypted=false`). Nepoužilo sa plošné dešifrovanie env premenných ani čítanie `SUPABASE_SERVICE_ROLE_KEY`, hesiel a ostatných tajomstiev. Preto **nie je možné z tohto výsledku dokázať**, že živá aplikácia používa pripojený projekt `MojaFiremnaApp` (`pfbgzwehfzgmsqjykvkb`). Nasadenie a zálohu skutočných údajov naďalej blokuje manuálne potvrdenie iba **verejného project ref** v nastaveniach Vercelu.
 
+**Ďalší read-only pokus 29.10.2026:** verejná úvodná stránka `stavebna-appka.vercel.app` neposkytla v extrahovanom HTML identifikátor projektu Supabase; Gitom vytvorený Vercel deployment neposkytuje cez API zoznam zdrojových súborov (404). Nebolo získané nič, čo by spoľahlivo zodpovedalo pripojeniu v produkčnom behu. Preto **netvrdiť žiadnu zhodu projektu** len podľa stránky, GitHub kódu alebo existencie premenných. Manuálne porovnať **iba hostname/ref** cez Settings → Environment Variables, bez zdieľania tajných kľúčov.
+
 ## Bezpečná kontrola v používateľskom rozhraní Vercelu
 
 1. Otvoriť Vercel Dashboard a vybrať tím **Stavby-DomySRO's projects**. V zozname projektov nájsť `sd-evidencia`. Ak projekt chýba alebo prístup nie je povolený, nezakladať ďalší projekt s rovnakým názvom, nepresúvať projekt a nemanipulovať s produkčnými doménami.
