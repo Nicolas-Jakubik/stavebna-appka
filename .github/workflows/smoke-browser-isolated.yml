@@ -1,0 +1,50 @@
+name: Smoke browser on isolated app (synthetic auth)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout reviewed PR source (no persisted Git credentials)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install pinned browser test runner without editing application lockfile
+        run: npm install --no-save --no-package-lock --ignore-scripts --no-audit --no-fund @playwright/test@1.64.1
+      - name: Install isolated Chromium and WebKit browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Build application without connected database or production secrets
+        run: npm run build
+        env:
+          # Never pass secrets into PR test jobs. No real app/backend credentials.
+          NEXT_PUBLIC_SUPABASE_URL: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          ADMIN_PASSWORD: ''
+      - name: Test desktop, Android-like and iPhone-like authentication screens
+        run: npx playwright test --config=playwright.smoke.config.cjs
+        env:
+          CI: 'true'
+          # No production keys. The webServer in Playwright config supplies
+          # a throwaway, synthetic admin password only to local Next.js.
+          NEXT_PUBLIC_SUPABASE_URL: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+      - name: Explain coverage boundaries
+        if: always()
+        run: |
+          echo 'The test server was local to this isolated GitHub runner.'
+          echo 'No Vercel Production or Supabase production credentials were used.'
+          echo 'Browser emulation does not replace tests on real devices or real restored company data.'
