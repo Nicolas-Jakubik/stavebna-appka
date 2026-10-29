@@ -35,9 +35,19 @@ done
 
 mkdir -p -- "$BACKUP_DIR"
 target_directory="$(cd "$BACKUP_DIR" && pwd -P)"
-# Derive the repository root from this script, not the caller's working
-# directory. A backup launched from ~/ or /tmp must still reject repo paths.
-source_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Locate the actual script, including when invoked via an external symlink.
+# Neither the caller's cwd nor the symlink location may bypass this guard.
+script_path="${BASH_SOURCE[0]}"
+while [[ -L "$script_path" ]]; do
+  script_dir="$(cd -- "$(dirname -- "$script_path")" && pwd -P)"
+  link_target="$(readlink "$script_path")"
+  if [[ "$link_target" == /* ]]; then
+    script_path="$link_target"
+  else
+    script_path="$script_dir/$link_target"
+  fi
+done
+source_directory="$(cd -- "$(dirname -- "$script_path")/.." && pwd -P)"
 if [[ -n "$source_directory" ]]; then
   case "$target_directory/" in
     "$source_directory/"*)
