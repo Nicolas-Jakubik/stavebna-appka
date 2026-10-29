@@ -35,7 +35,9 @@ done
 
 mkdir -p -- "$BACKUP_DIR"
 target_directory="$(cd "$BACKUP_DIR" && pwd -P)"
-source_directory="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+# Derive the repository root from this script, not the caller's working
+# directory. A backup launched from ~/ or /tmp must still reject repo paths.
+source_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 if [[ -n "$source_directory" ]]; then
   case "$target_directory/" in
     "$source_directory/"*)
