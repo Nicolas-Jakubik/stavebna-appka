@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
-import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import RecorderGate from '../components/RecorderGate'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
@@ -46,7 +45,6 @@ function AttendanceForm() {
   }>>([])
 
   useEffect(() => {
-    adminStore.jeOdomknute = false
     setDatum(datumNaSlovensku())
 
     try {
