@@ -17,6 +17,7 @@ archív `pg_dump` vo formáte custom **priamo zašifrovaný cez age** ako `.dump
   samostatné exporty a testy.
 - Čítací dump nemení dáta v produkcii. Môže však vytvárať záťaž;
   spúšťajte ho mimo najrušnejšej prevádzky.
+- **Kontrola umiestnenia nezávislá od pracovného priečinka:** skript teraz odvodzuje koreň Git repozitára od vlastného umiestnenia, nie od `pwd`. Odmietne zálohu vo vnútri checkoutu aj pri spustení z iného priečinka. Regresný test používa iba vymyslené údaje v GitHub Actions (`df0b9c802`). Toto **nie je** skutočná firemná záloha.
 - Výstup obsahuje citlivé firemné údaje: **nikdy ho necommitujte do
   verejného GitHubu ani nezverejňujte cez odkaz**.
 
