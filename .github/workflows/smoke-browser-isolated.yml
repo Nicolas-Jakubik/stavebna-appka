@@ -34,6 +34,16 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ''
           SUPABASE_SERVICE_ROLE_KEY: ''
           ADMIN_PASSWORD: ''
+      - name: Generate throwaway localhost HTTPS certificate
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=localhost' \
+            -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            -keyout "$RUNNER_TEMP/browser-e2e-key.pem" \
+            -out "$RUNNER_TEMP/browser-e2e-cert.pem" >/dev/null 2>&1
+          chmod 600 "$RUNNER_TEMP/browser-e2e-key.pem"
+          echo "E2E_TLS_KEY_PATH=$RUNNER_TEMP/browser-e2e-key.pem" >> "$GITHUB_ENV"
+          echo "E2E_TLS_CERT_PATH=$RUNNER_TEMP/browser-e2e-cert.pem" >> "$GITHUB_ENV"
       - name: Test desktop, Android-like and iPhone-like authentication screens
         run: npx playwright test --config=playwright.smoke.config.cjs
         env:
