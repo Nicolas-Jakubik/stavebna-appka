@@ -14,6 +14,15 @@
 - Production identity must be established by a separate, safely authorized **runtime** comparison without disclosing config or secrets. An isolated Preview probe, if later prepared, proves only its own environment; it does not establish the currently-running older Production deployment's captured env. No Production code/env changes, database writes/backup/restore, or firewall changes. Release stays STOP.
 - This documentation-only correction is newer than `e3d669b`; recheck CI on the current branch HEAD before any later release decision.
 
+## 29 Oct 2026 – follow-up: production identity verification and handoff cleaned up
+
+- Rechecked the previously current handoff commit `af6c8dffea41c831bddfe8626d3e9f323a6670c6`: all **4/4 GitHub Actions successful** (application `40918115714`, recorder RPC `40918115715`, synthetic encrypted PG17 restore `40918115641`, backup script `40918115824`). PR #102 remains Draft; Production SHA `8a2d40d` unchanged.
+- Public landing page was loaded using read-only browser inspection, but **zero `script[src]` bundles were extractable** and no Supabase hostname could be checked; no production/DB change. This proves neither a match nor a mismatch. Never claim 404s or missing assets prove app outage.
+- Previous project records describe `MojaFiremnaApp` as the intended FiremnáApka backend, but no original Vercel Production secret value / immutable deployment snapshot was found. **Association is not proof of exact production backend identity**.
+- Replaced contradictory Vercel mapping document in `b4be1842def52f900b0363f37f0c038eb18c34d6`: write-only `sensitive`/Secret value cannot be shown by user/API, no repeated manual impossible checks. Release checklist was aligned in `f17b76cdf47dbe6fd6259a59f50dcd9e8b8311fa`.
+- **Remaining hard STOP**: there is no verified original Production runtime-to-Supabase ref. Future minimal diagnostic, if needed, is a separate production-facing change requiring explicit approval and safe no-downtime/rollback plan. **Do not sneak such a diagnostic into PR #102**, change Production env values to inspect them, infer the identity from Preview, or back up an assumed database.
+- Read-only and documentation-only work; no app code, live database rows, logins, Vercel firewall, production deployments, or user secrets changed. Recheck all four workflows on newest documentation SHA.
+
 ## Safety state
 
 - No PR listed below has been merged to `main` as of this checkpoint. Draft PR #102 is **not** authorized for merge or production.
