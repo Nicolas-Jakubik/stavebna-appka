@@ -48,6 +48,7 @@ export default function DashboardPage() {
   
   const [dostupneZakazky, setDostupneZakazky] = useState<string[]>([])
   const [dostupneMena, setDostupneMena] = useState<string[]>([])
+  const [aktivneMena, setAktivneMena] = useState<string[]>([])
 
   // Kontrola chýbajúcej dochádzky za predchádzajúci kalendárny deň
   const [nezapisaniVcera, setNezapisaniVcera] = useState<string[]>([])
@@ -385,7 +386,7 @@ export default function DashboardPage() {
     setFiltersStatus('loading')
     const [workers, attendance] = await Promise.all([
       nacitajVsetkyStrany<any>(async (start, end) => {
-        const { data, error } = await supabase.from('zamestnanci').select('id,meno')
+        const { data, error } = await supabase.from('zamestnanci').select('id,meno,aktivny')
           .order('id', { ascending: true }).range(start, end)
         return { data: data as any[] | null, error }
       }),
@@ -398,11 +399,13 @@ export default function DashboardPage() {
     if (workers.error || attendance.error || !workers.data || !attendance.data) {
       setDostupneZakazky([])
       setDostupneMena([])
+      setAktivneMena([])
       setFiltersStatus('error')
       return
     }
     setDostupneZakazky(Array.from(new Set(attendance.data.map(row=>String(row.zakazka || '')).filter(Boolean))).sort())
     setDostupneMena(Array.from(new Set(workers.data.map(row=>String(row.meno || '')).filter(Boolean))).sort())
+    setAktivneMena(Array.from(new Set(lenAktivniPracovnici(workers.data).map(row=>String(row.meno || '')).filter(Boolean))).sort())
     setFiltersStatus('ready')
   }
 
@@ -713,7 +716,7 @@ export default function DashboardPage() {
     const jeBuduciDen = datum > datumNaSlovensku()
     const nezapisani = jeBuduciDen || jeNedela
       ? []
-      : dostupneMena
+      : aktivneMena
           .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
           .sort((a, b) => String(a).localeCompare(String(b), 'sk'))
 
