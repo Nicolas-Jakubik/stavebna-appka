@@ -31,6 +31,14 @@
 - Runbook updated in `4a840d9d844b81f4191f461d6a82a327aa6ae054`. No real `pg_dump`, database reads/writes, Production deployment, env rotation or firewall changes. **This does not clear the Vercel Production ↔ Supabase ref identity STOP gate.**
 - Vercel read-only connector check of project's linked connectors returned no connections; this does not prove the app is disconnected (manual environment variables remain possible). Do not speculate that the app's Supabase ref is confirmed.
 
+## 29 Oct 2026 – backup script symlink-invocation guard
+
+- Rechecked earlier handoff HEAD `5bbdfe50d4c5402ccb2a4c09b5fbdc081efc2e73`: **4/4 Actions succeeded**, including app `40920709170`, SQL `40920709115`, synthetic PG17 restore `40920709284` and private backup `40920709319`. PR #102 was OPEN/DRAFT, Vercel Production still `main`/`8a2d40d`.
+- Found a remaining bypass of the backup destination guard: when executed through a **symbolic link outside the repository**, `BASH_SOURCE[0]` pointed to the symlink path and could misidentify the checkout root. `b1dc905079bc76c1a927aed523b95d5bf473659e` resolves symlink chain before determining source checkout; `4ed04b96c111b8a409f0ac3305f85695e56344a8` added the symlink-invocation regression using only synthetic fake credentials and a refused in-repository destination.
+- GitHub workflow on `4ed04b9`: backup guard `40924032873`, recorder RPC `40924033009` and synthetic PG17 restore `40924032949` passed; application `40924033141` was still running at this checkpoint and must be checked before claiming 4/4. The runbook was updated to explain the exact guard in `4ee83c83e3f05dbfc424b1ffb3b1eb40cb396661`.
+- **No real archive was created.** Actual Production database identity remains an unsatisfied STOP gate (Vercel Sensitive env is not retrievable), therefore no Supabase backup/restore was attempted. No main merge, deployment, env/Firewall mutation, real credentials or real user data accessed. The prepared-code estimate remains **~98%**; actual production-deployed repairs **0%**.
+- Latest handoff/documentation SHA requires its own CI verification before a release decision.
+
 ## Safety state
 
 - No PR listed below has been merged to `main` as of this checkpoint. Draft PR #102 is **not** authorized for merge or production.
