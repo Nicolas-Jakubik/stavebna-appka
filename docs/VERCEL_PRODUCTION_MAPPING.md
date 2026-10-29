@@ -2,6 +2,18 @@
 
 **Kontrolný bod:** SD-EVIDENCIA-OPRAVY-2026-10-28. **Zatiaľ neoverené.** Tento dokument je návod na bezpečnú kontrolu, nie oprávnenie nasadiť PR #102.
 
+## Posledné overenie 29.10.2026 – rozhodujúci výsledok
+
+**Produkcia na Verceli je overená, produkčná databáza zostáva NEOVERENÁ.** Aktuálne produkčné metadáta: projekt `sd-evidencia` (`prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`), vetva `main`, git SHA `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d`, stav `READY`. Draft PR #102 a produkcia sú oddelené. `NEXT_PUBLIC_SUPABASE_URL` má vo Verceli typ `sensitive` a ciele Production/Preview; dostupná metadátová odpoveď hodnotu neodhaľuje.
+
+**Prečo nepokračovať v hľadaní vo verejnom HTML/JS:** skutočný klient zapisovateľa v `lib/recorderClient.ts` a admin klient v `lib/adminSupabase.ts` využívajú iba interné Next.js serverové trasy `/api/recorder/database/...` a `/api/admin/database/...` s fiktívnymi hostmi `recorder.invalid` / `admin.invalid`. Až serverové trasy čítajú `NEXT_PUBLIC_SUPABASE_URL` a service-role credentials. Preto z hlavnej verejnej obrazovky **nemožno spoľahlivo zistiť produkčný Supabase ref**. Existuje aj legacy súbor `lib/supabase.js`; nevyvodzovať z jednotlivých súborov úplné správanie všetkých obrazoviek.
+
+Verejný statický výpis úvodnej stránky vrátil obsah zapisovateľa, ale bez Supabase hostname. Samostatný read-only browser pokus našiel len nekonzistentné 404 na skúšaných generických Next chunk cestách a nevrátil hostname. **Tieto 404 nepreukazujú produkčný výpadok**, nesúvisia s potvrdeným READY metadátovým stavom a nie sú dôvodom meniť nasadenie. Automatické prezeranie týmto **nepotvrdilo** backend; ďalšie rovnaké skúšanie nie je release gate.
+
+**Jediný nutný bezpečný ľudský krok:** v existujúcom Vercel projekte `sd-evidencia` otvoriť `Settings → Environment Variables`, nastaviť filter **Production**, nájsť `NEXT_PUBLIC_SUPABASE_URL` a prečítať **len hostname** vo formáte `https://<PROJECT_REF>.supabase.co`. Porovnať samotný `PROJECT_REF` s pripojeným Supabase `MojaFiremnaApp` ref `pfbgzwehfzgmsqjykvkb`. Zapísať výsledok **zhoda / nezhoda / neviem zobraziť**. **Nezverejňovať ani nekopírovať kľúče, heslá, service-role values, tokeny ani celé env súbory.** Ak je iný ref, nezačínať zálohu z pripojeného projektu.
+
+**Po zhode:** pripraviť iba súkromnú age šifrovanú zálohu tej istej DB na dôveryhodnom zariadení a jej kontrolnú obnovu do izolovaného prostredia; až potom test historických výplat a prehliadačov, následne výslovné schválenie release. **Žiadny krok tohto overenia neoprávňuje meniť live databázu alebo produkciu.**
+
 ## Čo sa podarilo zistiť cez pripojené nástroje
 
 - Pripojený Vercel účet uvádza jeden tím s názvom **Stavby-DomySRO's projects**, tímové ID `team_J51ayy2Um69GWfW8qecJI3wr`.
