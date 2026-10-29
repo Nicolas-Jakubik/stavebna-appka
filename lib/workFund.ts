@@ -1,5 +1,7 @@
-export const HODINY_PRACOVNY_DEN = 10.5
-export const HODINY_SOBOTA = 9.5
+// Net working hours after the daily break: 07:00–19:00 weekdays,
+// and 07:00–18:00 Saturdays, consistent with attendance payroll.
+export const HODINY_PRACOVNY_DEN = 11.5
+export const HODINY_SOBOTA = 10.5
 
 export function vypocitajFondObdobia(mesiac: string, odDna = 1, doDna?: number) {
   const [rokText, mesiacText] = mesiac.split('-')
