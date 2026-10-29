@@ -15,7 +15,7 @@ for (const [label, start, end] of [
     const next = source.indexOf(end, from)
     const body = source.slice(from, next >= 0 ? next : undefined)
     assert.match(body, /nacitajVsetkyStrany<any>\(async \(start, end\) => \{/)
-    assert.match(body, /\.from\('zamestnanci'\)\.select\('id,meno'\)/)
+    assert.match(body, /\.from\('zamestnanci'\)\.select\('id,meno,aktivny'\)/)
     assert.match(body, /\.order\('id', \{ ascending: true \}\)\.range\(start, end\)/)
     assert.match(body, /\.error/)
     assert.match(body, /status|Status|ChybaKontroly|chybaKontroly|setChybaKontroly/)
