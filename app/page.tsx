@@ -7,7 +7,7 @@ import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import RecorderGate from '../components/RecorderGate'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
-import { datumNaSlovensku } from '../lib/businessDate'
+import { datumNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../lib/businessDate'
 
 export default function Home() {
   return <RecorderGate><AttendanceForm /></RecorderGate>
@@ -46,7 +46,7 @@ function AttendanceForm() {
 
   useEffect(() => {
     adminStore.jeOdomknute = false
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(datumNaSlovensku())
 
     try {
       const ulozene = sessionStorage.getItem('posledne-zapisy-dochadzky')
@@ -91,18 +91,11 @@ function AttendanceForm() {
   }, [])
 
   async function nacitajKontroluZapisov() {
-    const dnesDatum = new Date()
-    const dnes = datumDoLocalString(dnesDatum)
-    const denTyzdna = dnesDatum.getDay()
-    const pondelok = new Date(dnesDatum)
-    pondelok.setHours(12, 0, 0, 0)
-    pondelok.setDate(dnesDatum.getDate() + (denTyzdna === 0 ? -6 : 1 - denTyzdna))
-
-    const sobota = new Date(pondelok)
-    sobota.setDate(pondelok.getDate() + 5)
-
-    const odDatumu = datumDoLocalString(pondelok)
-    const doDatumu = datumDoLocalString(sobota)
+    const dnes = datumNaSlovensku()
+    const denTyzdna = denVTyzdniNaSlovensku(dnes)
+    const pondelok = posunDatumNaSlovensku(dnes, denTyzdna === 0 ? -6 : 1 - denTyzdna)
+    const odDatumu = pondelok
+    const doDatumu = posunDatumNaSlovensku(pondelok, 5)
 
     setStavDnesnehoDna(prev => ({ ...prev, nacitava: true, chyba: false }))
 
@@ -141,9 +134,7 @@ function AttendanceForm() {
 
     const nazvyDni = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota']
     const prehlad = nazvyDni.map((den, index) => {
-      const datumDnaObj = new Date(pondelok)
-      datumDnaObj.setDate(pondelok.getDate() + index)
-      const datumDna = datumDoLocalString(datumDnaObj)
+      const datumDna = posunDatumNaSlovensku(pondelok, index)
 
       if (datumDna > dnes) {
         return { datum: datumDna, den, stav: 'buduci' as const, chybaMena: [] }
@@ -264,7 +255,7 @@ function AttendanceForm() {
     setOdosiela(true)
     setStatus('Kontrolujem a odosielam...')
     
-    const datumNaUlozenie = datum || datumDoLocalString(new Date())
+    const datumNaUlozenie = datum || datumNaSlovensku()
 
     // Konflikt overíme znova tesne pred uložením, aby sme znížili riziko duplikátu.
     const konflikt = await najdiKonflikt(datumNaUlozenie)
@@ -323,7 +314,7 @@ function AttendanceForm() {
     setObjektId('')
     setPrichod('')
     setOdchod('')
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(datumNaSlovensku())
     setOdosiela(false)
     
     setTimeout(() => {
@@ -361,13 +352,6 @@ function AttendanceForm() {
     if (endB <= startB) endB += 24 * 60
 
     return startA < endB && startB < endA
-  }
-
-  function datumDoLocalString(d: Date) {
-    const rok = d.getFullYear()
-    const mesiac = String(d.getMonth() + 1).padStart(2, '0')
-    const den = String(d.getDate()).padStart(2, '0')
-    return `${rok}-${mesiac}-${den}`
   }
 
   function vypocitajTrvanie(odCasu: string, doCasu: string) {
@@ -689,7 +673,7 @@ function AttendanceForm() {
             <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
               Stav dnešného zápisu sa nepodarilo načítať.
             </div>
-          ) : new Date().getDay() === 0 ? (
+          ) : denVTyzdniNaSlovensku(datumNaSlovensku()) === 0 ? (
             <div style={{ fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
               Nedeľa – zápis pracovníkov dnes nie je potrebný.
             </div>

@@ -5,7 +5,7 @@ import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vypocitajHodinyJednehoUseku as vypocitajHodiny, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
-import { datumNaSlovensku, mesiacNaSlovensku } from '../../lib/businessDate'
+import { datumNaSlovensku, mesiacNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../../lib/businessDate'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -198,7 +198,7 @@ export default function DashboardPage() {
   }
 
   const nazvyMesiacov = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
-  const aktualnyRok = new Date().getFullYear()
+  const aktualnyRok = Number(mesiacNaSlovensku().slice(0, 4))
   const zoznamMesiacov = [aktualnyRok - 1, aktualnyRok, aktualnyRok + 1].flatMap(rok =>
     nazvyMesiacov.map((nazov, index) => ({
       hodnota: `${rok}-${String(index + 1).padStart(2, '0')}`,
@@ -212,13 +212,6 @@ export default function DashboardPage() {
     if (odchod > '21:00') return true      
     if (hodiny > 14 || hodiny <= 0) return true 
     return false
-  }
-
-  function datumDoLocalString(d: Date) {
-    const rok = d.getFullYear()
-    const mesiac = String(d.getMonth() + 1).padStart(2, '0')
-    const den = String(d.getDate()).padStart(2, '0')
-    return `${rok}-${mesiac}-${den}`
   }
 
   function formatujDatumSK(datum: string) {
@@ -236,9 +229,9 @@ export default function DashboardPage() {
       return
     }
 
-    const datum = new Date()
-    if (typ === 'vcera') datum.setDate(datum.getDate() - 1)
-    const datumText = datumDoLocalString(datum)
+    const datumText = typ === 'vcera'
+      ? posunDatumNaSlovensku(datumNaSlovensku(), -1)
+      : datumNaSlovensku()
 
     setFilterMesiac(datumText.slice(0, 7))
     setFilterDen(datumText)
@@ -253,13 +246,11 @@ export default function DashboardPage() {
     setNacitavaKontrola(true)
     setChybaKontroly('')
 
-    const vcera = new Date()
-    vcera.setDate(vcera.getDate() - 1)
-    const datum = datumDoLocalString(vcera)
+    const datum = posunDatumNaSlovensku(datumNaSlovensku(), -1)
     setDatumKontroly(datum)
 
     // Nedeľa nie je pracovný deň. V pondelok preto nevarujeme, že v nedeľu nikto nebol zapísaný.
-    if (vcera.getDay() === 0) {
+    if (denVTyzdniNaSlovensku(datum) === 0) {
       setNezapisaniVcera([])
       setNacitavaKontrola(false)
       return
@@ -370,7 +361,7 @@ export default function DashboardPage() {
       return
     }
 
-    setNovaNepritomnost({ datum: datumDoLocalString(new Date()), dovod: '', mena: [] })
+    setNovaNepritomnost({ datum: datumNaSlovensku(), dovod: '', mena: [] })
     setUkazatNepritomnost(false)
     setUkladaNepritomnost(false)
     await Promise.all([nacitajNepritomnosti(), nacitajNezapisanychVcera()])
@@ -718,7 +709,7 @@ export default function DashboardPage() {
     const menaVPraci = new Set(mena)
     const denVTyzdniIndex = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
     const jeNedela = denVTyzdniIndex === 0
-    const jeBuduciDen = datum > datumDoLocalString(new Date())
+    const jeBuduciDen = datum > datumNaSlovensku()
     const nezapisani = jeBuduciDen || jeNedela
       ? []
       : dostupneMena
@@ -908,10 +899,8 @@ export default function DashboardPage() {
     okno.document.close()
   }
 
-  const dnesText = datumDoLocalString(new Date())
-  const vceraDatum = new Date()
-  vceraDatum.setDate(vceraDatum.getDate() - 1)
-  const vceraText = datumDoLocalString(vceraDatum)
+  const dnesText = datumNaSlovensku()
+  const vceraText = posunDatumNaSlovensku(dnesText, -1)
 
   const zaznamyObdobia = zaznamy.filter(z => {
     if (filterDen) return z.datum === filterDen
@@ -2180,7 +2169,8 @@ export default function DashboardPage() {
                 ) : (
                   zoradeneZaznamy.map((z) => {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : hodinyZaznamu(z)
-                    const jeVikend = new Date(z.datum).getDay() === 0 || new Date(z.datum).getDay() === 6
+                    const denVTyzdni = denVTyzdniNaSlovensku(z.datum)
+                    const jeVikend = denVTyzdni === 0 || denVTyzdni === 6
                     const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
                     const jeDuplicite = jePresnyDuplikat(z, z.id)
                     const jePrekryv = maPrekryvajuciSaCas(z, z.id)
