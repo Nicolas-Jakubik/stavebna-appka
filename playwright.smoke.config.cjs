@@ -2,7 +2,7 @@
 // This configuration does not access Vercel, Supabase or existing employee data.
 const { defineConfig, devices } = require('@playwright/test')
 
-const baseURL = 'http://localhost:3100'
+const baseURL = 'https://localhost:3443'
 const syntheticPassword = 'ONLY-FAKE-LOCAL-E2E-PASSWORD-2026'
 
 module.exports = defineConfig({
@@ -19,7 +19,7 @@ module.exports = defineConfig({
     trace: 'off',
     screenshot: 'off',
     video: 'off',
-    ignoreHTTPSErrors: false,
+    ignoreHTTPSErrors: true // self-signed, CI-only loopback certificate,
   },
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
@@ -27,8 +27,9 @@ module.exports = defineConfig({
     { name: 'iphone-like-webkit', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
-    command: 'npm run start -- --hostname 127.0.0.1 --port 3100',
+    command: 'node test-support/local-https-server.cjs',
     url: baseURL + '/admin-prihlasenie',
+    ignoreHTTPSErrors: true,
     timeout: 120000,
     reuseExistingServer: false,
     env: {
