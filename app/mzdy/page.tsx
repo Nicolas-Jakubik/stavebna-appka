@@ -6,6 +6,7 @@ import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { mesiacNaSlovensku } from '../../lib/businessDate'
+import { mesiaceVyplat } from '../../lib/payrollMonths'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
@@ -70,9 +71,7 @@ export default function MzdyPage() {
     transition: 'all 0.2s',
   }
 
-  const zoznamMesiacov = [
-    { hodnota: '2026-01', nazov: 'Január 2026' }, { hodnota: '2026-02', nazov: 'Február 2026' }, { hodnota: '2026-03', nazov: 'Marec 2026' }, { hodnota: '2026-04', nazov: 'Apríl 2026' }, { hodnota: '2026-05', nazov: 'Máj 2026' }, { hodnota: '2026-06', nazov: 'Jún 2026' }, { hodnota: '2026-07', nazov: 'Júl 2026' }, { hodnota: '2026-08', nazov: 'August 2026' }, { hodnota: '2026-09', nazov: 'September 2026' }, { hodnota: '2026-10', nazov: 'Október 2026' }, { hodnota: '2026-11', nazov: 'November 2026' }, { hodnota: '2026-12', nazov: 'December 2026' },
-  ]
+  const zoznamMesiacov = mesiaceVyplat()
 
   let textPolovice = '';
   if (filterPolovica === 'prva') textPolovice = ' (1. polovica: 1. - 15. deň)';
