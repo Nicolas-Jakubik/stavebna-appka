@@ -1,3 +1,5 @@
+import { parseDateOnly } from './financeAlerts'
+
 export type DodavatelskaFaktura = {
   datum_vystavenia?: string | null
   datum_splatnosti?: string | null
@@ -16,8 +18,9 @@ export function stavDodavatelskejFaktury(
   dnes: string
 ): 'Uhradená' | 'Po splatnosti' | 'Neuhradená' {
   if (faktura.uhradene === true) return 'Uhradená'
-  const splatnost = String(faktura.datum_splatnosti || '')
-  if (splatnost && splatnost < dnes) return 'Po splatnosti'
+  const splatnost = parseDateOnly(faktura.datum_splatnosti)
+  const today = parseDateOnly(dnes)
+  if (splatnost !== null && today !== null && splatnost < today) return 'Po splatnosti'
   return 'Neuhradená'
 }
 

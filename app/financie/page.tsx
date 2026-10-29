@@ -11,6 +11,7 @@ import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
 import { vypocitajZiskovost } from '../../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../../lib/financeAlerts'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { datumNaSlovensku } from '../../lib/businessDate'
 
 type Project = {
   id: number | string
@@ -95,12 +96,8 @@ function euro(value: number) {
 }
 
 function todayBratislava() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Bratislava',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
+  // Always ISO YYYY-MM-DD, independent of browser Intl locale output.
+  return datumNaSlovensku()
 }
 
 const cardStyle = {

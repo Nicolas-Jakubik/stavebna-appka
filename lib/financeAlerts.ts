@@ -19,10 +19,12 @@ export type InvoiceAlert = {
   stav: 'po_splatnosti' | 'splatne_coskor'
 }
 
-function parseDateOnly(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  if (!year || !month || !day) return null
-  return Date.UTC(year, month - 1, day)
+/** Strict timezone-free ISO invoice date. Never normalize February 30 or other invalid dates. */
+export function parseDateOnly(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value)) return null
+  const parsed = new Date(`${value}T00:00:00.000Z`)
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null
+  return parsed.getTime()
 }
 
 function numberValue(value: unknown) {

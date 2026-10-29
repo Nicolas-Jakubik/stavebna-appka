@@ -53,3 +53,10 @@ test('faktury sa prevedu do mesacneho rozpadu podla datumu vystavenia', () => {
     { datum: '2026-09-03', kategoria: 'Materiál', suma: 125.5 },
   ])
 })
+
+test('invalid invoice due dates do not invent overdue amounts', () => {
+  assert.equal(stavDodavatelskejFaktury({datum_splatnosti:'2026-02-30',uhradene:false},'2026-03-01'),'Neuhradená')
+  assert.equal(stavDodavatelskejFaktury({datum_splatnosti:'2026-10-01',uhradene:false},'10/29/2026'),'Neuhradená')
+  assert.equal(stavDodavatelskejFaktury({datum_splatnosti:'2028-02-29',uhradene:false},'2028-03-01'),'Po splatnosti')
+  assert.equal(stavDodavatelskejFaktury({datum_splatnosti:'2028-02-29',uhradene:true},'2028-03-01'),'Uhradená')
+})

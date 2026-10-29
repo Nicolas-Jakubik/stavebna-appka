@@ -52,3 +52,10 @@ test('faktura po splatnosti sa zvyrazni', () => {
   assert.equal(result.poSplatnosti, 700)
   assert.equal(result.pocetPoSplatnosti, 1)
 })
+
+test('invalid invoice due dates do not invent overdue amounts', () => {
+  assert.equal(stavKlientskejFaktury({datum_splatnosti:'2026-02-30',uhradene:false},'2026-03-01'),'Neuhradená')
+  assert.equal(stavKlientskejFaktury({datum_splatnosti:'2026-10-01',uhradene:false},'10/29/2026'),'Neuhradená')
+  assert.equal(stavKlientskejFaktury({datum_splatnosti:'2028-02-29',uhradene:false},'2028-03-01'),'Po splatnosti')
+  assert.equal(stavKlientskejFaktury({datum_splatnosti:'2028-02-29',uhradene:true},'2028-03-01'),'Uhradená')
+})
