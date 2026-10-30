@@ -115,7 +115,7 @@ test('failed admin logout never disguises an active session', async ({ page, con
   }))
 
   await logout.click()
-  await expect(page.getByRole('alert')).toContainText('Odhlásenie sa nepodarilo')
+  await expect(page.locator('.admin-sidebar p[role="alert"]')).toContainText('Odhlásenie sa nepodarilo')
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/)
   expect((await context.cookies()).some(c => c.name === 'stavby_admin_session')).toBe(true)
 
