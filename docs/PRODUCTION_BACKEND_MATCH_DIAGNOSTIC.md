@@ -13,6 +13,33 @@
 - Diagnostika **nikdy nekontaktuje Supabase** a nepíše do databázy. Výsledok `match:true` potvrdzuje **hostname nakonfigurovaný pre daný deployment**, nie kvalitu backupu ani funkčnosť reálnych DB operácií.
 - Pozor: audit aktuálnej `main` vetvy potvrdil existenciu `lib/adminSession.ts` a použiteľné serverové overenie admin session. Bez admin loginu nie je endpoint čitateľný.
 
+## Schválenie a bezpečný nástroj – kontrola 30.10.2026
+
+Vlastník **schválil jednorazové staged Production nasadenie bez presmerovania domény**, nie bežné Production nasadenie, merge ani Promotion. Na pripojenom Vercel API konektore je možnosť vytvoriť Production deployment, ale **chýba prepínač `skip-domain` a nemožno zaručiť, že sa live aliasy nezmenia**. Podľa [Vercel CLI dokumentácie](https://vercel.com/docs/cli/deploy), [staged Production návodu](https://vercel.com/docs/cli/deploying-from-cli) a [auto-assign pravidiel](https://vercel.com/docs/cli/alias) sa preto nesmie použiť bežné `create_deployment(target=production)`. Je potrebný *overený* postup `vercel deploy --prod --skip-domain` cez CLI.
+
+**Súčasný stav:** staging zatiaľ NIE JE vykonaný. Vercel spojenie pre tento ChatGPT relé nie je terminál používateľa a neposkytuje ekvivalent CLI `--skip-domain`. Prepojenie produkcie na Supabase je stále neoverené.
+
+Pripravený príkazový súbor `scripts/stage-backend-match-without-alias.sh` je určený **len pre dôveryhodný počítač používateľa s existujúcim prihlásením do Vercel CLI**, nie do GitHub Actions ani do automatického PR hooku. Pred nasadením odmietne nevhodnú Git vetvu, iný commit ako dodaný úplný 40-znakový schválený SHA, neupratané súbory, nesprávny Vercel project/team ID či chýbajúcu podporu `--skip-domain`. Vyžaduje aj lokálne explicitné `SD_DIAGNOSTIC_STAGED_ONLY=APPROVED_NO_DOMAIN`. Samotný script spustí výhradne `vercel deploy --prod --skip-domain --yes --scope stavby-domysro`. **Nepoužíva ani nevypisuje produkčné secret hodnoty.**
+
+Overenie a spustenie na lokálnom počítači:
+
+1. Otvoriť aktuálnu diagnostickú Git vetvu `diagnostic/read-only-production-backend-match-2026-10-29`; **nepoužiť PR #102**. Počítač musí mať `git`, `node`, Vercel CLI, prepojenie na **existujúci** Vercel projekt a privátne prihlásenie do Vercelu (bez posielania hesla/tokenu do chatu).
+2. V GitHub PR #103 overiť posledný HEAD, úspešné testy na **tom istom HEAD** a čistý checkout. Lokálny súbor `.vercel/project.json` sa musí zhodovať s `projectId=prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`, `orgId=team_J51ayy2Um69GWfW8qecJI3wr`. Pri nezhode neprelinkovať naslepo.
+3. Zaznamenať, že živé `stavebna-appka.vercel.app` pred nasadením smeruje na referenčný deployment `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` (`main` SHA `8a2d40d`). Pred spustením treba tento stav ešte raz načítať.
+4. **Len s potvrdeným schváleným HEAD SHA**, v koreňovom priečinku čistej diagnostickej vetvy spustiť:
+
+   ```bash
+   SD_DIAGNOSTIC_STAGED_ONLY=APPROVED_NO_DOMAIN \
+     bash scripts/stage-backend-match-without-alias.sh '40_ZNAKOVY_KONTROLOVANY_SHA'
+   ```
+
+   Zástupný SHA sa nesmie použiť doslova. Script musí po overení vypísať URL nového staged deploymentu; nikdy nespúšťať `vercel promote` ani plain `vercel --prod`.
+5. Skontrolovať cez Vercel API/dashboard, že **všetky tri existujúce live aliasy zostali na pôvodnom deployment ID**. Pri akejkoľvek odchýlke STOP, neodpovedať testom a riešiť incident podľa predchádzajúceho nasadenia.
+6. Pre novo vytvorenú, Vercel Authentication chránenú staged URL sa vlastník súkromne prihlási do existujúcej administrácie a otvorí `/api/admin/backend-match` na tom istom hoste. Zaznamenať výhradne `match:true` alebo `match:false` (alebo chybový stav). **Neodosielať heslo, session cookie ani env.**
+7. Po kontrole nepromovať diagnostiku. Bez ďalšieho schválenia nepripájať alias, nemergovať, nemeniť env a nespúšťať skutočný dump.
+
+**Význam výsledku:** staged Production v novom deploymente overuje aktuálne pripojenie novo zostaveného deploymentu s Production env; **nemusí byť nezávislým dôkazom pôvodných env hodnôt existujúceho live deploymentu**, ktorého identitu treba naďalej overiť pred zálohou. Neoznačiť databázový release gate za dokončený len z tejto zhody.
+
 ## Bezpečný postup a rozhodovacie body
 
 1. Tento **samostatný** diagnostický PR vytvoriť vo vetve od produkčného referenčného commitu `8a2d40d`; nemiešať s rozsiahlym PR #102.
