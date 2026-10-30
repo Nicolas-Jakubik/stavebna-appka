@@ -41,6 +41,22 @@ jobs:
         run: |
           bash -n tests/staged-runner-regression.sh
           bash tests/staged-runner-regression.sh
+      - name: Probe real Vercel CLI 54.14.2 help exit status without any auth or deploy
+        run: |
+          set +e
+          help_output="$(npx --yes --package=vercel@54.14.2 vercel deploy --help 2>&1)"
+          help_status="$?"
+          set -e
+          printf 'Actual Vercel CLI deploy help exit status: %s\n' "$help_status"
+          if [[ "$help_output" == *'--skip-domain'* ]]; then
+            echo 'Actual Vercel CLI deploy help advertises --skip-domain: YES'
+          else
+            echo 'Actual Vercel CLI deploy help advertises --skip-domain: NO'
+          fi
+          [[ "$help_output" == *'--skip-domain'* ]] || {
+            printf '%s\n' 'Cannot verify safe staging flag in real CLI help.'
+            exit 1
+          }
       - name: Test auth guard and boolean-only output without a database
         run: node --test tests/admin-backend-match.test.cjs
         env:
