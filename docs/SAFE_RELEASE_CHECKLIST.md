@@ -5,6 +5,15 @@
 
 **Aktuálne potvrdenie (prednosť pred historickými poznámkami nižšie):** Používaná adresa `stavebna-appka.vercel.app/dashboard` patrí projektu `stavby-domysro/stavebna-appka` a READY deploymentu z 22.10.2026, **nie** diagnostickému projektu `sd-evidencia`. Z pripojeného Supabase ref `pfbgzwehfzgmsqjykvkb` je **skutočný** šifrovaný dump schémy `public` z 30.10.2026 s úspešnou izolovanou obnovou **12 tabuliek / 924 riadkov** (884 dochádzka), 13 validovaných FK, 8 triggerov, 4 politík a 5 funkcií. Počty riadkov v archíve a lokálnej obnove sa zhodujú. **Stále však nie je priamo preukázané, že práve tento Supabase ref je backend živého nasadenia.** Auth/Storage a ostatná konfigurácia nie sú zahrnuté. Pred release stále STOP. Podrobnosti: [mapovanie](VERCEL_PRODUCTION_MAPPING.md), [handoff](REPAIR_HANDOFF.md).
 
+
+## Overenie historických sadzieb na izolovanej kópii – 30.10.2026
+- [x] V obnovenej databáze `public` boli potvrdené historické sadzby vo všetkých september/október 2026 dochádzkových záznamoch, bez chýbajúcich pracovníckych profilov a bez duplicitných profilov.
+- [x] Zistené rozdiely medzi uloženou historickou a aktuálnou sadzbou, všetky jedným smerom; výpočtový dopad bol zistený porovnaním čistých hodín po prestávke, sadzby záznamu a aktuálnej sadzby. **Presné reálne finančné sumy a identitu pracovníka zámerne neukladáme do Git repozitára.**
+- [x] Identifikované rozdelené pracovné dni; pri nezávislom výpočte sa prestávka odpočítala len raz za pracovný deň.
+- [ ] **MZDOVÝ STOP – potvrdiť dohodnuté obdobie platnosti zmenenej hodinovej sadzby a stav už vyplatených uzavretých období.** Vyššia aktuálna sadzba sama osebe nedokazuje, že historická sadzba je správna ani nesprávna. Bez odsúhlasenia nesmie nové zobrazenie ticho meniť už schválenú mzdu.
+- [ ] **MZDOVÝ STOP – nezávisle porovnať aplikáciou vytvorené výplaty/PDF (vrátane zaokrúhľovania a rozdelených dní) s lokálnym kontrolným výpočtom.** Súčasný SQL výpočet nie je end-to-end ani dôkaz správnosti vystavených výplat.
+- [ ] Potvrdiť mapovanie skutočnej produkčnej URL na konkrétny Supabase projekt pred tvrdením, že táto kópia je databáza živej aplikácie.
+
 ## Nevyhnutné STOP podmienky
 - [x] **Skutočný lokálny test zabezpečenia archívu:** MacBook s FileVault, osobitný súkromný age kľúč aj šifrovaná obnovovacia kópia kľúča; súkromná šifrovaná záloha mimo Git checkout. **Identita backendu živého deploymentu stále čaká na overenie samostatnou položkou nižšie.**
 - [ ] Pred spustením zálohy nastaviť lokálny súkromný `BACKUP_AGE_IDENTITY` a TLS `PGSSLMODE=require` / `verify-ca` / `verify-full`. Skript odmieta neoverené archívy a nezabezpečené pripojenia. Odporúča sa `verify-full` pri správne nastavenej dôveryhodnej certifikačnej autorite.
