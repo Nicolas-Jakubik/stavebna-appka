@@ -1,5 +1,12 @@
 # FiremnáApka: izolovaná kontrola Production → Supabase (samostatný návrh)
 
+> **Aktuálny výsledok 30.10.2026 – schválená jednorazová diagnostika PREBEHLA.** Po výslovnom súhlase vlastníka bolo lokálnym auditovaným CLI skriptom vykonané `vercel deploy --prod --skip-domain` zo schváleného SHA `aa7958dbf1036b7dc2638ee7965acce439ee9277`. Nové chránené nasadenie `dpl_57wdDFxAMPsjTcXwM4dhFdHQqnEU` je READY; vlastník overil v anonymnom okne Vercel Authentication, prihlásil sa privátne do admin session a obdržal `{"match":true}` z `GET /api/admin/backend-match`. Ide o zhodu hostname Production-env nového deploymentu s `pfbgzwehfzgmsqjykvkb.supabase.co`, **nie priamy dôkaz immutable env historického starého deploymentu**. Supabase projekt `pfbgzwehfzgmsqjykvkb` bol metadátami overený ako `MojaFiremnaApp` / `ACTIVE_HEALTHY` bez čítania personálnych údajov.
+>
+> **Časové nezávislé metadáta:** Vercel Production/Preview `NEXT_PUBLIC_SUPABASE_URL` (sensitive, hodnota nečítaná) má `createdAt=updatedAt=2026-05-28T12:25:55.325Z`, staré aktívne Production nasadenie vzniklo `2026-10-22T11:57:15.143Z`, staged vzniklo `2026-10-30T07:36:10.233Z`. To silne podporuje nezmenený Production backend oboch deployov, ale nepreukazuje úplnú zhodu historických runtime snapshotov. Živé nasadenie `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` (main SHA `8a2d40d`) má stále všetky 3 pôvodné aliasy. Vercel priradil staged nasadeniu nový alias `sd-evidencia-stavby-domysro.vercel.app` napriek `--skip-domain`, žiaden pôvodný alias neprešiel na staged.
+>
+> **Bezpečnostný stav:** Žiadny merge/promotion/deployment opráv #102, žiadny skutočný DB dump/restore, žiadny databázový zápis ani zdieľanie hesla. Nasledujúce kroky: pripraviť bezpečný súkromný `age` backup s izolovanou obnovou po potvrdení cieľa, porovnať skutočné výplaty a izolovane otestovať opravný PR #102. Diagnostické staged nasadenie nepromovať a nijak neprepájať aliasy. Historické pokyny nižšie sú návrh prípravy spred vykonanej diagnostiky.
+
+
 **Stav:** DRAFT – iba návrh diagnostického PR. NIE JE schválením deploymentu.  
 **Prečo:** Záložný release gate PR #102 je blokovaný, pretože `NEXT_PUBLIC_SUPABASE_URL` je na Verceli skrytá `Sensitive/Secret` premenná (nedá sa spätne čítať cez Settings/API). Firemné dáta sa nesmú zálohovať z neoverenej databázy.
 
