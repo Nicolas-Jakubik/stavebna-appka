@@ -54,3 +54,53 @@ test('login screen fits mobile width without a horizontal scrollbar', async ({ p
   await expect(page.getByRole('button', { name: 'Vstúpiť' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)).toBe(true)
 })
+
+
+test('recorder-only private link opens mobile attendance without admin privileges', async ({ browser, request }) => {
+  // All credentials and URLs are local to this HTTPS CI server. No real Supabase access.
+  const base = 'https://localhost:3443'
+  const login = await request.post('/api/admin/login', {
+    headers: { origin: base },
+    data: { password: syntheticPassword },
+  })
+  expect(login.status()).toBe(200)
+
+  // The admin-only endpoint issues a one-month private recorder link.
+  const issued = await request.post('/api/admin/recorder-link', { headers: { origin: base } })
+  expect(issued.status()).toBe(200)
+  const { link, validDays } = await issued.json()
+  expect(validDays).toBe(30)
+  expect(link.startsWith(base + '/#zapis=recorder-v1.')).toBe(true)
+
+  // Separate browser context proves that the link does not grant admin access.
+  const worker = await browser.newContext({ baseURL: base, ignoreHTTPSErrors: true })
+  try {
+    const page = await worker.newPage()
+    await page.goto(link)
+    await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
+    await expect(page).toHaveURL(base + '/') // fragment was discarded after exchange
+
+    const cookies = await worker.cookies()
+    const recorder = cookies.find(cookie => cookie.name === 'stavby_recorder_session')
+    expect(recorder).toBeTruthy()
+    expect(recorder.httpOnly).toBe(true)
+    expect(recorder.sameSite).toBe('Strict')
+    expect(cookies.some(cookie => cookie.name === 'stavby_admin_session')).toBe(false)
+
+    const session = await worker.request.get('/api/recorder/session')
+    expect(session.status()).toBe(200)
+    expect((await session.json()).authorized).toBe(true)
+
+    const admin = await worker.request.get('/api/admin/database/zamestnanci')
+    expect(admin.status()).toBe(401)
+
+    // Recorder must never be allowed to mutate workers instead of attendance.
+    const forbidden = await worker.request.post('/api/recorder/database/zamestnanci', {
+      headers: { origin: base },
+      data: [{ meno: 'Synthetic only', aktivny: true }],
+    })
+    expect(forbidden.status()).toBe(403)
+  } finally {
+    await worker.close()
+  }
+})
