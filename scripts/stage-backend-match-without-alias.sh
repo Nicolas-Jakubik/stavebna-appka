@@ -32,7 +32,13 @@ if(p.projectId !== process.argv[1] || p.orgId !== process.argv[2]){
 
 # Only the official CLI has a documented skip-domain guarantee. The Vercel
 # connected deployment API currently exposes no equivalent safety parameter.
-if ! vercel deploy --help 2>&1 | grep -Fq -- '--skip-domain'; then
+# Read the entire help output before checking the flag. With pipefail enabled,
+# `vercel deploy --help | grep -q` can falsely fail when grep closes early
+# and Vercel receives SIGPIPE despite actually advertising --skip-domain.
+if ! vercel_help="$(vercel deploy --help 2>&1)"; then
+  deny 'Could not inspect Vercel CLI deploy help; deployment not attempted.'
+fi
+if [[ "$vercel_help" != *'--skip-domain'* ]]; then
   deny 'Installed Vercel CLI does not advertise --skip-domain; deployment not attempted.'
 fi
 
