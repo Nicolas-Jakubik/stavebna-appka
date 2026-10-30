@@ -23,6 +23,20 @@ jobs:
           cache: npm
       - name: Install pinned source dependencies
         run: npm ci --no-audit --no-fund
+      - name: Verify staged-only CLI runner fails closed (no deployment)
+        run: |
+          bash -n scripts/stage-backend-match-without-alias.sh
+          if bash scripts/stage-backend-match-without-alias.sh >"$RUNNER_TEMP/missing-opt-in.log" 2>&1; then
+            echo 'ERROR: staging runner accepted invocation with no approved SHA' >&2
+            exit 1
+          fi
+          if SD_DIAGNOSTIC_STAGED_ONLY=APPROVED_NO_DOMAIN \
+            bash scripts/stage-backend-match-without-alias.sh not-a-sha >"$RUNNER_TEMP/bad-sha.log" 2>&1; then
+            echo 'ERROR: staging runner accepted an invalid SHA' >&2
+            exit 1
+          fi
+          grep -q 'STOP:' "$RUNNER_TEMP/missing-opt-in.log"
+          grep -q 'STOP:' "$RUNNER_TEMP/bad-sha.log"
       - name: Test auth guard and boolean-only output without a database
         run: node --test tests/admin-backend-match.test.cjs
         env:
