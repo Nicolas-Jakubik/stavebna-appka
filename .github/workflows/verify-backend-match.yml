@@ -37,6 +37,10 @@ jobs:
           fi
           grep -q 'STOP:' "$RUNNER_TEMP/missing-opt-in.log"
           grep -q 'STOP:' "$RUNNER_TEMP/bad-sha.log"
+      - name: Regression test long CLI help output without any real deployment
+        run: |
+          bash -n tests/staged-runner-regression.sh
+          bash tests/staged-runner-regression.sh
       - name: Test auth guard and boolean-only output without a database
         run: node --test tests/admin-backend-match.test.cjs
         env:
