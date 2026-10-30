@@ -1,53 +1,43 @@
-# SD Evidencia – overenie väzby produkčného Vercelu na správny Supabase
+# SD Evidencia – mapovanie skutočnej prevádzky (aktualizácia 30.10.2026)
 
 **Projekt:** SD-EVIDENCIA-OPRAVY-2026-10-28  
-**Stav:** NEOVERENÉ – STOP pred skutočnou produkčnou zálohou aj pred nasadením PR #102.  
-**Aktualizácia:** 29.10.2026; predchádzajúce neuskutočniteľné pokyny nahradené týmto dokumentom.
+**Dôležité:** Živú aplikáciu, ktorú vlastník skutočne používa, **NEZAMIEŇAŤ** s diagnostickým projektom. Tento dokument je iba overovací podklad, nie povolenie na zmenu produkcie.
 
-## Čo je preukázané (bez produkčných zásahov)
+## Potvrdené adresy a nasadenia
 
-| Otázka | Výsledok |
-| --- | --- |
-| Vercel projekt | `sd-evidencia`, ID `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh` |
-| Produkčná doména | `stavebna-appka.vercel.app` |
-| GitHub zdroj | `Nicolas-Jakubik/stavebna-appka`, `main` |
-| Posledné overené Production nasadenie | READY, commit `8a2d40dfcfcd7d68557db7d2c6f94c6e99e5aa7d` |
-| Opravný PR | #102, stále DRAFT, bez merge na `main` |
-| Vercel env metadáta | `NEXT_PUBLIC_SUPABASE_URL` existuje pre Production/Preview; typ `sensitive` a `decrypted=false` |
-| Pripojený Supabase | `MojaFiremnaApp`, project ref `pfbgzwehfzgmsqjykvkb`, ACTIVE_HEALTHY |
-| Väzba Production → tento konkrétny Supabase ref | **NEPOTVRDENÁ** |
+| Úloha | Vercel projekt | Adresa | Nasadenie |
+| --- | --- | --- | --- |
+| **Skutočne používaná živá aplikácia (vlastník potvrdil 30.10.)** | `stavby-domysro/stavebna-appka` | `https://stavebna-appka.vercel.app/dashboard` | `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc`, vytvorené **22.10.2026 o 13:57 CEST**, READY, Production, pôvodný `main` / `8a2d40d` |
+| Oddelené diagnostické nasadenie | `stavby-domysro/sd-evidencia` | `https://sd-evidencia-stavby-domysro.vercel.app` | `dpl_57wdDFxAMPsjTcXwM4dhFdHQqnEU`, READY, Production *environment* |
 
-Konzistentné staršie projektové záznamy spájajú FiremnúApku so Supabase `MojaFiremnaApp`, **ale nejde o nezávislý dôkaz hodnoty historického Vercel Production deployment environmentu**. Nekombinovať nepriamo súvisiace indície do tvrdenia o potvrdenej zhode.
+**Nezávislé kontrolné výpisy vlastníka z 30.10.2026:** `vercel inspect https://stavebna-appka-miujudv4j-stavby-domysro.vercel.app --scope stavby-domysro` uvádza aliasy `stavebna-appka.vercel.app`, `stavebna-appka-stavby-domysro.vercel.app`, `stavebna-appka-git-main-stavby-domysro.vercel.app`. `vercel alias ls --scope stavby-domysro` priraďuje `sd-evidencia-stavby-domysro.vercel.app` k diagnostickému nasadeniu, nie k pôvodnému aliasu. Používateľ výslovne potvrdil používanú URL s `/dashboard`.
 
-## Prečo Vercel Settings/API nemôže poskytnúť odpoveď
+**Dôsledok:** Diagnostické nasadenie *prevzalo alias projektu sd-evidencia*, ale **neexistuje dôkaz, že prepísalo adresu `stavebna-appka.vercel.app`**. Naopak, `vercel inspect` potvrdilo pôvodné aliasy na starom nasadení. **Nevykonávať rollback** bez ďalšieho dôvodu. Označenie `Production` pri nasadení projektu `sd-evidencia` nie je dôkaz, že ide o aplikáciu používanú firmou.
 
-Vercel 24.08.2026 preklasifikoval existujúce *Sensitive* env premenné na *Secret*. Takéto hodnoty sú **po uložení write-only**, v Dashboarde ani cez Vercel API sa nedajú znova zobraziť; nasadený program ich naďalej môže čítať. Metadátové volania `get_project_env` a `filter_project_envs(decrypt=true)` vrátili iba `decrypted=false`, bez URL.
+## Backend Supabase – čo je a nie je preukázané
 
-- [Oficiálny Vercel changelog](https://vercel.com/changelog/environment-variables-now-use-config-and-secret-types)
-- [Oficiálna dokumentácia Sensitive env](https://vercel.com/docs/environment-variables/sensitive-environment-variables)
-- [Dôležité: env zmeny sa spätne neaplikujú na staré deploymenty](https://vercel.com/docs/environment-variables)
+- Existuje pripojený Supabase projekt `MojaFiremnaApp`, ref `pfbgzwehfzgmsqjykvkb`; prístupom cez lokálne TLS pripojenie bola overená existencia tabuľky `public.dochadzka`.
+- Diagnostický endpoint na **novom oddelenom** nasadení `sd-evidencia` v prostredí Production vrátil po admin overení **`{"match":true}`** pre očakávaný Supabase host. To overuje *konfiguráciu tohto diagnostického behu*; **nie priamo pôvodný immutable runtime `stavebna-appka`**.
+- Vercel `NEXT_PUBLIC_SUPABASE_URL` je klasifikovaná ako historická Sensitive/Secret premenná. Jej hodnotu nemožno zobraziť spätne cez Dashboard/API. **Nežiadať jej zverejnenie, neprepisovať env premenné kvôli kontrole**.
+- **ZOSTÁVA STOP GATE:** priama väzba **živej `stavebna-appka.vercel.app` → konkrétny Supabase ref `pfbgzwehfzgmsqjykvkb`** nie je nezávisle potvrdená. Pred produkčným release ju treba potvrdiť bezpečným, osobitne odsúhlaseným postupom.
 
-**Nežiadať používateľa otvárať tajnú hodnotu v Settings alebo posielať .env. Nikdy nemeniť ani nahrádzať túto premennú iba na overenie adresy; zmena konfigurácie pre nové nasadenia nemusí dokazovať nastavenie starého Production deploymentu.**
+## Skutočná šifrovaná záloha a izolovaná obnova – potvrdené 30.10.2026
 
-## Už vyskúšané read-only možnosti
+Používateľ na svojom dôveryhodnom MacBooku vykonal skutočný `pg_dump` projektu `pfbgzwehfzgmsqjykvkb`, šifrovaný cez `age` (iba schéma `public`). Overený archív bol **úspešne obnovený** do samostatného PostgreSQL 17 clusteru cez lokálny socket bez sieťového listenera. Overenie ukázalo:
 
-1. Vercel projekt, produkčné nasadenie a metadáta env: skontrolované; URL nedostupná.
-2. GitHub `main`: `lib/supabase.js`, `lib/recorderClient.ts`, `lib/adminSupabase.ts`, `app/api/recorder/database/[table]/route.ts` – nie je tam priamo zapísaný Supabase hostname. Admin/recorder klienti komunikujú cez same-origin serverové API.
-3. Verejná domovská stránka načítaná read-only browserom. Z HTML extrakcie nebolo možné získať reálne použité JS súbory (`script[src]` počet 0), teda **žiadna zhoda ani nezhoda** hostname sa nepreukázala. V minulosti skúšané odhadnuté chunk URL vrátili 404, ktoré **nedokazujú chybu aplikácie**. Rovnaké skúšanie neopakovať.
-4. CI testy a Vercel READY sú dôkazom zostavenia/testov syntetických dát, **nie** väzby na firemnú databázu.
-5. Preview má vlastný env kontext a nemusí dostať Production-only service-role credentials. **Preview zhoda by nedokazovala konfiguráciu existujúceho Production deploymentu.**
+- 12 tabuliek schémy `public`, 924 riadkov celkom (z nich 884 dochádzky), presná zhoda počtov riadkov v archíve a lokálnej obnove.
+- 13 cudzích kľúčov, 0 nevalidovaných, 8 používateľských triggerov, 4 politiky a 5 funkcií.
+- Lokálne bolo potrebné vytvoriť dve NOLOGIN roly `anon`/`authenticated`, schému `extensions` a rozšírenie `pgcrypto`. Nevytvárali sa v produkcii.
+- Obnova je dôkazom obnoviteľnosti **tejto zálohy schémy public**, nie úplnej služby Supabase; nezahŕňa Auth, Storage objekty, systémové roly/ACL ani projektové secrets. Kontrola počtov a integrity základných DB objektov nie je nezávislé byte-for-byte porovnanie všetkých záznamov a nie je test prihlásenia či výplatnej logiky.
+- **Pozor:** bez preukázanej väzby živého `stavebna-appka` deploymentu na tento Supabase ref **neoznačovať zálohu za overenú zálohu skutočne živej aplikácie**.
 
-## Ďalší legitímny postup – bez zmeny živej aplikácie
+## Stav opráv / zákaz neautorizovaného nasadenia
 
-- Hľadať existujúcu dôveryhodnú **netechnickú dôkazovú stopu** pôvodného nasadenia: predchádzajúci bezpečný interný záznam project ref, verifikované deployment/config poznámky alebo správu prevádzkovateľa s presným ref. Nikdy nie kľúč, cookie, heslo alebo URL obsahujúce prihlasovacie údaje. Tento dôkaz musí byť pre ten istý nasadený Production deployment, inak ide iba o indíciu.
-- Ak spoľahlivá stopa neexistuje, **zastaviť identifikačný gate** a pripraviť osobitný minimálny diagnostický návrh pre čítanie identity **v skutočnom Production runtime**, ktorý by vracal výhradne `zhoda / nezhoda`, nemal verejný endpoint ani prístup k firemným riadkom. Jeho spustenie/deployment je **produkčná zmena**, a vyžaduje osobitné bezpečnostné posúdenie, plán návratu a **výslovný súhlas vlastníka**. Bez toho nič nespúšťať.
-- Produkčný `main`, domény, env premenné, heslá, Firewall, Supabase ani firemné záznamy sa nesmú modifikovať automaticky. Nevykonávať akékoľvek migrácie alebo skúšobné dochádzkové zápisy.
+- [Draft PR #102](https://github.com/Nicolas-Jakubik/stavebna-appka/pull/102) obsahuje pripravené opravy. CI aplikácie, syntetické PostgreSQL/RPC, šifrovanie a izolovaný browser smoke boli na HEAD `764b6e2` **5/5 úspešné**. Tieto testy nepokrývajú živé firemné mzdy ani skutočné mobilné zariadenia.
+- **Žiadne opravné PR nebolo zlúčené do `main`** a opravy nie sú nasadené na používanej URL.
+- Pred release: potvrdiť produkčné backend mapovanie, bezpečne overiť opravenú verziu a historické mzdy na izolovanej kópii, preveriť prístup zapisovateľov a rate limiting, pripraviť rollback, vyžiadať výslovný súhlas vlastníka.
+- **Nerobiť:** `vercel deploy`, `vercel promote`, zmenu aliasov, editáciu produkčných env, migrácie alebo zápisy do produkčnej databázy len na základe tohto dokumentu.
 
-## STOP / nadväzné uvoľnenie
+## História opravy mapovania
 
-1. Preukázať **presnú** identitu backendu produkčného deploymentu, nie iba názov spojeného projektu.
-2. Až potom na dôveryhodnom zariadení vytvoriť súkromnú **age-šifrovanú zálohu potvrdenej databázy**, podľa [backup-and-restore-runbook.md](backup-and-restore-runbook.md), bez zverejnenia prístupových údajov.
-3. Skutočný dump obnoviť do **oddeleného** PostgreSQL a overiť počty, checksumy, väzby, RPC, historické výplaty a úplnosť stránkovania. Syntetická PG17 obnova nie je plnohodnotná náhrada.
-4. Otestovať zariadenia/mobile/desktop a až nakoniec vyžiadať samostatné schválenie release. Pripravený postup: [SAFE_RELEASE_CHECKLIST.md](SAFE_RELEASE_CHECKLIST.md).
-
-**Žiadna z uvedených read-only kontrol nie je povolením mergovať PR #102 či meniť produkciu.**
+Staršie texty v tomto repozitári označovali `sd-evidencia` ako projekt produkčnej domény `stavebna-appka.vercel.app`. Tento predpoklad bol **vyvrátený výpisom Vercel z 30.10.2026**; pri rozhodovaní má prednosť uvedené mapovanie rozlišujúce obidva projekty. Staged diagnostika nevytvorila zásah do pôvodných aliasov.
