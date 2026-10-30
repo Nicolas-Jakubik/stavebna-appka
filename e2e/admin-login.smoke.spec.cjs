@@ -97,3 +97,30 @@ test('recorder-only private link opens mobile attendance without admin privilege
     })
     expect(forbidden.status()).toBe(403)
 })
+
+
+test('failed admin logout never disguises an active session', async ({ page, context }) => {
+  await page.goto('/admin-prihlasenie?next=%2Fdashboard')
+  await page.getByPlaceholder('Heslo').fill(syntheticPassword)
+  await page.getByRole('button', { name: 'Vstúpiť' }).click()
+  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/)
+
+  // Mobile navigation must be explicitly opened before tapping logout.
+  const menu = page.getByRole('button', { name: 'Otvoriť administráciu' })
+  if (await menu.isVisible()) await menu.click()
+  const logout = page.getByRole('button', { name: 'Odhlásiť sa' })
+  await expect(logout).toBeVisible()
+  await page.route('**/api/admin/logout', route => route.fulfill({
+    status: 503, contentType: 'application/json', body: '{"error":"test-only outage"}',
+  }))
+
+  await logout.click()
+  await expect(page.getByRole('alert')).toContainText('Odhlásenie sa nepodarilo')
+  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/)
+  expect((await context.cookies()).some(c => c.name === 'stavby_admin_session')).toBe(true)
+
+  await page.unroute('**/api/admin/logout')
+  await logout.click()
+  await expect(page).toHaveURL(/\/admin-prihlasenie(?:\?.*)?$/)
+  expect((await context.cookies()).some(c => c.name === 'stavby_admin_session')).toBe(false)
+})
