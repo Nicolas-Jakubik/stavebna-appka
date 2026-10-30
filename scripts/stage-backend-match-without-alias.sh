@@ -35,8 +35,17 @@ if(p.projectId !== process.argv[1] || p.orgId !== process.argv[2]){
 # Read the entire help output before checking the flag. With pipefail enabled,
 # `vercel deploy --help | grep -q` can falsely fail when grep closes early
 # and Vercel receives SIGPIPE despite actually advertising --skip-domain.
-if ! vercel_help="$(vercel deploy --help 2>&1)"; then
-  deny 'Could not inspect Vercel CLI deploy help; deployment not attempted.'
+# Verified with actual Vercel CLI 54.14.2 (GitHub Actions): --help prints
+# valid flag documentation but exits 2. Only documented observed help status
+# 0 or 2 is acceptable, and the flag MUST be present. Never ignore all errors.
+help_exit=0
+vercel_help="$(vercel deploy --help 2>&1)" || help_exit=$?
+case "$help_exit" in
+  0|2) ;;
+  *) deny 'Vercel CLI deploy help failed unexpectedly; deployment not attempted.' ;;
+esac
+if [[ "$vercel_help" == *'Error:'* ]]; then
+  deny 'Vercel CLI reported an error while showing deploy help; deployment not attempted.'
 fi
 if [[ "$vercel_help" != *'--skip-domain'* ]]; then
   deny 'Installed Vercel CLI does not advertise --skip-domain; deployment not attempted.'
