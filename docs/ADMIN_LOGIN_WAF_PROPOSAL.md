@@ -2,7 +2,7 @@
 
 **Kontrolný bod:** SD-EVIDENCIA-OPRAVY-2026-10-28
 **Stav:** NÁVRH / NIČ NEZAPNUTÉ. Tento dokument **nie je povolenie na úpravu produkčného Firewallu**.
-**Zodpovedný projekt:** Vercel `sd-evidencia` (`prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`), produkčná doména `stavebna-appka.vercel.app`.
+**Zodpovedný projekt skutočnej živej aplikácie (overené 30.10.2026):** Vercel tím `stavby-domysro`, projekt **`stavebna-appka`**, produkčná doména **`stavebna-appka.vercel.app`**, aktuálne READY deployment `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` z 22.10.2026. Projekt `sd-evidencia` (`prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`) je **oddelená diagnostika**, nie cieľ firewallu pre používanú firemnú aplikáciu. **Pred akoukoľvek konfiguráciou WAF overiť projekt v Dashboarde znova; žiadne pravidlo zatiaľ nezapínať.**
 **Zdroj:** oficiálna dokumentácia Vercel WAF (2025–2026):
 - https://vercel.com/kb/guide/limit-abuse-with-rate-limiting
 - https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting
@@ -27,7 +27,7 @@ WAF umožňuje vynucovať limit ešte pred vstupom do Next.js API, nezávisle od
 
 ## Bezpečný postup až po výslovnom schválení
 
-1. Overiť správny **existujúci** Vercel tím a projekt. Preveriť existujúce pravidlá v `Firewall → Configure` a zistiť, či už login nie je chránený alebo sú limity plánu vyčerpané. Pripojené read-only volanie na `get_firewall_config(active)` vrátilo `404 Seawall Config not found`; **to nepreukazuje neprítomnosť pravidiel ani správnu konfiguráciu**.
+1. Overiť správny **existujúci** Vercel tím a projekt **`stavby-domysro/stavebna-appka`**, nie `sd-evidencia`. Preveriť existujúce pravidlá v `Firewall → Configure` a zistiť, či už login nie je chránený alebo sú limity plánu vyčerpané. Pripojené read-only volanie na `get_firewall_config(active)` vrátilo `404 Seawall Config not found`; **to nepreukazuje neprítomnosť pravidiel ani správnu konfiguráciu**.
 2. Vytvoriť **len logovací náhľad** pravidla s presnou cestou `/api/admin/login`; pozorovať približne **10 minút** bežnej prevádzky bez generovania množstva neúspešných loginov alebo skúšania skutočného hesla. Pri nejasnej návštevnosti radšej predĺžiť sledovanie.
 3. Skontrolovať, že podmienka zachytáva iba prihlásenie, nie bežné zápisy pracovníkov. Ak áno a vlastník schváli, prepnúť akciu na Rate Limit 10/60s/IP s Deny a potvrdiť `Review Changes → Publish`. Pravidlo začne ovplyvňovať živú prevádzku **okamžite**, bez code deployu; preto je to produkčná zmena, ktorá vyžaduje súhlas.
 4. Overiť v rámci povoleného interného testu, že jedna legitímna administrátorská relácia funguje a zapisovateľ môže zapisovať. Záznamy o prihlasovaní, heslá ani cookies neposielať do GitHubu či konverzácie.
@@ -40,4 +40,4 @@ WAF umožňuje vynucovať limit ešte pred vstupom do Next.js API, nezávisle od
 - Nie je to plnohodnotná ochrana pred útočníkmi, ktorí menia IP adresy.
 - Aktuálna live aplikácia beží na `main` SHA `8a2d40d`, nie na opravnom PR #102.
 
-**STOP pred produkčným merge/deploy:** potvrdiť databázový ref, reálnu šifrovanú zálohu a izolovaný restore, reálne výplaty, browser/mobile E2E a výslovný súhlas.
+**STOP pred produkčným merge/deploy:** šifrovaná záloha schémy `public` a izolovaný restore pre Supabase ref `pfbgzwehfzgmsqjykvkb` boli vykonané; stále však treba potvrdiť, že ide o backend živej `stavebna-appka`, vyriešiť neodsúhlasené zmeny historických výplat, browser/mobile E2E a vyžiadať výslovný súhlas. WAF návrh nie je aktívny.
