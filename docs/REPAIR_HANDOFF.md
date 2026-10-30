@@ -1,5 +1,15 @@
 # SD-EVIDENCIA-OPRAVY-2026-10-28
 
+> **30.10.2026 – nový overený checkpoint (bez zásahu do živej appky):**
+> Jednorazové staged *Production-environment* diagnostické nasadenie z [Draft PR #103](https://github.com/Nicolas-Jakubik/stavebna-appka/pull/103) bolo vykonané na Verceli cez overený lokálny `vercel deploy --prod --skip-domain`. Nasadenie `dpl_57wdDFxAMPsjTcXwM4dhFdHQqnEU` / SHA `aa7958dbf1036b7dc2638ee7965acce439ee9277` je READY, Vercel Authentication bola manuálne potvrdená v anonymnom okne, následne užívateľ v admin session otvoril len `GET /api/admin/backend-match` a vrátil **`{"match":true}`**. Tento endpoint len porovnáva serverové `NEXT_PUBLIC_SUPABASE_URL` s očakávaným hostiteľom `pfbgzwehfzgmsqjykvkb.supabase.co`; neposiela dopyt do databázy, neposkytuje tajomstvá ani údaje pracovníkov.
+>
+> **Silná doplňujúca evidencia pre historickú živú verziu:** Vercel metadáta (bez čítania hodnoty secret) pre produkčnú `NEXT_PUBLIC_SUPABASE_URL` ukazujú `createdAt=updatedAt=2026-05-28T12:25:55.325Z`, pred vytvorením pôvodného produkčného nasadenia 2026-10-22T11:57:15.143Z a nového staged nasadenia 2026-10-30T07:36:10.233Z. Metadáta neukazujú medzi nimi zmenu tejto premennej. Táto kombinácia **silne podporuje** rovnaké backendové hostiteľské nastavenie oboch nasadení, ale nie je priamym čítaním immutable env pôvodnej binárky; pred prácou s reálnymi dátami potvrdiť ďalšie potrebné kontrolné kroky.
+>
+> **Zachovaná produkcia:** Pôvodný deployment `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` / `main` / `8a2d40d` zostal READY a má nezmenené všetky 3 staré aliasy vrátane `stavebna-appka.vercel.app`. Napriek `--skip-domain` Vercel priradil novému staged nasadeniu **nový**, nie pôvodný alias `sd-evidencia-stavby-domysro.vercel.app`. K produkčnej doméne ani `main` sa nezasiahlo.
+>
+> **Naďalej STOP pred nasadením PR #102:** skutočná súkromná šifrovaná záloha + izolovaná obnova firemných dát **NEPREBEHLA**; reálne výplatné porovnanie a browser/iPhone/Android overenie opraveného PR #102 **NEPREBEHLO**; distribučný limit prihlasovania nebol potvrdený. Jednorazové manuálne otvorenie starej podoby aplikácie v staged diagnostike NIE JE test novej opravnej verzie #102. Odhad pripravenosti kódu **98 %**, na živej aplikácii opravy **0 %**.
+
+
 **Purpose:** Safe continuity checkpoint for FiremnáApka / sd-evidencia development.
 **Last updated:** 2026-10-29, continuation checkpoint in PR #102.
 **Approximate prepared-repairs progress:** 98% (planning estimate for code preparation only; actual **production-data** restore, live-environment integration tests and release gates still outstanding); **production-deployed fixes:** 0%. These are planning estimates only, not a release-completion guarantee. Previous checkpoint was 45%.
