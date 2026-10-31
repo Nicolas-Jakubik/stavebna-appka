@@ -51,6 +51,9 @@ function sql(query) {
   ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000, maxBuffer: 4 * 1024 * 1024 })
 }
 
+let phase = 'overenie lokálnej testovacej databázy'
+let liveStatus = null
+
 async function main() {
   const check = sql("SELECT current_database() || '|' || current_setting('data_directory') || '|' || (inet_server_addr() IS NULL)::text || '|' || (SELECT count(*) FROM pg_tables WHERE schemaname='public') || '|' || (SELECT count(*) FROM public.dochadzka)")
     .trim()
@@ -67,6 +70,7 @@ async function main() {
     "WHERE datum >= '2026-09-01' AND datum <= '2026-09-30'",
     'ORDER BY id',
   ].join(' ')
+  phase = 'čítanie septembrovej dochádzky z lokálnej obnovy'
   const local = sql(rowsSql).trim().split('\n').filter(Boolean).map(JSON.parse)
   if (local.length !== 200) throw new Error('Historical local count changed')
 
@@ -78,18 +82,22 @@ async function main() {
     ['offset', '0'],
   ])
   const url = LIVE_ORIGIN + '/api/recorder/database/dochadzka?' + query
+  phase = 'HTTP GET na potvrdenú živú URL'
   const response = await fetch(url, {
     method: 'GET', headers: { Accept: 'application/json' },
     redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(20000),
   })
+  liveStatus = response.status
   if (!response.ok) throw new Error('Live endpoint unavailable')
   const length = Number(response.headers.get('content-length'))
   if (Number.isFinite(length) && length > 1024 * 1024) throw new Error('Unexpected response size')
   const buffer = await response.arrayBuffer()
   if (buffer.byteLength > 1024 * 1024) throw new Error('Unexpected response size')
+  phase = 'overenie formátu odpovede živej aplikácie'
   const live = JSON.parse(Buffer.from(buffer).toString('utf8'))
   if (!Array.isArray(live) || live.length > LIMIT) throw new Error('Unexpected response shape')
 
+  phase = 'porovnanie identických historických záznamov'
   const identical = sameRows(local, live)
   console.log('Izolovaná záloha – september 2026: ' + local.length + ' záznamov')
   console.log('Používaná živá adresa – september 2026: ' + live.length + ' záznamov')
@@ -105,7 +113,13 @@ async function main() {
 if (require.main === module) {
   main().catch(() => {
     // Do not output DB/HTTP exception contents or employee data.
-    console.error('STOP: Porovnanie sa nedokončilo. Nič sa neupravovalo.')
+    // Report only the stage and HTTP status. Never print raw errors, URL query,
+    // payloads, names, private addresses, cookies or database details.
+    console.error('STOP: Kontrola sa zastavila vo fáze: ' + phase + '.')
+    if (phase === 'HTTP GET na potvrdenú živú URL' && liveStatus !== null) {
+      console.error('HTTP stav živej aplikácie: ' + liveStatus)
+    }
+    console.error('Nič sa neupravovalo.')
     process.exitCode = 2
   })
 }
