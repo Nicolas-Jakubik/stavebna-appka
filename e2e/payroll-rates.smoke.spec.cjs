@@ -52,13 +52,13 @@ test('historical payroll warning is period-scoped and appears in print output', 
 
   await page.getByRole('button', { name: '1.–15.', exact: true }).click()
   await expect(page.getByRole('button', { name: 'PDF 1.–15.' })).toBeEnabled()
-  await expect(page.getByText('138.00 €').first()).toBeVisible()
+  await expect(page.locator('.vyplaty-mobile-table').filter({ hasText: 'Na výplatu' }).getByText('138.00 €')).toBeVisible()
   await expect(banner).toHaveCount(0)
 
   await page.getByRole('button', { name: '16.–koniec', exact: true }).click()
   await expect(page.getByRole('button', { name: 'PDF 16.–koniec' })).toBeEnabled()
   await expect(banner).toContainText('Počet záznamov s hodinovou sadzbou odlišnou od dnešného profilu: 1.')
-  await expect(page.getByText('115.00 €').first()).toBeVisible()
+  await expect(page.locator('.vyplaty-mobile-table').filter({ hasText: 'Na výplatu' }).getByText('115.00 €')).toBeVisible()
 
   await page.emulateMedia({ media: 'print' })
   const printed = page.locator('.pdf-vyplata')
