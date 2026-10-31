@@ -55,6 +55,16 @@ test('historical payroll warning is period-scoped and appears in print output', 
   await expect(page.locator('.vyplaty-mobile-table').filter({ hasText: 'Na výplatu' }).getByText('138.00 €')).toBeVisible()
   await expect(banner).toHaveCount(0)
 
+  // Verify the first-half PDF has its own totals and no warning from the
+  // second half; printing must not leak data from the previous selection.
+  await page.emulateMedia({ media: 'print' })
+  const firstPrinted = page.locator('.pdf-vyplata')
+  await expect(firstPrinted).toBeVisible()
+  await expect(firstPrinted).toContainText('138.00 €')
+  await expect(firstPrinted).not.toContainText('115.00 €')
+  await expect(firstPrinted).not.toContainText('Upozornenie k historickej mzde:')
+  await page.emulateMedia({ media: 'screen' })
+
   await page.getByRole('button', { name: '16.–koniec', exact: true }).click()
   await expect(page.getByRole('button', { name: 'PDF 16.–koniec' })).toBeEnabled()
   await expect(banner).toContainText('Počet záznamov s hodinovou sadzbou odlišnou od dnešného profilu: 1.')
