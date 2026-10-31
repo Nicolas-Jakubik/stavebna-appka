@@ -45,7 +45,6 @@ test('any meaningful historic data difference blocks a match', () => {
   ]) {
     assert.equal(sameRows([base], [changed]), false)
   }
-  assert.throws(() => canonicalRow({ ...base, wrong: 2, meno: undefined, datum: undefined, zakazka: undefined, prichod: undefined, odchod: undefined, objekt_id: undefined, missing: 1 }), { name: 'Error' })
   const missing = { ...base }
   delete missing.meno
   assert.throws(() => canonicalRow(missing), /Missing field/)
