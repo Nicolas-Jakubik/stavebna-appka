@@ -1,10 +1,18 @@
 # SD-EVIDENCIA-OPRAVY-2026-10-28
 
+> **31.10.2026 – krok 94: znovu overené CI a izolované opravy výplat, stále BEZ NASADENIA**
+>
+> - Na zdrojovom commite `6ccbca73a7ff1e2701e840f156f3e42b9902be74` prešlo **5/5 GitHub Actions**, vrátane izolovaného prehliadačového testu výplat. Následne na `997b75a1e058b98dce2e18c3971b15e007008f02` prešlo opäť **5/5**.
+> - Nové bezpečné zmeny v Draft PR #102: kontrola duplicitných mien pracovníkov už pri audite historických sadzieb nepoužije ľubovoľný posledný profil (`lib/payrollRateAudit.ts`); pribudol regresný test; izolovaný E2E test overuje aj prvú polovicu tlačenej výplaty bez upozornení zo druhej polovice (`e2e/payroll-rates.smoke.spec.cjs`).
+> - Na commite `bdf65b67c32b4be87f7c7390dfc2aeed5bc26870` bolo opravené parsovanie historickej sadzby tvorenej iba medzerami: nie je to explicitná nula, použije sa existujúca historická fallback logika. Doplnené 3 syntetické regresné prípady. **Dôležité:** výsledok musí byť pred vydaním porovnaný s uzavretými výplatami; žiadne reálne mzdy neboli prepočítané ani prepísané v produkcii. Posledné potvrdené CI pri vytvorení tohto zápisu: **4/5 success, izolovaný browser in progress**; výsledok na aktuálnom HEAD overiť osobitne.
+> - **Release STOP** zostáva: potvrdiť platnosť historickej sadzby a uzavreté výplatné PDF na izolovanej kópii, reálne zariadenia/zapisovateľov, rate limiting, mapovanie runtime → backend a aktuálne prednasadzovacie zálohy. Súkromné mzdy, identitu pracovníka a presný finančný rozdiel do Git dokumentácie nepísať.
+> - Bez zmeny produkčného `main`, bez merge, bez vedomého nasadenia, bez migrácií a bez zásahov do živej databázy. GitHub Vercel statusy nie sú dôkazom zmeny používanej URL `stavebna-appka.vercel.app`. PR #102 stále Draft.
+>
 > **31.10.2026 – krok 93: potvrdenie presnej dátovej zhody, stále BEZ DEPLOYU**
 >
 > - Vlastník spustil na svojom MacBooku `scripts/compare-live-restored-attendance.cjs` proti lokálnemu izolovanému PostgreSQL 17 a pôvodnej skutočne používanej HTTPS adrese `https://stavebna-appka.vercel.app`. Finálny výpis: **200 septembrových dochádzkových riadkov v zálohe, 200 na živej URL, presná zhoda 200/200 = ÁNO** cez šesť polí. Pôvodné HTTP 400 bolo iba následkom nepovolených `limit`/`offset` parametrov; opravené aj pokryté testom v `289f54f`. Na tejto revízii prešlo všetkých **5/5 GitHub Actions**.
 > - **Presné dáta živej URL zhodné so zálohou** sú silné nepriamy dôkaz príslušnosti archívu k používanej aplikácii; naďalej to **nie je** priame zobrazenie immutable Supabase ref v pôvodnom Vercel deploymente. Pôvodné texty ďalej môžu obsahovať staré stavové tvrdenia typu „mapovanie neoverené“ alebo „test nevykonaný“, ktoré sú v rozsahu tohto bodu neaktuálne. `docs/VERCEL_PRODUCTION_MAPPING.md` a `docs/SAFE_RELEASE_CHECKLIST.md` aktualizované 31.10.2026.
-> - **Pred nasadením stále STOP:** potvrdiť dohodnuté obdobie zmeny sadzby jedného pracovníka a rozdiel **98,75 €** v nezávislom lokálnom výpočte (nezapisovať mzdy/identitu do Git), porovnať skutočne vystavené PDF/uzavreté výplatné obdobia, ručne otestovať zapisovateľov a mobilné zariadenia, overiť rate-limit prihlasovania a pripraviť aktuálnu úplnú prednasadzovaciu ochranu dát. Problém miezd sa zatiaľ automaticky nesmie premietnuť do už uzavretých výplat.
+> - **Pred nasadením stále STOP:** potvrdiť dohodnuté obdobie zmeny sadzby jedného pracovníka a odlišný súčet v nezávislom lokálnom výpočte (presná suma len v súkromných podkladoch) (nezapisovať mzdy/identitu do Git), porovnať skutočne vystavené PDF/uzavreté výplatné obdobia, ručne otestovať zapisovateľov a mobilné zariadenia, overiť rate-limit prihlasovania a pripraviť aktuálnu úplnú prednasadzovaciu ochranu dát. Problém miezd sa zatiaľ automaticky nesmie premietnuť do už uzavretých výplat.
 > - **Živá aplikácia:** pôvodné `main` nasadenie, bez zmeny; PR #102 stále Draft; opravy v produkcii 0 %. Žiadne zlučovanie, migrácia ani zmena aliásov bez nového explicitného schválenia.
 >
 
