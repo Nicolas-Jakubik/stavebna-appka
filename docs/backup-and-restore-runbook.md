@@ -1,8 +1,6 @@
 # FiremnáApka: bezpečné zálohovanie a obnova (príprava)
 
-**Stav:** Pripravený návod a skript. Neexistuje potvrdenie, že bola
-vytvorená úplná záloha alebo vykonaná obnova. Produkciu nemažte ani
-neupravujte len na základe úspešného výpisu archívu.
+**Aktuálny stav 31.10.2026 (má prednosť pred historickými poznámkami nižšie):** Skutočný `age`-šifrovaný export schémy `public` z 30.10.2026 **bol vytvorený a úspešne obnovený** na izolovanom lokálnom PostgreSQL 17. Overených je 12 tabuliek / 924 riadkov (884 dochádzka), a 200/200 septembrových záznamov má presnú zhodu so skutočnou živou HTTPS aplikáciou. Nejde o úplnú obnoviteľnú službu Supabase: chýbajú Auth, Storage, secrets a systémové nastavenia; priame immutable produkčné mapovanie na Supabase ref stále nebolo dokázané. Pred nasadením vyžadovať novú aktuálnu prednasadzovaciu ochranu dát a nezávislé overenie výplat, bez prepisovania produkcie. Podrobnosti v [REPAIR_HANDOFF.md](REPAIR_HANDOFF.md) a [VERCEL_PRODUCTION_MAPPING.md](VERCEL_PRODUCTION_MAPPING.md).
 
 ## Účel
 
