@@ -24,6 +24,9 @@ test('historical hourly rate survives employee deletion', () => {
 test('fallback for legacy attendance without a recorded rate', () => {
   assert.equal(hodinovaSadzbaZaznamu(null, 10), 10)
   assert.equal(hodinovaSadzbaZaznamu(undefined, '12'), 12)
+  assert.equal(hodinovaSadzbaZaznamu('   ', 11), 11)
+  assert.equal(hodinovaSadzbaZaznamu('\t\n', '12.50'), 12.5)
+  assert.equal(hodinovaSadzbaZaznamu('  ', undefined), 0)
   assert.equal(hodinovaSadzbaZaznamu(undefined, undefined), 0)
 })
 
