@@ -78,8 +78,6 @@ async function main() {
     ['select', 'meno,zakazka,datum,prichod,odchod,objekt_id'],
     ['datum', 'gte.2026-09-01'],
     ['datum', 'lte.2026-09-30'],
-    ['limit', String(LIMIT)],
-    ['offset', '0'],
   ])
   const url = LIVE_ORIGIN + '/api/recorder/database/dochadzka?' + query
   phase = 'HTTP GET na potvrdenú živú URL'
