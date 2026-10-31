@@ -4,6 +4,7 @@ import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
+import { auditujSadzbyVyplat } from '../../lib/payrollRateAudit'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { mesiacNaSlovensku } from '../../lib/businessDate'
 import { mesiaceVyplat } from '../../lib/payrollMonths'
@@ -183,6 +184,9 @@ export default function MzdyPage() {
     databazoviZamestnanci.map(z => [String(z.meno), Number(z.sadzba)])
   )
   const sadzbaZaznamu = (z: any) => hodinovaSadzbaZaznamu(z.sadzba_snapshot, aktualneSadzby.get(z.meno))
+  const auditSadzieb = auditujSadzbyVyplat(zaznamy, databazoviZamestnanci)
+  const vyzadujeKontroluSadzby = auditSadzieb.odlisneSadzby > 0 ||
+    auditSadzieb.bezHistorickejSadzby > 0 || auditSadzieb.bezPorovnatelnehoProfilu > 0
 
   const zamestnanciHodiny: Record<string, number> = {}
   const zamestnanciMzdy: Record<string, number> = {}
@@ -540,6 +544,24 @@ export default function MzdyPage() {
           </div>
         ) : (
           <>
+        {vyzadujeKontroluSadzby && (
+          <div className="skryt-pri-tlaci" role="status" style={{
+            ...cardStyle, marginBottom: '18px', borderColor: '#e5c28a',
+            backgroundColor: '#fffcf5', color: '#614718', fontSize: '12px', lineHeight: 1.6
+          }}>
+            <strong>Kontrola historických sadzieb pred použitím výplatného prehľadu</strong>
+            {auditSadzieb.odlisneSadzby > 0 && (
+              <div>{auditSadzieb.odlisneSadzby} záznamov má uloženú hodinovú sadzbu odlišnú od dnešného profilu pracovníka.</div>
+            )}
+            {auditSadzieb.bezHistorickejSadzby > 0 && (
+              <div>{auditSadzieb.bezHistorickejSadzby} záznamov nemá platnú uloženú sadzbu; výpočet môže používať aktuálnu sadzbu.</div>
+            )}
+            {auditSadzieb.bezPorovnatelnehoProfilu > 0 && (
+              <div>Pri {auditSadzieb.bezPorovnatelnehoProfilu} záznamoch nemožno historickú sadzbu porovnať s aktuálnym profilom.</div>
+            )}
+            <div>Pred potvrdením alebo tlačou staršej výplaty overte dohodnutú sadzbu a to, či už bola vyplatená. Tento prehľad nie je potvrdením úhrady.</div>
+          </div>
+        )}
         <div className="pdf-vyplata ukazat-iba-pri-tlaci" style={{ width: '100%' }}>
           <div style={{ borderBottom: '2px solid #1d1d1f', paddingBottom: '10px', marginBottom: '18px' }}>
             <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · výplaty</div>
@@ -547,6 +569,17 @@ export default function MzdyPage() {
             <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>{nazovMesiacaBezPolovice}</div>
           </div>
 
+          {vyzadujeKontroluSadzby && (
+            <div style={{
+              marginBottom: '12px', padding: '8px', border: '1px solid #777',
+              color: '#1d1d1f', fontSize: '10px', lineHeight: 1.5
+            }}>
+              <strong>Upozornenie k historickej mzde:</strong> V tomto období sa niektoré uložené
+              hodinové sadzby líšia od aktuálnych, chýbajú alebo ich nemožno porovnať.
+              Pred použitím tohto PDF overte dohodnuté sadzby a už vyplatené sumy.
+              Toto PDF nie je potvrdením úhrady.
+            </div>
+          )}
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #d2d2d7' }}>
