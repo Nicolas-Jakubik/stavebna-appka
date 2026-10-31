@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { canonicalRow, sameRows } = require('../scripts/compare-live-restored-attendance.cjs')
+const { canonicalRow, sameRows, liveSeptemberQuery } = require('../scripts/compare-live-restored-attendance.cjs')
 
 const base = {
   meno: 'Synthetic Worker',
@@ -48,4 +48,13 @@ test('any meaningful historic data difference blocks a match', () => {
   const missing = { ...base }
   delete missing.meno
   assert.throws(() => canonicalRow(missing), /Missing field/)
+})
+
+test('September live query respects the legacy recorder allowlist (no pagination)', () => {
+  const query = liveSeptemberQuery()
+  assert.deepEqual([...query.keys()], ['select', 'datum', 'datum'])
+  assert.equal(query.get('select'), 'meno,zakazka,datum,prichod,odchod,objekt_id')
+  assert.deepEqual(query.getAll('datum'), ['gte.2026-09-01', 'lte.2026-09-30'])
+  assert.equal(query.has('limit'), false)
+  assert.equal(query.has('offset'), false)
 })
