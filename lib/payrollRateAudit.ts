@@ -26,6 +26,13 @@ export function auditujSadzbyVyplat(
   const aktualneSadzby = new Map<string, number | null>()
   for (const profil of profily) {
     if (!profil.meno) continue
+    // Names are the legacy link between attendance and profiles. If two
+    // profiles have the same name, do not silently pick the last profile.
+    // Mark all such comparisons as inconclusive without changing payouts.
+    if (aktualneSadzby.has(profil.meno)) {
+      aktualneSadzby.set(profil.meno, null)
+      continue
+    }
     aktualneSadzby.set(profil.meno, platnaSadzba(profil.sadzba))
   }
 
