@@ -54,6 +54,16 @@ function sql(query) {
 let phase = 'overenie lokálnej testovacej databázy'
 let liveStatus = null
 
+function liveSeptemberQuery() {
+  // The live 22-Oct recorder endpoint whitelists ONLY select/order/datum/meno/stav.
+  // It supplies its own 1000-row limit. Never send limit/offset: HTTP 400.
+  return new URLSearchParams([
+    ['select', 'meno,zakazka,datum,prichod,odchod,objekt_id'],
+    ['datum', 'gte.2026-09-01'],
+    ['datum', 'lte.2026-09-30'],
+  ])
+}
+
 async function main() {
   const check = sql("SELECT current_database() || '|' || current_setting('data_directory') || '|' || (inet_server_addr() IS NULL)::text || '|' || (SELECT count(*) FROM pg_tables WHERE schemaname='public') || '|' || (SELECT count(*) FROM public.dochadzka)")
     .trim()
@@ -74,11 +84,7 @@ async function main() {
   const local = sql(rowsSql).trim().split('\n').filter(Boolean).map(JSON.parse)
   if (local.length !== 200) throw new Error('Historical local count changed')
 
-  const query = new URLSearchParams([
-    ['select', 'meno,zakazka,datum,prichod,odchod,objekt_id'],
-    ['datum', 'gte.2026-09-01'],
-    ['datum', 'lte.2026-09-30'],
-  ])
+  const query = liveSeptemberQuery()
   const url = LIVE_ORIGIN + '/api/recorder/database/dochadzka?' + query
   phase = 'HTTP GET na potvrdenú živú URL'
   const response = await fetch(url, {
@@ -122,4 +128,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { canonicalRow, sameRows }
+module.exports = { canonicalRow, sameRows, liveSeptemberQuery }
