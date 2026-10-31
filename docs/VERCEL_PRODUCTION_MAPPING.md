@@ -41,3 +41,21 @@ Používateľ na svojom dôveryhodnom MacBooku vykonal skutočný `pg_dump` proj
 ## História opravy mapovania
 
 Staršie texty v tomto repozitári označovali `sd-evidencia` ako projekt produkčnej domény `stavebna-appka.vercel.app`. Tento predpoklad bol **vyvrátený výpisom Vercel z 30.10.2026**; pri rozhodovaní má prednosť uvedené mapovanie rozlišujúce obidva projekty. Staged diagnostika nevytvorila zásah do pôvodných aliasov.
+
+
+## Bezpečné porovnanie historickej dochádzky (pripravené, nevykonané)
+
+Pridaný pomocný skript `scripts/compare-live-restored-attendance.cjs` (je aj automatický test `tests/live-restore-match.test.cjs`). Spustenie je iba **manuálne na dôveryhodnom MacBooku**, kde existuje už izolovaná obnova `sd_evidencia_restore_20261030` v lokálnom PostgreSQL 17; skript sa **nikdy** nespúšťa proti produkčnej databáze. Štandardne používa iba presnú potvrdenú verejnú adresu `https://stavebna-appka.vercel.app` a jej existujúce **GET** API z produkčného kódu `main/8a2d40d`.
+
+Postup (bez výpisu mena, mzdy alebo iného obsahu záznamu):
+
+```bash
+cd "$HOME/Developer/SD-Evidencia-Zaloha" &&
+git pull --ff-only origin integration/safe-repairs-batch2-2026-10-28 &&
+PSQL_BIN="$(brew --prefix postgresql@17)/bin/psql" node scripts/compare-live-restored-attendance.cjs
+```
+
+
+Test najprv **fail-closed** overí názov, datadir a lokálny socket testovacej databázy, 12 tabuliek / 884 záznamov a 200 historických septemberových riadkov. Potom jedným **read-only GET** stiahne september 2026 z existujúcej URL bez autorizácie alebo zápisu a **iba v RAM** porovná všetkých šesť rozlišujúcich polí jednotlivých záznamov bez ohľadu na poradie. Na obrazovku vypíše len počty a `ÁNO/NIE`. Pri nedostupnosti, neúplnej odpovedi alebo odlišných riadkoch: **STOP** a nepredpokladať správny projekt; staré zápisy sa po čase mohli zmeniť. Nevyžaduje heslá, cookies, service role tokeny ani súbory so záznamami.
+
+**Hranica dôkazu:** presná zhoda 200 historických záznamov je **silné nepriamo overené dátové mapovanie** živej URL k obnovenej kópii, ale **nepreukazuje priamo** immutable environment \`NEXT_PUBLIC_SUPABASE_URL\` a skutočný Supabase *ref*. Pred vydaním opráv nezamieňať dátovú zhodu s týmto konfiguračným dôkazom. Test stále čaká na skutočné spustenie vlastníkom.
