@@ -1,8 +1,8 @@
 export type HourlyRateValue = number | string | null | undefined
 
 function validRate(value: HourlyRateValue): number | null {
-  // Number(null) and Number('') are zero; neither means an explicitly recorded rate.
-  if (value === null || value === undefined || value === '') return null
+  // Number(null) and Number(whitespace) are zero; neither means an explicitly recorded rate.
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return null
   const rate = Number(value)
   return Number.isFinite(rate) && rate >= 0 ? rate : null
 }
