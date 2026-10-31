@@ -58,3 +58,25 @@ test('only selected half-month is audited when caller passes selected rows', () 
   assert.equal(auditujSadzbyVyplat(first, workers).odlisneSadzby, 1)
   assert.equal(auditujSadzbyVyplat(second, workers).odlisneSadzby, 0)
 })
+
+test('duplicate worker names never select an arbitrary current rate', () => {
+  // The legacy attendance record has only a name, not a stable employee ID.
+  // A duplicate profile is ambiguous even if a later profile has the same rate.
+  const profiles = [
+    { meno: 'Sample A', sadzba: 10 },
+    { meno: 'Sample A', sadzba: 12 },
+    { meno: 'Sample A', sadzba: 10 },
+    { meno: 'Sample B', sadzba: 9 },
+  ]
+  const entries = [
+    { meno: 'Sample A', sadzba_snapshot: 10 },
+    { meno: 'Sample A', sadzba_snapshot: 12 },
+    { meno: 'Sample B', sadzba_snapshot: 9 },
+  ]
+  assert.deepEqual(auditujSadzbyVyplat(entries, profiles), {
+    odlisneSadzby: 0,
+    bezHistorickejSadzby: 0,
+    bezPorovnatelnehoProfilu: 2,
+  })
+  assert.equal(entries[0].sadzba_snapshot, 10)
+})
