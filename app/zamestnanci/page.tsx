@@ -1,11 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 
 export default function ZamestnanciPage() {
   const [zamestnanci, setZamestnanci] = useState<any[]>([])
+  const [dataStatus, setDataStatus] = useState<'loading'|'ready'|'error'>('loading')
+  const readVersion = useRef(0)
   
   const [noveMeno, setNoveMeno] = useState('')
   const [novaSadzba, setNovaSadzba] = useState('')
@@ -92,72 +95,53 @@ export default function ZamestnanciPage() {
   }
 
   async function nacitajZamestnancov() {
-    const [
-      { data: dataZamestnanci, error: chybaZamestnancov },
-      { data: dataDochadzka, error: chybaDochadzky },
-      { data: dataNepritomnosti, error: chybaNepritomnosti }
-    ] = await Promise.all([
-      supabase
-        .from('zamestnanci')
-        .select('*')
-        .order('meno', { ascending: true }),
-      supabase
-        .from('dochadzka')
-        .select('id, meno, datum, prichod, odchod'),
-      supabase
-        .from('nepritomnosti')
-        .select('meno')
+    const version = ++readVersion.current
+    setDataStatus('loading')
+    const read = (table: 'zamestnanci'|'dochadzka'|'nepritomnosti', fields: string) =>
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const {data,error} = await supabase.from(table).select(fields)
+          .order('id', {ascending:true}).range(start,end)
+        return {data: data as any[] | null,error}
+      })
+    const [workers, attendance, absence] = await Promise.all([
+      read('zamestnanci','*'),
+      read('dochadzka','id,meno,datum,prichod,odchod'),
+      read('nepritomnosti','id,meno')
     ])
-
-    if (chybaZamestnancov) {
-      console.error("Chyba načítania zamestnancov:", chybaZamestnancov)
-    } else {
-      setZamestnanci(dataZamestnanci || [])
-    }
-
-    if (chybaDochadzky) {
-      console.error("Chyba načítania dochádzky pracovníkov:", chybaDochadzky)
+    if (version !== readVersion.current) return
+    if (workers.error || attendance.error || absence.error ||
+        !workers.data || !attendance.data || !absence.data) {
+      setZamestnanci([])
       setPocetDochadzkyPodlaMena({})
       setHodinyPodlaMena({})
       setPoslednaAktivitaPodlaMena({})
-    } else {
-      const pocty: Record<string, number> = {}
-      const hodiny: Record<string, number> = {}
-      const poslednaAktivita: Record<string, string> = {}
-      const mapaCistychHodin = vytvorMapuCistychHodin(dataDochadzka || [])
-
-      ;(dataDochadzka || []).forEach(zaznam => {
-        const meno = String(zaznam.meno || '').trim()
-        if (!meno) return
-
-        pocty[meno] = (pocty[meno] || 0) + 1
-        hodiny[meno] = (hodiny[meno] || 0) + hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
-
-        const datum = String(zaznam.datum || '')
-        if (datum && (!poslednaAktivita[meno] || datum > poslednaAktivita[meno])) {
-          poslednaAktivita[meno] = datum
-        }
-      })
-
-      setPocetDochadzkyPodlaMena(pocty)
-      setHodinyPodlaMena(hodiny)
-      setPoslednaAktivitaPodlaMena(poslednaAktivita)
-    }
-
-    if (chybaNepritomnosti) {
-      console.error("Chyba načítania neprítomností pracovníkov:", chybaNepritomnosti)
       setPocetNepritomnostiPodlaMena({})
-    } else {
-      const poctyNepritomnosti: Record<string, number> = {}
-
-      ;(dataNepritomnosti || []).forEach(zaznam => {
-        const meno = String(zaznam.meno || '').trim()
-        if (!meno) return
-        poctyNepritomnosti[meno] = (poctyNepritomnosti[meno] || 0) + 1
-      })
-
-      setPocetNepritomnostiPodlaMena(poctyNepritomnosti)
+      setDataStatus('error')
+      return
     }
+    setZamestnanci([...workers.data].sort((a,b)=>String(a.meno || '').localeCompare(String(b.meno || ''),'sk')))
+    const pocty: Record<string,number> = {}
+    const hodiny: Record<string,number> = {}
+    const poslednaAktivita: Record<string,string> = {}
+    const mapa = vytvorMapuCistychHodin(attendance.data)
+    attendance.data.forEach(row => {
+      const meno = String(row.meno || '').trim()
+      if (!meno) return
+      pocty[meno] = (pocty[meno] || 0) + 1
+      hodiny[meno] = (hodiny[meno] || 0) + hodinyZaznamuZMapy(row, mapa)
+      const datum = String(row.datum || '')
+      if (datum && (!poslednaAktivita[meno] || datum > poslednaAktivita[meno])) poslednaAktivita[meno] = datum
+    })
+    const absentCounts: Record<string,number> = {}
+    absence.data.forEach(row => {
+      const meno = String(row.meno || '').trim()
+      if (meno) absentCounts[meno] = (absentCounts[meno] || 0) + 1
+    })
+    setPocetDochadzkyPodlaMena(pocty)
+    setHodinyPodlaMena(hodiny)
+    setPoslednaAktivitaPodlaMena(poslednaAktivita)
+    setPocetNepritomnostiPodlaMena(absentCounts)
+    setDataStatus('ready')
   }
 
   async function pridatZamestnanca(e: React.FormEvent) {
@@ -344,6 +328,20 @@ export default function ZamestnanciPage() {
         ? menoB.localeCompare(menoA, 'sk')
         : menoA.localeCompare(menoB, 'sk')
     })
+
+  if (dataStatus !== 'ready') {
+    return <div style={{minHeight:'100vh',padding:24,display:'flex',gap:24,background:'#f5f5f7'}}>
+      <AdminSidebar active="zamestnanci" />
+      <main role={dataStatus === 'error' ? 'alert' : 'status'}
+        style={{padding:28,background:'#fff',borderRadius:14,width:'100%',height:'fit-content'}}>
+        <h1 style={{fontSize:22,fontWeight:700}}>Pracovníci</h1>
+        <p>{dataStatus === 'error'
+          ? 'Údaje o pracovníkoch, dochádzke alebo neprítomnostiach sú neúplné. Súhrny a úpravy nie sú dostupné.'
+          : 'Načítavam kompletný prehľad pracovníkov…'}</p>
+        {dataStatus === 'error' && <button type="button" onClick={() => window.location.reload()}>Skúsiť znova</button>}
+      </main>
+    </div>
+  }
 
   return (
     <div className="simple-admin-shell" style={{

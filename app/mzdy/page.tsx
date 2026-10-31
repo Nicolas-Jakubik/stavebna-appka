@@ -3,16 +3,27 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajFondObdobia } from '../../lib/workFund'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
+import { hodinovaSadzbaZaznamu } from '../../lib/hourlyRates'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { mesiacNaSlovensku } from '../../lib/businessDate'
+import { mesiaceVyplat } from '../../lib/payrollMonths'
 import AdminSidebar from '../../components/AdminSidebar'
 
 export default function MzdyPage() {
   const [zaznamy, setZaznamy] = useState<any[]>([])
   const [mesacneZaznamy, setMesacneZaznamy] = useState<any[]>([])
-  const [filterMesiac, setFilterMesiac] = useState(new Date().toISOString().slice(0, 7))
+  const [filterMesiac, setFilterMesiac] = useState(mesiacNaSlovensku())
   const [filterPolovica, setFilterPolovica] = useState('cely') 
   
   const [databazoviZamestnanci, setDatabazoviZamestnancov] = useState<any[]>([])
   const [stavyStavieb, setStavyStavieb] = useState<Record<string, string>>({})
+  const [loadState, setLoadState] = useState<{ key: string; status: 'loading' | 'ready' | 'error' }>({
+    key: '', status: 'loading'
+  })
+  const currentKey = filterMesiac + ':' + filterPolovica
+  const isReady = loadState.key === currentKey && loadState.status === 'ready'
+  const loadError = loadState.key === currentKey && loadState.status === 'error'
+  const isLoading = !isReady && !loadError
 
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -60,9 +71,7 @@ export default function MzdyPage() {
     transition: 'all 0.2s',
   }
 
-  const zoznamMesiacov = [
-    { hodnota: '2026-01', nazov: 'Január 2026' }, { hodnota: '2026-02', nazov: 'Február 2026' }, { hodnota: '2026-03', nazov: 'Marec 2026' }, { hodnota: '2026-04', nazov: 'Apríl 2026' }, { hodnota: '2026-05', nazov: 'Máj 2026' }, { hodnota: '2026-06', nazov: 'Jún 2026' }, { hodnota: '2026-07', nazov: 'Júl 2026' }, { hodnota: '2026-08', nazov: 'August 2026' }, { hodnota: '2026-09', nazov: 'September 2026' }, { hodnota: '2026-10', nazov: 'Október 2026' }, { hodnota: '2026-11', nazov: 'November 2026' }, { hodnota: '2026-12', nazov: 'December 2026' },
-  ]
+  const zoznamMesiacov = mesiaceVyplat()
 
   let textPolovice = '';
   if (filterPolovica === 'prva') textPolovice = ' (1. polovica: 1. - 15. deň)';
@@ -93,49 +102,73 @@ export default function MzdyPage() {
     if (ulozeneStavy) setStavyStavieb(JSON.parse(ulozeneStavy))
   }, [])
 
-  async function nacitaj() {
-    let query = supabase.from('dochadzka').select('*')
-    const [rok, mesiac] = filterMesiac.split('-')
-    
-    if (rok && mesiac) {
-      const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
-      
-      let odDna = 1;
-      let doDna = pocetDni;
+  useEffect(() => {
+    let cancelled = false
+    const key = filterMesiac + ':' + filterPolovica
+    setLoadState({ key, status: 'loading' })
 
-      if (filterPolovica === 'prva') {
-        doDna = 15;
-      } else if (filterPolovica === 'druha') {
-        odDna = 16;
+    async function load() {
+      try {
+        const [rok, mesiac] = filterMesiac.split('-')
+        if (!/^\d{4}$/.test(rok || '') || !/^(0[1-9]|1[0-2])$/.test(mesiac || '')) {
+          throw new Error('Invalid payroll period')
+        }
+        const lastDay = new Date(Number(rok), Number(mesiac), 0).getDate()
+        const prefix = rok + '-' + mesiac + '-'
+        const fullStart = prefix + '01'
+        const fullEnd = prefix + String(lastDay).padStart(2, '0')
+        const selectedStart = filterPolovica === 'druha' ? prefix + '16' : fullStart
+        const selectedEnd = filterPolovica === 'prva' ? prefix + '15' : fullEnd
+
+        const readAttendance = (dateFrom: string, dateTo: string) =>
+          nacitajVsetkyStrany<any>(async (first, last) => {
+            const { data, error } = await supabase.from('dochadzka')
+              .select('*')
+              .gte('datum', dateFrom)
+              .lte('datum', dateTo)
+              .order('id', { ascending: true })
+              .range(first, last)
+            return { data: data as any[] | null, error }
+          })
+
+        const monthPromise = readAttendance(fullStart, fullEnd)
+        const selectedPromise = filterPolovica === 'cely'
+          ? monthPromise
+          : readAttendance(selectedStart, selectedEnd)
+        const [selected, month, workers] = await Promise.all([
+          selectedPromise,
+          monthPromise,
+          nacitajVsetkyStrany<any>(async (first, last) => {
+            const { data, error } = await supabase.from('zamestnanci')
+              .select('*')
+              .order('id', { ascending: true })
+              .range(first, last)
+            return { data: data as any[] | null, error }
+          })
+        ])
+
+        if (cancelled) return
+        if (selected.error || month.error || workers.error ||
+            !selected.data || !month.data || !workers.data) {
+          throw new Error('Incomplete payroll data')
+        }
+        setZaznamy(selected.data)
+        setMesacneZaznamy(month.data)
+        setDatabazoviZamestnancov(workers.data)
+        setLoadState({ key, status: 'ready' })
+      } catch {
+        if (cancelled) return
+        // Never display or print partial wage and hour totals.
+        setZaznamy([])
+        setMesacneZaznamy([])
+        setDatabazoviZamestnancov([])
+        setLoadState({ key, status: 'error' })
       }
-
-      const odDnaText = odDna < 10 ? `0${odDna}` : `${odDna}`;
-      const doDnaText = doDna < 10 ? `0${doDna}` : `${doDna}`;
-
-      query = query.gte('datum', `${rok}-${mesiac}-${odDnaText}`).lte('datum', `${rok}-${mesiac}-${doDnaText}`)
-    }
-    
-    const { data: dochData } = await query
-    setZaznamy(dochData || [])
-
-    if (rok && mesiac) {
-      const pocetDni = new Date(parseInt(rok), parseInt(mesiac), 0).getDate()
-      const poslednyDenText = String(pocetDni).padStart(2, '0')
-      const { data: mesacneData } = await supabase
-        .from('dochadzka')
-        .select('*')
-        .gte('datum', `${rok}-${mesiac}-01`)
-        .lte('datum', `${rok}-${mesiac}-${poslednyDenText}`)
-      setMesacneZaznamy(mesacneData || [])
-    } else {
-      setMesacneZaznamy([])
     }
 
-    const { data: zamData } = await supabase.from('zamestnanci').select('*')
-    setDatabazoviZamestnancov(zamData || [])
-  }
-
-  useEffect(() => { nacitaj() }, [filterMesiac, filterPolovica])
+    load()
+    return () => { cancelled = true }
+  }, [filterMesiac, filterPolovica])
 
   function zmenaStavuStavby(stavba: string, hodnota: string) {
     const kluc = `${filterMesiac}_${filterPolovica}_${stavba}`
@@ -146,8 +179,14 @@ export default function MzdyPage() {
 
   const mapaCistychHodin = vytvorMapuCistychHodin(mesacneZaznamy)
   const hodinyZaznamu = (z: any) => hodinyZaznamuZMapy(z, mapaCistychHodin)
+  const aktualneSadzby = new Map<string, number>(
+    databazoviZamestnanci.map(z => [String(z.meno), Number(z.sadzba)])
+  )
+  const sadzbaZaznamu = (z: any) => hodinovaSadzbaZaznamu(z.sadzba_snapshot, aktualneSadzby.get(z.meno))
 
   const zamestnanciHodiny: Record<string, number> = {}
+  const zamestnanciMzdy: Record<string, number> = {}
+  const sadzbyPracovnikov: Record<string, Set<number>> = {}
   const stavbyData: Record<string, number> = {}
 
   zaznamy.forEach((z) => {
@@ -155,6 +194,10 @@ export default function MzdyPage() {
     
     if (!zamestnanciHodiny[z.meno]) zamestnanciHodiny[z.meno] = 0
     zamestnanciHodiny[z.meno] += hodiny
+    const sadzba = sadzbaZaznamu(z)
+    zamestnanciMzdy[z.meno] = (zamestnanciMzdy[z.meno] || 0) + hodiny * sadzba
+    if (!sadzbyPracovnikov[z.meno]) sadzbyPracovnikov[z.meno] = new Set()
+    sadzbyPracovnikov[z.meno].add(sadzba)
 
     if (!stavbyData[z.zakazka]) stavbyData[z.zakazka] = 0
     stavbyData[z.zakazka] += hodiny
@@ -162,11 +205,7 @@ export default function MzdyPage() {
 
   const pocetPracovnikovVyplata = Object.keys(zamestnanciHodiny).length
   const celkoveOdpracovaneHodiny = Object.values(zamestnanciHodiny).reduce((sucet, hodiny) => sucet + hodiny, 0)
-  const celkovaSumaNaVyplatu = Object.entries(zamestnanciHodiny).reduce((sucet, [meno, hodiny]) => {
-    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-    const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
-    return sucet + hodiny * sadzba
-  }, 0)
+  const celkovaSumaNaVyplatu = Object.values(zamestnanciMzdy).reduce((sucet, suma) => sucet + suma, 0)
 
   const suhrnPolovice = (prvaPolovica: boolean) => mesacneZaznamy.reduce(
     (suhrn, z) => {
@@ -175,8 +214,7 @@ export default function MzdyPage() {
       if (!patriDoObdobia) return suhrn
 
       const hodiny = hodinyZaznamu(z)
-      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
-      const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+      const sadzba = sadzbaZaznamu(z)
 
       suhrn.hodiny += hodiny
       suhrn.suma += hodiny * sadzba
@@ -192,22 +230,28 @@ export default function MzdyPage() {
     suma: suhrnPrvaPolovica.suma + suhrnDruhaPolovica.suma
   }
 
-  const pracovniciMesacne: Record<string, { prvaHodiny: number; druhaHodiny: number; sadzba: number }> = {}
+  const pracovniciMesacne: Record<string, { prvaHodiny: number; druhaHodiny: number; prvaSuma: number; druhaSuma: number }> = {}
 
   mesacneZaznamy.forEach((z) => {
     if (!pracovniciMesacne[z.meno]) {
-      const dbZamestnanec = databazoviZamestnanci.find(pracovnik => pracovnik.meno === z.meno)
       pracovniciMesacne[z.meno] = {
         prvaHodiny: 0,
         druhaHodiny: 0,
-        sadzba: dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
+        prvaSuma: 0,
+        druhaSuma: 0
       }
     }
 
     const den = Number(String(z.datum).slice(8, 10))
     const hodiny = hodinyZaznamu(z)
-    if (den <= 15) pracovniciMesacne[z.meno].prvaHodiny += hodiny
-    else pracovniciMesacne[z.meno].druhaHodiny += hodiny
+    const suma = hodiny * sadzbaZaznamu(z)
+    if (den <= 15) {
+      pracovniciMesacne[z.meno].prvaHodiny += hodiny
+      pracovniciMesacne[z.meno].prvaSuma += suma
+    } else {
+      pracovniciMesacne[z.meno].druhaHodiny += hodiny
+      pracovniciMesacne[z.meno].druhaSuma += suma
+    }
   })
 
   const pracovniciMesacneZoradeni = Object.entries(pracovniciMesacne)
@@ -231,6 +275,7 @@ export default function MzdyPage() {
   }
 
   function spustitExport() {
+    if (!isReady) return
     if (filterPolovica === 'cely') {
       alert('Pre PDF vyberte 1.–15. alebo 16.–koniec mesiaca.')
       return
@@ -486,6 +531,15 @@ export default function MzdyPage() {
           </div>
         </div>
 
+        {isLoading ? (
+          <div role="status" style={{ ...cardStyle, padding: '28px' }}>Načítavam kompletné údaje dochádzky a výplat…</div>
+        ) : loadError ? (
+          <div role="alert" style={{ ...cardStyle, padding: '28px', color: '#b42318' }}>
+            Výplaty nie sú zobrazené, pretože údaje sa nepodarilo načítať kompletne.
+            Skúste obnoviť stránku. PDF s neúplnými údajmi sa nedá vytvoriť.
+          </div>
+        ) : (
+          <>
         <div className="pdf-vyplata ukazat-iba-pri-tlaci" style={{ width: '100%' }}>
           <div style={{ borderBottom: '2px solid #1d1d1f', paddingBottom: '10px', marginBottom: '18px' }}>
             <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · výplaty</div>
@@ -505,9 +559,7 @@ export default function MzdyPage() {
               {Object.entries(zamestnanciHodiny)
                 .sort(([menoA], [menoB]) => menoA.localeCompare(menoB, 'sk'))
                 .map(([meno, hodiny]) => {
-                  const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-                  const sadzba = dbZamestnanec ? Number(dbZamestnanec.sadzba) || 0 : 0
-                  const suma = hodiny * sadzba
+                  const suma = zamestnanciMzdy[meno] || 0
 
                   return (
                     <tr key={meno} style={{ borderBottom: '1px solid #eeeeef' }}>
@@ -660,8 +712,8 @@ export default function MzdyPage() {
                   <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={7} style={{ padding: '28px 18px', textAlign: 'center', color: '#a1a1a6' }}>Pre tento mesiac nie sú žiadne dáta.</td></tr>
                 ) : (
                   pracovniciMesacneZoradeni.map(([meno, data]) => {
-                    const prvaSuma = data.prvaHodiny * data.sadzba
-                    const druhaSuma = data.druhaHodiny * data.sadzba
+                    const prvaSuma = data.prvaSuma
+                    const druhaSuma = data.druhaSuma
                     const spoluHodiny = data.prvaHodiny + data.druhaHodiny
                     const spoluSuma = prvaSuma + druhaSuma
 
@@ -723,9 +775,9 @@ export default function MzdyPage() {
                   <tr className="vyplaty-empty-row"><td className="vyplaty-empty-cell" colSpan={6} style={{ padding: '30px 18px', color: '#a1a1a6', textAlign: 'center', fontSize: '11px' }}>Pre vybrané obdobie nie sú žiadne dáta.</td></tr>
                 ) : (
                   Object.entries(zamestnanciHodiny).map(([meno, hodiny]) => {
-                    const dbZamestnanec = databazoviZamestnanci.find(z => z.meno === meno)
-                    const sadzba = dbZamestnanec ? dbZamestnanec.sadzba : 0
-                    const mzda = hodiny * sadzba
+                    const mzda = zamestnanciMzdy[meno] || 0
+                    const sadzby = [...(sadzbyPracovnikov[meno] || [])]
+                    const sadzba = sadzby.length === 1 ? sadzby[0] : null
                     const rozdiel = hodiny - fondVybranehoObdobia
                     
                     return (
@@ -748,7 +800,7 @@ export default function MzdyPage() {
                           </span>
                         </td>
                         <td className="vyplaty-mobile-cell" data-label="Sadzba" style={{ padding: '12px', textAlign: 'right', color: '#86868b', fontSize: '11px' }}>
-                          {sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
+                          {sadzba === null ? 'Rôzne sadzby' : sadzba > 0 ? `${sadzba.toFixed(2)} €/h` : 'Nenastavená'}
                         </td>
                         <td className="vyplaty-mobile-cell" data-label="Na výplatu" style={{ padding: '12px 18px', color: '#1d1d1f', fontWeight: '750', textAlign: 'right', fontSize: '14px' }}>{mzda.toFixed(2)} €</td>
                       </tr>
@@ -798,6 +850,8 @@ export default function MzdyPage() {
           <RenderujTabulkuStavieb zoznam={poslaneFaStavby} nadpis="Poslaná FA" predvolenyStav="Poslaná FA" />
           <RenderujTabulkuStavieb zoznam={vyplateneStavby} nadpis="Vyplatené" predvolenyStav="Vyplatená" />
         </div>
+          </>
+        )}
 
       </div>
     </div>

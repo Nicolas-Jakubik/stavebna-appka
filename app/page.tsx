@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
-import { adminStore } from '../lib/store'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
+import RecorderGate from '../components/RecorderGate'
+import { nacitajVsetkyStrany } from '../lib/paginatedRows'
+import { datumNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../lib/businessDate'
+import { lenAktivniPracovnici } from '../lib/activeWorkers'
 
 export default function Home() {
-  return <AttendanceForm />
+  return <RecorderGate><AttendanceForm /></RecorderGate>
 }
 
 function AttendanceForm() {
@@ -20,6 +23,7 @@ function AttendanceForm() {
   const [datum, setDatum] = useState('')
   const [status, setStatus] = useState('')
   const [odosiela, setOdosiela] = useState(false)
+  const [referencneUdajePripravene, setReferencneUdajePripravene] = useState(false)
   const [posledneZapisy, setPosledneZapisy] = useState<any[]>([])
   
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
@@ -41,8 +45,7 @@ function AttendanceForm() {
   }>>([])
 
   useEffect(() => {
-    adminStore.jeOdomknute = false
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(datumNaSlovensku())
 
     try {
       const ulozene = sessionStorage.getItem('posledne-zapisy-dochadzky')
@@ -54,67 +57,75 @@ function AttendanceForm() {
 
   useEffect(() => {
     async function nacitajData() {
-      const [
-        { data: zakazkyData },
-        { data: objektyData },
-        { data: zamData },
-      ] = await Promise.all([
-        supabase
-          .from('zoznam_zakaziek')
-          .select('id,nazov')
-          .eq('stav', 'Aktívna')
-          .order('nazov', { ascending: true }),
-        supabase
-          .from('objekty_stavby')
-          .select('id,zakazka_id,nazov,poradie,aktivny')
-          .order('poradie', { ascending: true })
-          .order('nazov', { ascending: true }),
-        supabase
-          .from('zamestnanci')
-          .select('meno')
-          .order('meno', { ascending: true }),
+      // Read a consistent, bounded page sequence for every selector.
+      const readAll = (table: 'zoznam_zakaziek' | 'objekty_stavby' | 'zamestnanci', fields: string) =>
+        nacitajVsetkyStrany<any>(async (start, end) => {
+          const { data, error } = await supabase.from(table)
+            .select(fields).order('id', { ascending: true }).range(start, end)
+          return { data: data as any[] | null, error }
+        })
+      const [projects, objects, workers] = await Promise.all([
+        readAll('zoznam_zakaziek', 'id,nazov'),
+        readAll('objekty_stavby', 'id,zakazka_id,nazov,poradie,aktivny'),
+        readAll('zamestnanci', 'meno,aktivny'),
       ])
-
-      if (zakazkyData) setAktivneZakazky(zakazkyData)
-      if (objektyData) setObjektyStavby(objektyData.filter((objekt: any) => objekt.aktivny !== false))
-      if (zamData) setZoznamZamestnancov(zamData)
+      if (projects.error || objects.error || workers.error ||
+          !projects.data || !objects.data || !workers.data) {
+        setAktivneZakazky([])
+        setObjektyStavby([])
+        setZoznamZamestnancov([])
+        setReferencneUdajePripravene(false)
+        setStatus('⚠️ Nepodarilo sa načítať kompletný zoznam pracovníkov a stavieb. Obnovte stránku.')
+        return
+      }
+      setAktivneZakazky([...projects.data].sort((a,b) => String(a.nazov).localeCompare(String(b.nazov),'sk')))
+      setObjektyStavby(objects.data.filter((object: any) => object.aktivny !== false)
+        .sort((a,b) => Number(a.poradie || 0) - Number(b.poradie || 0) ||
+          String(a.nazov).localeCompare(String(b.nazov),'sk')))
+      setZoznamZamestnancov([...lenAktivniPracovnici(workers.data)].sort((a,b) => String(a.meno).localeCompare(String(b.meno),'sk')))
+      setReferencneUdajePripravene(true)
     }
     nacitajData()
     nacitajKontroluZapisov()
   }, [])
 
   async function nacitajKontroluZapisov() {
-    const dnesDatum = new Date()
-    const dnes = datumDoLocalString(dnesDatum)
-    const denTyzdna = dnesDatum.getDay()
-    const pondelok = new Date(dnesDatum)
-    pondelok.setHours(12, 0, 0, 0)
-    pondelok.setDate(dnesDatum.getDate() + (denTyzdna === 0 ? -6 : 1 - denTyzdna))
-
-    const sobota = new Date(pondelok)
-    sobota.setDate(pondelok.getDate() + 5)
-
-    const odDatumu = datumDoLocalString(pondelok)
-    const doDatumu = datumDoLocalString(sobota)
+    const dnes = datumNaSlovensku()
+    const denTyzdna = denVTyzdniNaSlovensku(dnes)
+    const pondelok = posunDatumNaSlovensku(dnes, denTyzdna === 0 ? -6 : 1 - denTyzdna)
+    const odDatumu = pondelok
+    const doDatumu = posunDatumNaSlovensku(pondelok, 5)
 
     setStavDnesnehoDna(prev => ({ ...prev, nacitava: true, chyba: false }))
 
-    const [
-      { data: zamestnanciData, error: chybaZamestnancov },
-      { data: dochadzkaData, error: chybaDochadzky },
-      { data: nepritomnostiData, error: chybaNepritomnosti }
-    ] = await Promise.all([
-      supabase.from('zamestnanci').select('meno').order('meno', { ascending: true }),
-      supabase.from('dochadzka').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu),
-      supabase.from('nepritomnosti').select('meno, datum').gte('datum', odDatumu).lte('datum', doDatumu)
+    const [workers, attendance, absence] = await Promise.all([
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('zamestnanci').select('meno,aktivny')
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('dochadzka').select('meno,datum')
+          .gte('datum', odDatumu).lte('datum', doDatumu)
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
+      nacitajVsetkyStrany<any>(async (start,end) => {
+        const { data, error } = await supabase.from('nepritomnosti').select('meno,datum')
+          .gte('datum', odDatumu).lte('datum', doDatumu)
+          .order('id', {ascending: true}).range(start,end)
+        return { data: data as any[] | null, error }
+      }),
     ])
-
-    if (chybaZamestnancov || chybaDochadzky || chybaNepritomnosti) {
-      console.error('Chyba kontroly zápisov:', chybaZamestnancov || chybaDochadzky || chybaNepritomnosti)
+    if (workers.error || attendance.error || absence.error ||
+        !workers.data || !attendance.data || !absence.data) {
       setStavDnesnehoDna({ nacitava: false, chyba: true, kompletne: false, chybaMena: [] })
       setTyzdennyPrehlad([])
       return
     }
+    const zamestnanciData = lenAktivniPracovnici(workers.data)
+    const dochadzkaData = attendance.data
+    const nepritomnostiData = absence.data
 
     const mena = (zamestnanciData || [])
       .map(z => String(z.meno || '').trim())
@@ -122,9 +133,7 @@ function AttendanceForm() {
 
     const nazvyDni = ['Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota']
     const prehlad = nazvyDni.map((den, index) => {
-      const datumDnaObj = new Date(pondelok)
-      datumDnaObj.setDate(pondelok.getDate() + index)
-      const datumDna = datumDoLocalString(datumDnaObj)
+      const datumDna = posunDatumNaSlovensku(pondelok, index)
 
       if (datumDna > dnes) {
         return { datum: datumDna, den, stav: 'buduci' as const, chybaMena: [] }
@@ -168,13 +177,14 @@ function AttendanceForm() {
   async function najdiKonflikt(datumKontroly: string) {
     if (vybraneMena.length === 0) return ''
 
-    const { data, error } = await supabase
-      .from('dochadzka')
-      .select('meno, zakazka, datum, prichod, odchod')
-      .eq('datum', datumKontroly)
-      .in('meno', vybraneMena)
-
-    if (error) return 'Nepodarilo sa overiť existujúce zápisy. Skúste to znova.'
+    const { data, error } = await nacitajVsetkyStrany<any>(async (start,end) => {
+      const { data, error } = await supabase.from('dochadzka')
+        .select('meno,zakazka,datum,prichod,odchod')
+        .eq('datum',datumKontroly)
+        .order('id', {ascending: true}).range(start,end)
+      return { data: data as any[] | null, error }
+    })
+    if (error || !data) return 'Nepodarilo sa kompletne overiť existujúce zápisy. Skúste to znova.'
 
     for (const meno of vybraneMena) {
       const zaznamyPracovnika = (data || []).filter(z => z.meno === meno)
@@ -202,6 +212,7 @@ function AttendanceForm() {
 
   async function otvoritKontrolu(e: React.FormEvent) {
     e.preventDefault()
+    if (!referencneUdajePripravene) { setStatus('⚠️ Údaje nie sú kompletné. Obnovte stránku.'); return }
     setStatus('')
 
     if (vybraneMena.length === 0) {
@@ -239,10 +250,11 @@ function AttendanceForm() {
   // Uloženie pre všetkých vybraných zamestnancov
   async function potvrditAOdoslat() {
     if (odosiela) return
+    if (!referencneUdajePripravene) { setStatus('⚠️ Údaje nie sú kompletné. Obnovte stránku.'); return }
     setOdosiela(true)
     setStatus('Kontrolujem a odosielam...')
     
-    const datumNaUlozenie = datum || datumDoLocalString(new Date())
+    const datumNaUlozenie = datum || datumNaSlovensku()
 
     // Konflikt overíme znova tesne pred uložením, aby sme znížili riziko duplikátu.
     const konflikt = await najdiKonflikt(datumNaUlozenie)
@@ -301,7 +313,7 @@ function AttendanceForm() {
     setObjektId('')
     setPrichod('')
     setOdchod('')
-    setDatum(datumDoLocalString(new Date()))
+    setDatum(datumNaSlovensku())
     setOdosiela(false)
     
     setTimeout(() => {
@@ -341,13 +353,6 @@ function AttendanceForm() {
     return startA < endB && startB < endA
   }
 
-  function datumDoLocalString(d: Date) {
-    const rok = d.getFullYear()
-    const mesiac = String(d.getMonth() + 1).padStart(2, '0')
-    const den = String(d.getDate()).padStart(2, '0')
-    return `${rok}-${mesiac}-${den}`
-  }
-
   function vypocitajTrvanie(odCasu: string, doCasu: string) {
     const rozdielMinut = vypocitajTrvanieUsekuMinuty(odCasu, doCasu)
     const hodiny = Math.floor(rozdielMinut / 60)
@@ -358,7 +363,7 @@ function AttendanceForm() {
   }
 
   function formatujDatum(d: string) {
-    const datumPreFormat = d || new Date().toISOString().split('T')[0]
+    const datumPreFormat = d || datumNaSlovensku()
     const [rok, mesiac, den] = datumPreFormat.split('-')
     return `${den}. ${mesiac}. ${rok}`
   }
@@ -667,7 +672,7 @@ function AttendanceForm() {
             <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
               Stav dnešného zápisu sa nepodarilo načítať.
             </div>
-          ) : new Date().getDay() === 0 ? (
+          ) : denVTyzdniNaSlovensku(datumNaSlovensku()) === 0 ? (
             <div style={{ fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
               Nedeľa – zápis pracovníkov dnes nie je potrebný.
             </div>

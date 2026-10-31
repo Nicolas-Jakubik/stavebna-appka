@@ -1,15 +1,23 @@
 import { NextRequest } from 'next/server'
 import { recorderReadQuery, validateRecorderEntries } from '../../../../../lib/recorderValidation'
 import { serverDatabase } from '../../../../../lib/serverDatabase'
+import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
+import { RECORDER_COOKIE, verifyRecorderToken } from '../../../../../lib/recorderSession'
 
-const headers = { 'Cache-Control': 'no-store' }
+const headers = { 'Cache-Control': 'private, no-store', Vary: 'Cookie' }
 type Context = { params: Promise<{ table: string }> }
 function fail(status: number, message: string, code = `RECORDER_${status}`) {
   return Response.json({ message, code }, { status, headers })
 }
-// Verejné zapisovanie je zámerné. Endpoint sprístupňuje iba úzky whitelist údajov
-// a zápis dochádzky cez serverovú validáciu/RPC; admin operácie zostávajú oddelené.
+// A recorder link is exchanged for an HttpOnly session cookie.
+// Authorization must be checked on every privileged request, not just in the UI.
+async function hasRecorderAccess(request: NextRequest) {
+  if (verifyRecorderToken(request.cookies.get(RECORDER_COOKIE)?.value)) return true
+  return verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)
+}
+
 export async function GET(request: NextRequest, context: Context) {
+  if (!await hasRecorderAccess(request)) return fail(401, 'Otvorte súkromný odkaz od správcu.')
   const { table } = await context.params
   const query = recorderReadQuery(table, request.nextUrl.searchParams)
   if (!query) return fail(400, 'Nepovolený dotaz.')
@@ -24,13 +32,14 @@ export async function GET(request: NextRequest, context: Context) {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     })
     if (!result.ok) return fail(502, 'Údaje sa nepodarilo načítať.')
-    const total = result.headers.get('content-range')?.split('/')[1]
-    if (total && total !== '*' && Number(total) > 1000) return fail(422, 'Vyberte kratšie obdobie.')
+    // One request returns at most 500 rows. Total count may exceed 1,000;
+    // the caller explicitly fetches the next bounded page.
     return new Response(result.body, { headers: { ...headers, 'Content-Type': 'application/json' } })
   } catch { return fail(502, 'Databáza je dočasne nedostupná.') }
 }
 
 export async function POST(request: NextRequest, context: Context) {
+  if (!await hasRecorderAccess(request)) return fail(401, 'Otvorte súkromný odkaz od správcu.')
   if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
     return fail(403, 'Nepovolený pôvod požiadavky.')
   }

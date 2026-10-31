@@ -43,3 +43,23 @@ test('nevrati uhradene faktury', () => {
 
   assert.deepEqual(result, [])
 })
+
+test('invoice alerts reject non-existent dates instead of normalizing them', () => {
+  const result = vytvorUpozorneniaFaktur([
+    {id:1,datum_splatnosti:'2026-02-30',suma:50,uhradene:false},
+    {id:2,datum_splatnosti:'2026-13-01',suma:60,uhradene:false},
+    {id:3,datum_splatnosti:'10/25/2026',suma:70,uhradene:false},
+    {id:4,datum_splatnosti:'2028-02-29',suma:80,uhradene:false}
+  ],'2028-03-01',7)
+  assert.deepEqual(result.map(row=>row.id),['4'])
+  assert.equal(result[0].dniDoSplatnosti,-1)
+  assert.deepEqual(vytvorUpozorneniaFaktur([{id:5,datum_splatnosti:'2026-10-29',uhradene:false}],'29.10.2026'),[])
+})
+
+test('invoice reminders are calculated by civil days, including DST', () => {
+  const result = vytvorUpozorneniaFaktur([
+    {id:1,datum_splatnosti:'2026-10-31',suma:1},
+    {id:2,datum_splatnosti:'2026-11-01',suma:1}
+  ],'2026-10-29',3)
+  assert.deepEqual(result.map(row=>row.dniDoSplatnosti),[2,3])
+})

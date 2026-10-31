@@ -1,0 +1,166 @@
+name: Verify private backup script
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify shell syntax
+        run: bash -n scripts/backup-public-db.sh
+      - name: Fail closed without connection credentials
+        run: |
+          if env -u PGHOST -u PGPORT -u PGUSER -u PGDATABASE -u PGPASSWORD -u BACKUP_DIR bash scripts/backup-public-db.sh; then
+            echo 'ERROR: backup command did not require private connection details' >&2
+            exit 1
+          fi
+      - name: Fail closed without an encryption recipient
+        run: |
+          if env -u BACKUP_AGE_RECIPIENT \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use" \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: script would create an unencrypted archive' >&2
+            exit 1
+          fi
+      - name: Reject backups with missing archive inspection identity
+        run: |
+          if env -u BACKUP_AGE_IDENTITY \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use-no-identity" \
+            BACKUP_AGE_RECIPIENT=unused \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: backup without a locally available age identity was accepted' >&2
+            exit 1
+          fi
+      - name: Reject insecure database connections
+        run: |
+          touch "$RUNNER_TEMP/test-only-age-identity"
+          for mode in disable allow prefer; do
+            if PGSSLMODE="$mode" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy BACKUP_DIR="$RUNNER_TEMP/never-use-insecure" \
+              BACKUP_AGE_RECIPIENT=unused BACKUP_AGE_IDENTITY="$RUNNER_TEMP/test-only-age-identity" \
+              bash scripts/backup-public-db.sh; then
+              echo "ERROR: insecure PGSSLMODE=$mode was accepted" >&2
+              exit 1
+            fi
+          done
+      - name: Verify encrypted stream and archive inspection with fake data only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+          scratch="$(mktemp -d)"
+          trap 'rm -rf "$scratch"' EXIT
+          mkdir -p "$scratch/bin" "$scratch/backups"
+          age-keygen -o "$scratch/identity.txt" 2>/dev/null
+          recipient="$(age-keygen -y "$scratch/identity.txt")"
+          cat > "$scratch/bin/pg_dump" <<'MOCK_DUMP'
+          #!/usr/bin/env bash
+          printf 'FAKE-DATABASE-DUMP-DO-NOT-USE\n'
+          MOCK_DUMP
+          cat > "$scratch/bin/pg_restore" <<'MOCK_RESTORE'
+          #!/usr/bin/env bash
+          [[ "$1" == "--list" && "$#" -eq 1 ]] || exit 8
+          [[ "$(cat)" == "FAKE-DATABASE-DUMP-DO-NOT-USE" ]] || exit 9
+          printf '42; 0 0 TABLE DATA public dochadzka postgres\n'
+          MOCK_RESTORE
+          chmod +x "$scratch/bin/pg_dump" "$scratch/bin/pg_restore"
+          PATH="$scratch/bin:$PATH" \
+          PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+          PGPASSWORD=dummy BACKUP_DIR="$scratch/backups" \
+          BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+          bash scripts/backup-public-db.sh
+          archive="$(find "$scratch/backups" -maxdepth 1 -name '*.dump.age' -type f -print -quit)"
+          [[ -n "$archive" ]] || exit 10
+          age --decrypt --identity "$scratch/identity.txt" "$archive" \
+            | grep -qx 'FAKE-DATABASE-DUMP-DO-NOT-USE'
+          if grep -aq 'FAKE-DATABASE-DUMP-DO-NOT-USE' "$archive"; then
+            echo 'ERROR: archive has recognizable plaintext bytes' >&2
+            exit 11
+          fi
+          [[ -z "$(find "$scratch/backups" -maxdepth 1 -name '*.dump' -type f -print -quit)" ]] || exit 12
+          # A recipient/private-key mismatch must never be accepted as a backup.
+          age-keygen -o "$scratch/different-identity.txt" 2>/dev/null
+          mismatched_recipient="$(age-keygen -y "$scratch/different-identity.txt")"
+          mkdir -p "$scratch/mismatched-key-backups"
+          if PATH="$scratch/bin:$PATH" \
+            PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+            PGPASSWORD=dummy BACKUP_DIR="$scratch/mismatched-key-backups" \
+            BACKUP_AGE_RECIPIENT="$mismatched_recipient" \
+            BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+            bash scripts/backup-public-db.sh; then
+            echo 'ERROR: encrypted archive accepted despite incompatible private identity' >&2
+            exit 13
+          fi
+          [[ -z "$(find "$scratch/mismatched-key-backups" -maxdepth 1 -name '*.dump.age' -type f -print -quit)" ]] || exit 14
+
+      - name: Reject in-repository backups when script is launched outside the checkout
+        run: |
+          scratch="$(mktemp -d)"
+          destination="$GITHUB_WORKSPACE/.ci-backup-guard-must-reject"
+          trap 'rm -rf -- "$scratch" "$destination"' EXIT
+          mkdir -p "$scratch/bin"
+          age-keygen -o "$scratch/identity.txt" >/dev/null 2>&1
+          recipient="$(age-keygen -y "$scratch/identity.txt")"
+          # The fake tools cannot contact any real database.
+          cat > "$scratch/bin/pg_dump" <<'NO_REAL_DUMP'
+          #!/usr/bin/env bash
+          printf 'FAKE-DUMP-NEVER-USE\n'
+          NO_REAL_DUMP
+          cat > "$scratch/bin/pg_restore" <<'NO_REAL_RESTORE'
+          #!/usr/bin/env bash
+          [[ "$1" == '--list' ]] || exit 1
+          printf '12; 0 0 TABLE DATA public dochadzka fake\n'
+          NO_REAL_RESTORE
+          chmod +x "$scratch/bin/pg_dump" "$scratch/bin/pg_restore"
+          if (
+            cd "$scratch"
+            env PATH="$scratch/bin:$PATH" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy PGSSLMODE=require BACKUP_DIR="$destination" \
+              BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+              bash "$GITHUB_WORKSPACE/scripts/backup-public-db.sh"
+          ) >"$scratch/guard.log" 2>&1; then
+            echo 'ERROR: backup under Git checkout was accepted from an outside cwd' >&2
+            exit 1
+          fi
+          if ! grep -q 'Refusing to place a sensitive backup inside the Git repository' "$scratch/guard.log"; then
+            echo 'ERROR: guard test failed for another reason; repository protection not demonstrated' >&2
+            exit 1
+          fi
+          if [[ -n "$(find "$destination" -maxdepth 1 -type f -name '*.dump.age' -print -quit 2>/dev/null)" ]]; then
+            echo 'ERROR: backup archive was created under the Git checkout' >&2
+            exit 1
+          fi
+          # A symlink outside the checkout must not disguise the real script.
+          ln -s "$GITHUB_WORKSPACE/scripts/backup-public-db.sh" "$scratch/linked-backup.sh"
+          if (
+            cd "$scratch"
+            env PATH="$scratch/bin:$PATH" \
+              PGHOST=invalid PGPORT=5432 PGUSER=postgres PGDATABASE=postgres \
+              PGPASSWORD=dummy PGSSLMODE=require BACKUP_DIR="$destination" \
+              BACKUP_AGE_RECIPIENT="$recipient" BACKUP_AGE_IDENTITY="$scratch/identity.txt" \
+              bash "$scratch/linked-backup.sh"
+          ) >"$scratch/symlink-guard.log" 2>&1; then
+            echo 'ERROR: symlinked backup script bypassed repository destination protection' >&2
+            exit 1
+          fi
+          if ! grep -q 'Refusing to place a sensitive backup inside the Git repository' "$scratch/symlink-guard.log"; then
+            echo 'ERROR: symlink guard failed for an unrelated reason' >&2
+            exit 1
+          fi
+          if [[ -n "$(find "$destination" -maxdepth 1 -type f -name '*.dump.age' -print -quit 2>/dev/null)" ]]; then
+            echo 'ERROR: symlinked backup created an archive inside the Git checkout' >&2
+            exit 1
+          fi
