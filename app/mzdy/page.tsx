@@ -551,13 +551,13 @@ export default function MzdyPage() {
           }}>
             <strong>Kontrola historických sadzieb pred použitím výplatného prehľadu</strong>
             {auditSadzieb.odlisneSadzby > 0 && (
-              <div>{auditSadzieb.odlisneSadzby} záznamov má uloženú hodinovú sadzbu odlišnú od dnešného profilu pracovníka.</div>
+              <div>Počet záznamov s hodinovou sadzbou odlišnou od dnešného profilu: {auditSadzieb.odlisneSadzby}.</div>
             )}
             {auditSadzieb.bezHistorickejSadzby > 0 && (
-              <div>{auditSadzieb.bezHistorickejSadzby} záznamov nemá platnú uloženú sadzbu; výpočet môže používať aktuálnu sadzbu.</div>
+              <div>Počet záznamov bez platnej uloženej sadzby: {auditSadzieb.bezHistorickejSadzby}. Výpočet môže používať aktuálnu sadzbu.</div>
             )}
             {auditSadzieb.bezPorovnatelnehoProfilu > 0 && (
-              <div>Pri {auditSadzieb.bezPorovnatelnehoProfilu} záznamoch nemožno historickú sadzbu porovnať s aktuálnym profilom.</div>
+              <div>Počet záznamov, pri ktorých nemožno sadzbu porovnať s aktuálnym profilom: {auditSadzieb.bezPorovnatelnehoProfilu}.</div>
             )}
             <div>Pred potvrdením alebo tlačou staršej výplaty overte dohodnutú sadzbu a to, či už bola vyplatená. Tento prehľad nie je potvrdením úhrady.</div>
           </div>
