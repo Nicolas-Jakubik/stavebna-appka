@@ -19,7 +19,7 @@
 - Existuje pripojený Supabase projekt `MojaFiremnaApp`, ref `pfbgzwehfzgmsqjykvkb`; prístupom cez lokálne TLS pripojenie bola overená existencia tabuľky `public.dochadzka`.
 - Diagnostický endpoint na **novom oddelenom** nasadení `sd-evidencia` v prostredí Production vrátil po admin overení **`{"match":true}`** pre očakávaný Supabase host. To overuje *konfiguráciu tohto diagnostického behu*; **nie priamo pôvodný immutable runtime `stavebna-appka`**.
 - Vercel `NEXT_PUBLIC_SUPABASE_URL` je klasifikovaná ako historická Sensitive/Secret premenná. Jej hodnotu nemožno zobraziť spätne cez Dashboard/API. **Nežiadať jej zverejnenie, neprepisovať env premenné kvôli kontrole**.
-- **ZOSTÁVA STOP GATE:** priama väzba **živej `stavebna-appka.vercel.app` → konkrétny Supabase ref `pfbgzwehfzgmsqjykvkb`** nie je nezávisle potvrdená. Pred produkčným release ju treba potvrdiť bezpečným, osobitne odsúhlaseným postupom.
+- **Konfiguračný STOP GATE zostáva:** priamy immutable Vercel environment → Supabase ref `pfbgzwehfzgmsqjykvkb` nie je nezávisle overený. **Dátový dôkaz už existuje:** presná zhoda 200 septembrových záznamov zo živej URL a lokálne obnovenej zálohy (31.10.2026). Pri release schváliť, či je tento dôkaz dostatočný, prípadne zvoliť samostatne autorizovaný runtime spôsob potvrdenia bez sprístupnenia kľúčov.
 
 ## Skutočná šifrovaná záloha a izolovaná obnova – potvrdené 30.10.2026
 
@@ -29,7 +29,7 @@ Používateľ na svojom dôveryhodnom MacBooku vykonal skutočný `pg_dump` proj
 - 13 cudzích kľúčov, 0 nevalidovaných, 8 používateľských triggerov, 4 politiky a 5 funkcií.
 - Lokálne bolo potrebné vytvoriť dve NOLOGIN roly `anon`/`authenticated`, schému `extensions` a rozšírenie `pgcrypto`. Nevytvárali sa v produkcii.
 - Obnova je dôkazom obnoviteľnosti **tejto zálohy schémy public**, nie úplnej služby Supabase; nezahŕňa Auth, Storage objekty, systémové roly/ACL ani projektové secrets. Kontrola počtov a integrity základných DB objektov nie je nezávislé byte-for-byte porovnanie všetkých záznamov a nie je test prihlásenia či výplatnej logiky.
-- **Pozor:** bez preukázanej väzby živého `stavebna-appka` deploymentu na tento Supabase ref **neoznačovať zálohu za overenú zálohu skutočne živej aplikácie**.
+- **Doplnenie 31.10.:** 200 historických riadkov sa zhoduje so skutočnou živou URL. Ide o silné potvrdenie dátového prepojenia, **nie** priamy kryptografický dôkaz runtime konfigurácie Supabase ref ani úplnú zálohu služby.
 
 ## Stav opráv / zákaz neautorizovaného nasadenia
 
@@ -43,7 +43,7 @@ Používateľ na svojom dôveryhodnom MacBooku vykonal skutočný `pg_dump` proj
 Staršie texty v tomto repozitári označovali `sd-evidencia` ako projekt produkčnej domény `stavebna-appka.vercel.app`. Tento predpoklad bol **vyvrátený výpisom Vercel z 30.10.2026**; pri rozhodovaní má prednosť uvedené mapovanie rozlišujúce obidva projekty. Staged diagnostika nevytvorila zásah do pôvodných aliasov.
 
 
-## Bezpečné porovnanie historickej dochádzky (pripravené, nevykonané)
+## Bezpečné porovnanie historickej dochádzky – úspešne vykonané 31.10.2026
 
 Pridaný pomocný skript `scripts/compare-live-restored-attendance.cjs` (je aj automatický test `tests/live-restore-match.test.cjs`). Spustenie je iba **manuálne na dôveryhodnom MacBooku**, kde existuje už izolovaná obnova `sd_evidencia_restore_20261030` v lokálnom PostgreSQL 17; skript sa **nikdy** nespúšťa proti produkčnej databáze. Štandardne používa iba presnú potvrdenú verejnú adresu `https://stavebna-appka.vercel.app` a jej existujúce **GET** API z produkčného kódu `main/8a2d40d`.
 
@@ -58,4 +58,4 @@ PSQL_BIN="$(brew --prefix postgresql@17)/bin/psql" node scripts/compare-live-res
 
 Test najprv **fail-closed** overí názov, datadir a lokálny socket testovacej databázy, 12 tabuliek / 884 záznamov a 200 historických septemberových riadkov. Potom jedným **read-only GET** stiahne september 2026 z existujúcej URL bez autorizácie alebo zápisu a **iba v RAM** porovná všetkých šesť rozlišujúcich polí jednotlivých záznamov bez ohľadu na poradie. Na obrazovku vypíše len počty a `ÁNO/NIE`. Pri nedostupnosti, neúplnej odpovedi alebo odlišných riadkoch: **STOP** a nepredpokladať správny projekt; staré zápisy sa po čase mohli zmeniť. Nevyžaduje heslá, cookies, service role tokeny ani súbory so záznamami.
 
-**Hranica dôkazu:** presná zhoda 200 historických záznamov je **silné nepriamo overené dátové mapovanie** živej URL k obnovenej kópii, ale **nepreukazuje priamo** immutable environment \`NEXT_PUBLIC_SUPABASE_URL\` a skutočný Supabase *ref*. Pred vydaním opráv nezamieňať dátovú zhodu s týmto konfiguračným dôkazom. Test stále čaká na skutočné spustenie vlastníkom.
+**Hranica dôkazu:** presná zhoda 200 historických záznamov je **silné nepriamo overené dátové mapovanie** živej URL k obnovenej kópii, ale **nepreukazuje priamo** immutable environment \`NEXT_PUBLIC_SUPABASE_URL\` a skutočný Supabase *ref*. Pred vydaním opráv nezamieňať dátovú zhodu s týmto konfiguračným dôkazom. **Vykonané vlastníkom na MacBooku 31.10.2026:** 200 záznamov zo septembra 2026 v izolovanej obnove a 200 zo skutočnej používanej URL; **presná zhoda všetkých 200 záznamov naprieč šiestimi porovnávanými atribútmi: ÁNO**. Skript sa pôvodne zastavil na HTTP 400 kvôli nepovoleným parametrom `limit`/`offset`, čo bolo opravené a pokryté regresným testom. Finálny úspešný beh používal commit `289f54f7cdcb51ac5658a47e761f3e48b7c64ece`. Podľa výstupu nenastal žiadny zápis; nešlo o produkčnú zmenu. Tento výsledok je **silné nepriame potvrdenie** väzby živých údajov na zálohovaný dataset, **nie** priame overenie immutable Supabase ref v nasadení Vercel.
