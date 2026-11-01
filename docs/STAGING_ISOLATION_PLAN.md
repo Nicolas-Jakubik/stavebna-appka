@@ -26,6 +26,18 @@ V testovacom prostredí zostanú tieto API blokované **aj v prípade, že by ni
 
 Podmienky sa overujú na serveri, nestačí obísť UI v prehliadači.
 
+## Bezplatná kontrola dizajnu bez databázy (na počítači)
+
+Bez Supabase Pro a bez akejkoľvek produkčnej konfigurácie:
+1. Vytvor **novú čistú pracovnú kópiu** repozitára z testovacej vetvy `design/apple-style-navigation-2026-11-01` (nie produkčnú inštaláciu).
+2. Nespúšťaj žiadne ručné zápisy. Uisti sa, že v koreňovom priečinku nie je `.env*` súbor; nenechávaj tam produkčné kľúče.
+3. Spusti `npm ci --no-audit --no-fund`, následne `npm run demo:safe`.
+4. Otvor `http://localhost:3001/design-preview` a prechádzaj **Dochádzka, Výplaty, Stavby, Pracovníci, Financie**. Pre lokálne zobrazenie na iPhone je potrebné overené interné sieťové spojenie a bezpečný spôsob prístupu; nepúšťať port verejne do internetu.
+5. `demo:safe` odmietne štart, ak je v kópii prítomný akýkoľvek lokálny `.env` súbor. Navyše vymaže zo zdedeného procesu databázové a administračné premenné, nastaví `VERCEL_ENV=preview` a odkáže na neexistujúcu doménu databázy. Serverový preview guard odmieta databázové požiadavky, pretože chýba platná staging DB identita.
+6. Toto je **iba kontrola vzhľadu a responzivity**. Neskúša skutočné API, formuláre ani PDF. Na tie je potrebná oddelená databáza a funkčný testovací login.
+
+**Bezpečnostné obmedzenie:** pri spúšťaní nenechávaj Next.js otvorený do internetu a nikdy do ukážky nezadávaj reálne údaje pracovníkov. Konzervatívny lokálny launcher nie je náhradou za izolovaný funkčný test.
+
 ## Čo treba dokončiť pred zapnutím funkčného testu
 1. **Výber oddelenej databázy a potvrdenie ceny.** Pri vytvorení nového Supabase projektu alebo development branch najprv overiť aktuálnu cenu; bez výslovného súhlasu vlastníka nevytvárať platený zdroj.
 2. **Pripraviť schému na testovacej DB** z overených migrácií alebo schéma-only exportu. Nikdy neprenášať živú dochádzku, skutočné mzdy, mená ani súkromné kľúče. Testovacie údaje generovať synteticky.
