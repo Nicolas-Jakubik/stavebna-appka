@@ -4,13 +4,12 @@ import { supabase } from '../lib/recorderClient'
 import Image from 'next/image'
 import Link from 'next/link'
 import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
-import RecorderGate from '../components/RecorderGate'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 import { datumNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../lib/businessDate'
 import { lenAktivniPracovnici } from '../lib/activeWorkers'
 
 export default function Home() {
-  return <RecorderGate><AttendanceForm /></RecorderGate>
+  return <AttendanceForm />
 }
 
 function AttendanceForm() {
