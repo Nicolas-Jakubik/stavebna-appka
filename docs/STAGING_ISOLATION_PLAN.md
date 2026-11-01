@@ -22,7 +22,7 @@ V testovacom prostredí zostanú tieto API blokované **aj v prípade, že by ni
 1. Existuje samostatný, **nový** Supabase projekt alebo izolovaná DB vetva s jedinečným ref.
 2. Server-only `SD_EVIDENCIA_STAGING_DB_REF` presne zodpovedá ref testovacej databázy (20 alfanumerických znakov).
 3. `NEXT_PUBLIC_SUPABASE_URL` presne ukazuje na `https://<ref>.supabase.co` tohto testovacieho projektu.
-4. Ref sa nezhoduje so žiadnym z troch aktuálne známych existujúcich netestovacích projektov v účte.
+4. Ref sa nezhoduje so známym projektom MojaFiremnaApp. Pred povolením testov je **povinné ručne overiť**, že zvolená testovacia DB nepatrí ani inej produkčnej aplikácii a obsahuje iba syntetické údaje. Súčasne treba potvrdiť backend skutočnej produkčnej URL.
 
 Podmienky sa overujú na serveri, nestačí obísť UI v prehliadači.
 
