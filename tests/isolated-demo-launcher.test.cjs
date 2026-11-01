@@ -23,6 +23,7 @@ function simulate(env, envFilePresent = false) {
   }
   const fakeProcess = {
     env: { ...env },
+    execPath: process.execPath,
     on() {},
     exit(code) { throw Error('EXIT:' + code) },
     stdout: {},
