@@ -165,15 +165,14 @@ export default function ZakazkaDetailPage() {
               marginBottom: '16px',
               boxShadow: '0 2px 8px rgba(0,0,0,.04)',
             }}>
-              <div className="project-detail-tabs sd-project-detail-nav" role="tablist" aria-label="Sekcie stavby" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <div className="project-detail-tabs sd-project-detail-nav" role="group" aria-label="Sekcie stavby" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {tabs.map(tab => {
                   const active = activeTab === tab.key
                   return (
                     <button
                       key={tab.key}
                       type="button"
-                      role="tab"
-                      aria-selected={active}
+                      aria-pressed={active}
                       onClick={() => setActiveTab(tab.key)}
                       style={{
                         border: 'none',
