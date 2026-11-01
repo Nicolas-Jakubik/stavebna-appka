@@ -358,3 +358,227 @@ table {
 @media print {
   .sd-dashboard-hero { display: none !important; }
 }
+
+
+/* SD Evidencia phase 2: attendance and payroll.
+   Deliberately scoped to admin screens; leaves recorder and printable PDF untouched. */
+@media screen {
+  .sd-dashboard-modern,
+  .sd-payroll-modern {
+    background: #f4f7fb !important;
+    gap: 20px !important;
+    color: #17243b;
+  }
+  .sd-dashboard-modern .dashboard-content,
+  .sd-payroll-modern .hlavny-kontajner { min-width: 0; }
+  .sd-dashboard-modern .dashboard-content > div,
+  .sd-payroll-modern .hlavny-kontajner > div { scroll-margin-top: 24px; }
+  .sd-dashboard-modern .sd-dashboard-hero,
+  .sd-payroll-modern .sd-payroll-hero { scroll-margin-top: 22px; }
+  .sd-dashboard-modern .sd-dashboard-hero {
+    border: 1px solid rgba(0, 122, 255, .12);
+    background: radial-gradient(circle at 100% 0%, #e8f3ff 0, transparent 53%),
+                linear-gradient(128deg, #ffffff 12%, #f4f9ff 100%);
+  }
+
+  .sd-attendance-quick-actions,
+  .sd-attendance-records,
+  .sd-payroll-modern :is(#sd-payroll-period, #sd-payroll-workers, [data-sd-panel="summary"], .sd-payroll-detail-card) {
+    border-radius: 21px !important;
+    border: 1px solid rgba(26, 63, 110, .10) !important;
+    background: #ffffff;
+    box-shadow: 0 9px 28px rgba(25, 60, 120, .055) !important;
+    scroll-margin-top: 28px;
+  }
+
+  .sd-attendance-quick-actions { padding: 20px 22px !important; }
+  .sd-attendance-quick-actions > div:first-child > div:first-child {
+    font-size: 16px !important;
+    letter-spacing: -.025em;
+  }
+  .sd-attendance-quick-actions .dashboard-mobile-actions { gap: 10px !important; }
+  .sd-attendance-quick-actions button {
+    min-height: 44px;
+    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+  }
+  .sd-attendance-records > div:first-child { padding: 22px 23px !important; }
+  .sd-attendance-records > div:first-child > div:first-child > div:first-child {
+    font-size: 17px !important;
+  }
+  .sd-attendance-records > div:first-child > div:last-child {
+    background: #eaf3ff !important;
+    color: #0057b7 !important;
+    font-size: 11px !important;
+    border-radius: 10px !important;
+  }
+  .sd-attendance-records .attendance-table th {
+    background: #f6f9fd;
+    border-bottom: 1px solid #e6edf6;
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    font-size: 10px !important;
+    color: #596c87 !important;
+  }
+  .sd-attendance-records .attendance-table td {
+    border-bottom: 1px solid #edf1f7;
+    font-size: 12px;
+    padding-top: 13px !important;
+    padding-bottom: 13px !important;
+  }
+  .sd-attendance-records .attendance-table tbody tr:hover {
+    box-shadow: inset 4px 0 #b7d9ff;
+  }
+  .sd-attendance-records .attendance-table button {
+    min-height: 38px;
+    font-size: 11px !important;
+  }
+  .sd-attendance-records .attendance-table th button {
+    min-height: 34px;
+    text-transform: inherit;
+  }
+  .sd-attendance-records .attendance-table :is(input,select) {
+    min-height: 40px;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+  .sd-attendance-records button:focus-visible,
+  .sd-attendance-quick-actions button:focus-visible,
+  .sd-payroll-modern button:focus-visible,
+  .sd-payroll-modern select:focus-visible {
+    outline: 3px solid #005fcc;
+    outline-offset: 2px;
+  }
+
+  .sd-payroll-hero {
+    padding: clamp(24px, 3vw, 36px);
+    border-radius: 25px;
+    background:
+      radial-gradient(circle at 100% 0%, #e6f2ff, transparent 55%),
+      linear-gradient(125deg, #fff 12%, #f6faff);
+    border: 1px solid rgba(0, 122, 255, .12);
+    box-shadow: 0 10px 32px rgba(24, 65, 130, .065);
+    margin-bottom: 24px;
+  }
+  .sd-payroll-hero-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .sd-payroll-hero h1 {
+    margin: 8px 0 8px;
+    color: #17243d;
+    font-size: clamp(32px, 4.4vw, 43px);
+    line-height: 1.1;
+    font-weight: 780;
+    letter-spacing: -.05em;
+  }
+  .sd-payroll-hero p {
+    margin: 0;
+    font-size: 14px;
+    color: #63738b;
+    line-height: 1.6;
+  }
+  .sd-payroll-period-caption {
+    border: 1px solid #dce7f7;
+    border-radius: 12px;
+    padding: 11px 14px;
+    background: rgba(255,255,255,.83);
+    font-size: 12px;
+    font-weight: 700;
+    color: #456387;
+  }
+  .sd-payroll-links { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 23px; }
+  .sd-payroll-links a {
+    min-height: 44px;
+    padding: 11px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border-radius: 13px;
+    border: 1px solid #dce7f7;
+    background: rgba(255,255,255,.92);
+    color: #27466f;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .sd-payroll-links .sd-payroll-primary { background: #007aff; border-color: #007aff; color: #fff; }
+  .sd-payroll-links a:hover { background: #edf5ff; }
+  .sd-payroll-links .sd-payroll-primary:hover { background: #0065d5; }
+  .sd-payroll-links a:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; }
+  .sd-payroll-modern #sd-payroll-period > div:first-child,
+  .sd-payroll-modern #sd-payroll-workers > div:first-child,
+  .sd-payroll-modern [data-sd-panel="summary"] > div:first-child {
+    padding: 20px 22px !important;
+  }
+  .sd-payroll-modern .vyplaty-grid-3 > div,
+  .sd-payroll-modern .vyplaty-grid-summary > div { padding: 22px 24px !important; }
+  .sd-payroll-modern .vyplaty-period-actions { padding: 16px 21px !important; gap: 10px !important; }
+  .sd-payroll-modern .vyplaty-period-actions button {
+    min-height: 44px;
+    padding: 10px 17px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-toolbar select,
+  .sd-payroll-modern .vyplaty-toolbar button {
+    min-height: 44px;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table th {
+    background: #f6f9fd;
+    border-bottom: 1px solid #e6edf6;
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    font-size: 10px !important;
+    color: #5b6d83 !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table td {
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    border-bottom: 1px solid #edf1f7;
+    font-size: 12px;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table tbody tr:hover { box-shadow: inset 4px 0 #b7d9ff; }
+}
+
+@media screen and (max-width: 1024px) {
+  .sd-payroll-modern,
+  .sd-dashboard-modern { padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important; }
+  .sd-payroll-hero { padding: 24px 20px; border-radius: 20px; }
+  .sd-payroll-hero p { font-size: 12px; }
+  .sd-payroll-links a { flex: 1 1 125px; }
+  .sd-dashboard-modern .attendance-table-wrap,
+  .sd-payroll-modern .vyplaty-mobile-scroll { overscroll-behavior-x: contain; }
+}
+@media screen and (max-width: 600px) {
+  .sd-payroll-modern .vyplaty-mobile-table td {
+    min-height: 44px;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table tr.vyplaty-mobile-row {
+    box-shadow: 0 4px 16px rgba(27, 55, 95, .045);
+    border-radius: 14px;
+    margin: 0 10px 10px;
+  }
+  .sd-payroll-modern .vyplaty-grid-summary > div,
+  .sd-payroll-modern .vyplaty-grid-3 > div { padding: 19px 20px !important; }
+  .sd-dashboard-modern .attendance-table td.attendance-cell {
+    grid-template-columns: 91px minmax(0,1fr);
+    min-height: 44px;
+  }
+  .sd-dashboard-modern .attendance-table td.attendance-cell::before { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-payroll-links a, .sd-dashboard-modern .attendance-table tbody tr { transition: none !important; }
+}
+/* No additional print rules: PDF tables and print cards retain their existing layout. */
