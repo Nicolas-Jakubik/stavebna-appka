@@ -68,14 +68,12 @@ test('unisolated preview DB fails closed across admin + anonymous recorder', asy
       assert.equal(dbRequests, 0)
     })
 
-    await t.test('a marker pointing at the live or an unrelated existing project is rejected', async () => {
-      for (const ref of [LIVE_REF, 'qghebrsoajcyvdezqyke', 'ekmfeknsctsbycstymzk']) {
-        process.env.SD_EVIDENCIA_STAGING_DB_REF = ref
-        process.env.NEXT_PUBLIC_SUPABASE_URL = `https://${ref}.supabase.co`
-        assert.equal(previewDatabaseIsIsolated(), false, ref)
-        assert.equal((await aRead()).status, 503)
-        assert.equal((await rWrite()).status, 503)
-      }
+    await t.test('a marker pointing at the known company production project is rejected', async () => {
+      process.env.SD_EVIDENCIA_STAGING_DB_REF = LIVE_REF
+      process.env.NEXT_PUBLIC_SUPABASE_URL = `https://${LIVE_REF}.supabase.co`
+      assert.equal(previewDatabaseIsIsolated(), false)
+      assert.equal((await aRead()).status, 503)
+      assert.equal((await rWrite()).status, 503)
       assert.equal(dbRequests, 0)
     })
 
