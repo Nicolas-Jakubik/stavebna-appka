@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
+import { validAdminMutationScope } from '../../../../../lib/adminMutationScope'
 
 export const dynamic = 'force-dynamic'
 const TABLES = new Set(['dochadzka', 'zamestnanci', 'zoznam_zakaziek', 'objekty_stavby', 'nepritomnosti', 'financie_stavby', 'naklady_stavby', 'platby_stavby', 'uhrady_pracovnikov', 'faktury_dodavatelov', 'faktury_klientov'])
@@ -33,6 +34,7 @@ async function handle(request: NextRequest, context: Context) {
   if (!baseUrl || !key) return error(503, 'Prístup administrácie k databáze nie je nastavený.')
 
   let body: string | undefined
+  let parsedBody: unknown
   if (['POST', 'PATCH'].includes(request.method)) {
     if (!request.headers.get('content-type')?.startsWith('application/json')) {
       return error(415, 'Očakávaný formát JSON.')
@@ -52,7 +54,11 @@ async function handle(request: NextRequest, context: Context) {
       chunks.push(value)
     }
     body = Buffer.concat(chunks).toString('utf8')
-    try { JSON.parse(body) } catch { return error(400, 'Neplatný JSON.') }
+    try { parsedBody = JSON.parse(body) } catch { return error(400, 'Neplatný JSON.') }
+  }
+
+  if (!validAdminMutationScope(request.method, table, request.nextUrl.searchParams, parsedBody)) {
+    return error(400, 'Úprava alebo mazanie vyžaduje presný filter záznamu.')
   }
 
   // Fixed destination and table allowlist: no arbitrary URLs, RPCs or schemas.

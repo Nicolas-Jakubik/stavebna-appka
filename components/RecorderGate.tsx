@@ -25,7 +25,7 @@ export default function RecorderGate({ children }: { children: React.ReactNode }
     <h1 style={{ fontSize: 24, fontWeight: 650 }}>Zapisovanie hodín</h1>
     <p style={{ margin: '16px 0', lineHeight: 1.6 }}>
       {state === 'loading' ? 'Overujem prístup…' : state === 'denied'
-        ? 'Otvorte súkromný odkaz od správcu. Ak jeho platnosť skončila, požiadajte o nový.'
+        ? 'Tento telefón ešte nie je aktivovaný alebo jeho prístup vypršal. Správca Vám pošle súkromný aktivačný odkaz. Potom používajte túto bežnú adresu.'
         : 'Prístup sa nepodarilo overiť. Skontrolujte pripojenie a skúste to znova.'}
     </p>
     {state === 'error' && <button onClick={() => { setState('loading'); setRetry(n => n + 1) }} style={{ minHeight: 44, marginRight: 16 }}>Skúsiť znova</button>}

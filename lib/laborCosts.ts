@@ -1,4 +1,5 @@
 import { PracovnyZaznam, hodinyZaznamuZMapy, vytvorMapuCistychHodin } from './workHours'
+import { hodinovaSadzbaZaznamu } from './hourlyRates'
 
 export type ZamestnanecSoSadzbou = {
   meno?: string | null
@@ -43,7 +44,7 @@ export function vypocitajNakladyPracovnikov(
     if (!meno || !zakazka || !datum) return
 
     const hodiny = hodinyZaznamuZMapy(zaznam, mapaCistychHodin)
-    const sadzba = sadzby.get(meno) || 0
+    const sadzba = hodinovaSadzbaZaznamu(zaznam.sadzba_snapshot, sadzby.get(meno))
 
     vysledok.push({
       datum,

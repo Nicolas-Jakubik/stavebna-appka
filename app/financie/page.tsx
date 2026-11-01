@@ -10,6 +10,8 @@ import { fakturyAkoNaklady, zhrnDodavatelskeFaktury } from '../../lib/supplierIn
 import { zhrnKlientskeFaktury } from '../../lib/clientInvoices'
 import { vypocitajZiskovost } from '../../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../../lib/financeAlerts'
+import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
+import { datumNaSlovensku } from '../../lib/businessDate'
 
 type Project = {
   id: number | string
@@ -44,6 +46,7 @@ type Attendance = {
   zakazka: string
   prichod: string
   odchod: string
+  sadzba_snapshot: number | string | null
 }
 
 type Employee = {
@@ -93,12 +96,8 @@ function euro(value: number) {
 }
 
 function todayBratislava() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Bratislava',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
+  // Always ISO YYYY-MM-DD, independent of browser Intl locale output.
+  return datumNaSlovensku()
 }
 
 const cardStyle = {
@@ -130,6 +129,15 @@ export default function FinanciePage() {
       setLoading(true)
       setError('')
 
+      // Use stable, bounded pages for every total-bearing dataset, not only attendance.
+      const readAll = <T,>(table: string, columns: string, byCreated = false) =>
+        nacitajVsetkyStrany<T>(async (start,end) => {
+          let query = supabase.from(table).select(columns)
+          if (byCreated) query = query.order('created_at', {ascending: false})
+          const { data, error } = await query.order('id', {ascending: !byCreated}).range(start,end)
+          return {data: data as T[] | null, error}
+        })
+
       const [
         { data: projectData, error: projectError },
         { data: financeData, error: financeError },
@@ -141,15 +149,21 @@ export default function FinanciePage() {
         { data: supplierInvoiceData, error: supplierInvoiceError },
         { data: clientInvoiceData, error: clientInvoiceError },
       ] = await Promise.all([
-        supabase.from('zoznam_zakaziek').select('id,nazov,stav').order('created_at', { ascending: false }),
-        supabase.from('financie_stavby').select('zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
-        supabase.from('naklady_stavby').select('zakazka_id,datum,kategoria,suma,uhradene'),
-        supabase.from('platby_stavby').select('zakazka_id,suma'),
-        supabase.from('dochadzka').select('id,meno,datum,zakazka,prichod,odchod'),
-        supabase.from('zamestnanci').select('meno,sadzba'),
-        supabase.from('uhrady_pracovnikov').select('zakazka_id,meno,suma'),
-        supabase.from('faktury_dodavatelov').select('id,zakazka_id,dodavatel,cislo_faktury,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
-        supabase.from('faktury_klientov').select('id,zakazka_id,cislo_faktury,datum_vystavenia,datum_splatnosti,suma,uhradene'),
+        readAll<Project>('zoznam_zakaziek', 'id,nazov,stav', true),
+        readAll<Finance>('financie_stavby', 'zakazka_id,cena_zakazky,budget_nakladov,vyfakturovane'),
+        readAll<Expense>('naklady_stavby', 'zakazka_id,datum,kategoria,suma,uhradene'),
+        readAll<Payment>('platby_stavby', 'zakazka_id,suma'),
+        nacitajVsetkyStrany<Attendance>(async (start, end) => {
+          const { data, error } = await supabase.from('dochadzka')
+            .select('id,meno,datum,zakazka,prichod,odchod,sadzba_snapshot')
+            .order('id', { ascending: true })
+            .range(start, end)
+          return { data: data as Attendance[] | null, error }
+        }),
+        readAll<Employee>('zamestnanci', 'meno,sadzba'),
+        readAll<WorkerPayment>('uhrady_pracovnikov', 'zakazka_id,meno,suma'),
+        readAll<SupplierInvoice>('faktury_dodavatelov', 'id,zakazka_id,dodavatel,cislo_faktury,datum_vystavenia,datum_splatnosti,kategoria,suma,uhradene'),
+        readAll<ClientInvoice>('faktury_klientov', 'id,zakazka_id,cislo_faktury,datum_vystavenia,datum_splatnosti,suma,uhradene'),
       ])
 
       if (cancelled) return
@@ -548,6 +562,11 @@ export default function FinanciePage() {
         {loading ? (
           <div style={{ ...cardStyle, padding: '28px', color: '#86868b', fontSize: '12px' }}>
             Načítavam finančný prehľad…
+          </div>
+        ) : error ? (
+          <div style={{ ...cardStyle, padding: '28px', color: '#b42318', fontSize: '13px' }}>
+            Finančné súčty nie sú zobrazené, pretože časť údajov sa nepodarilo načítať.
+            Obnovte stránku alebo skúste neskôr.
           </div>
         ) : (
           <>

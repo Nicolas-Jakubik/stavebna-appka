@@ -8,6 +8,7 @@ import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } 
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 import { vypocitajZiskovost } from '../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
+import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 
 type OfferItem = {
   sekcia: string
@@ -77,6 +78,7 @@ type AttendanceRow = {
   zakazka: string
   prichod: string
   odchod: string
+  sadzba_snapshot: number | string | null
 }
 
 type EmployeeRow = {
@@ -313,6 +315,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([])
   const [clientInvoices, setClientInvoices] = useState<ClientInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [message, setMessage] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [financeOpen, setFinanceOpen] = useState(false)
@@ -379,7 +382,24 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   async function loadFinance() {
     setLoading(true)
+    setLoadError(false)
     setMessage('')
+
+    // Keep every project's totals complete even when invoices/expenses exceed 1,000 rows.
+    const readProjectRows = <T,>(
+      table: string, columns: string, field: string, asc: boolean, idAsc = false,
+    ) => nacitajVsetkyStrany<T>(async (start, end) => {
+      let query = supabase.from(table).select(columns).eq('zakazka_id', projectId)
+      if (field !== 'id') query = query.order(field, {ascending: asc})
+      const { data, error } = await query.order('id', {ascending: field === 'id' ? asc : idAsc})
+        .range(start, end)
+      return {data: data as T[] | null, error}
+    })
+    const readWorkers = () => nacitajVsetkyStrany<EmployeeRow>(async (start, end) => {
+      const {data,error} = await supabase.from('zamestnanci').select('meno,sadzba')
+        .order('id', {ascending: true}).range(start,end)
+      return {data: data as EmployeeRow[] | null,error}
+    })
 
     const [
       { data: financeData, error: financeError },
@@ -397,52 +417,25 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .select('*')
         .eq('zakazka_id', projectId)
         .maybeSingle(),
-      supabase
-        .from('objekty_stavby')
-        .select('id,zakazka_id,nazov,poradie,aktivny')
-        .eq('zakazka_id', projectId)
-        .order('poradie', { ascending: true })
-        .order('id', { ascending: true }),
-      supabase
-        .from('naklady_stavby')
-        .select('*')
-        .eq('zakazka_id', projectId)
-        .order('datum', { ascending: false })
-        .order('id', { ascending: false }),
-      supabase
-        .from('platby_stavby')
-        .select('*')
-        .eq('zakazka_id', projectId)
-        .order('datum', { ascending: false })
-        .order('id', { ascending: false }),
-      supabase
-        .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id'),
-      supabase
-        .from('zamestnanci')
-        .select('meno,sadzba'),
-      supabase
-        .from('uhrady_pracovnikov')
-        .select('*')
-        .eq('zakazka_id', projectId)
-        .order('datum', { ascending: false })
-        .order('id', { ascending: false }),
-      supabase
-        .from('faktury_dodavatelov')
-        .select('*')
-        .eq('zakazka_id', projectId)
-        .order('datum_splatnosti', { ascending: true })
-        .order('id', { ascending: false }),
-      supabase
-        .from('faktury_klientov')
-        .select('*')
-        .eq('zakazka_id', projectId)
-        .order('datum_vystavenia', { ascending: false })
-        .order('id', { ascending: false }),
+      readProjectRows<ProjectObjectRow>('objekty_stavby','id,zakazka_id,nazov,poradie,aktivny','poradie',true,true),
+      readProjectRows<ExpenseRow>('naklady_stavby','*','datum',false),
+      readProjectRows<PaymentRow>('platby_stavby','*','datum',false),
+      nacitajVsetkyStrany<AttendanceRow>(async (start, end) => {
+        const { data, error } = await supabase.from('dochadzka')
+          .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot')
+          .order('id', { ascending: true })
+          .range(start, end)
+        return { data: data as AttendanceRow[] | null, error }
+      }),
+      readWorkers(),
+      readProjectRows<WorkerPaymentRow>('uhrady_pracovnikov','*','datum',false),
+      readProjectRows<SupplierInvoiceRow>('faktury_dodavatelov','*','datum_splatnosti',true),
+      readProjectRows<ClientInvoiceRow>('faktury_klientov','*','datum_vystavenia',false),
     ])
 
     if (financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
       console.error('Chyba načítania financií:', financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
+      setLoadError(true)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -1447,6 +1440,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   if (loading) {
     return <div style={{ ...cardStyle, padding: '28px', color: '#86868b', fontSize: '12px' }}>Načítavam finančný prehľad…</div>
+  }
+
+  if (loadError) {
+    return <div role="alert" style={{ ...cardStyle, padding: '28px', color: '#b42318', fontSize: '13px' }}>
+      Finančný prehľad nie je kompletný, preto sú súčty skryté. Obnovte stránku alebo skúste neskôr.
+    </div>
   }
 
   return (

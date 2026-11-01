@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server'
 import { recorderReadQuery, validateRecorderEntries } from '../../../../../lib/recorderValidation'
 import { serverDatabase } from '../../../../../lib/serverDatabase'
-
-const headers = { 'Cache-Control': 'no-store' }
+// Compatibility requirement: the existing recorder form on the normal URL
+// needs no new link, cookie, account, or password. Access here is anonymous.
+// Only allowlisted recorder fields and checked INSERTs may be exposed; never
+// add admin data or arbitrary table/mutation routes to this endpoint.
+const headers = { 'Cache-Control': 'private, no-store' }
 type Context = { params: Promise<{ table: string }> }
 function fail(status: number, message: string, code = `RECORDER_${status}`) {
   return Response.json({ message, code }, { status, headers })
 }
-// Verejné zapisovanie je zámerné. Endpoint sprístupňuje iba úzky whitelist údajov
-// a zápis dochádzky cez serverovú validáciu/RPC; admin operácie zostávajú oddelené.
 export async function GET(request: NextRequest, context: Context) {
   const { table } = await context.params
   const query = recorderReadQuery(table, request.nextUrl.searchParams)
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest, context: Context) {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     })
     if (!result.ok) return fail(502, 'Údaje sa nepodarilo načítať.')
-    const total = result.headers.get('content-range')?.split('/')[1]
-    if (total && total !== '*' && Number(total) > 1000) return fail(422, 'Vyberte kratšie obdobie.')
+    // One request returns at most 500 rows. Total count may exceed 1,000;
+    // the caller explicitly fetches the next bounded page.
     return new Response(result.body, { headers: { ...headers, 'Content-Type': 'application/json' } })
   } catch { return fail(502, 'Databáza je dočasne nedostupná.') }
 }

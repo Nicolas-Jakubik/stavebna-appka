@@ -1,16 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from '../../../../lib/adminSession'
-import { RECORDER_COOKIE, verifyRecorderToken } from '../../../../lib/recorderSession'
+import {
+  RECORDER_COOKIE, RECORDER_TTL, createRecorderToken, renewRecorderToken,
+  verifyRecorderActivationToken, verifyRecorderToken,
+} from '../../../../lib/recorderSession'
 
-const headers = { 'Cache-Control': 'private, no-store' }
+const headers = { 'Cache-Control': 'private, no-store', Vary: 'Cookie' }
+
+function setRecorderCookie(response: NextResponse, token: string) {
+  response.cookies.set(RECORDER_COOKIE, token, {
+    httpOnly: true, secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict', path: '/', maxAge: RECORDER_TTL,
+  })
+}
+
 export async function GET(request: NextRequest) {
-  const valid = verifyRecorderToken(request.cookies.get(RECORDER_COOKIE)?.value) ||
-    await verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)
-  return Response.json({ authorized: valid }, { status: valid ? 200 : 401, headers })
+  const recorder = request.cookies.get(RECORDER_COOKIE)?.value
+  if (verifyRecorderToken(recorder)) {
+    const response = NextResponse.json({ authorized: true }, { headers })
+    const renewed = renewRecorderToken(recorder)
+    if (renewed) setRecorderCookie(response, renewed)
+    return response
+  }
+  const validAdmin = await verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)
+  return Response.json({ authorized: validAdmin }, { status: validAdmin ? 200 : 401, headers })
 }
 
 export async function POST(request: NextRequest) {
-  if (request.headers.get('origin') !== request.nextUrl.origin) {
+  if (request.headers.get('origin') !== request.nextUrl.origin ||
+      request.headers.get('sec-fetch-site') === 'cross-site') {
     return Response.json({ message: 'Nepovolený pôvod požiadavky.' }, { status: 403, headers })
   }
   if (Number(request.headers.get('content-length')) > 1024) return new Response(null, { status: 413, headers })
@@ -29,13 +47,10 @@ export async function POST(request: NextRequest) {
     }
     token = JSON.parse(Buffer.concat(chunks).toString('utf8')).token
   } catch { return new Response(null, { status: 400, headers }) }
-  if (typeof token !== 'string' || !verifyRecorderToken(token)) {
-    return Response.json({ message: 'Odkaz je neplatný alebo jeho platnosť skončila.' }, { status: 401, headers })
+  if (typeof token !== 'string' || !verifyRecorderActivationToken(token)) {
+    return Response.json({ message: 'Aktivačný odkaz je neplatný alebo jeho platnosť skončila.' }, { status: 401, headers })
   }
   const response = NextResponse.json({ authorized: true }, { headers })
-  response.cookies.set(RECORDER_COOKIE, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/',
-    maxAge: Math.max(0, Number(token.split('.')[1]) - Math.floor(Date.now() / 1000)),
-  })
+  setRecorderCookie(response, createRecorderToken())
   return response
 }

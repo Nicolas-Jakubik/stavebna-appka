@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import { bezpecnaCestaPoPrihlaseni } from '../../lib/adminSafeRedirect'
 
 export default function AdminPrihlaseniePage() {
   const [heslo, setHeslo] = useState('')
@@ -30,7 +31,7 @@ export default function AdminPrihlaseniePage() {
 
       const params = new URLSearchParams(window.location.search)
       const next = params.get('next')
-      window.location.assign(next && next.startsWith('/') ? next : '/dashboard')
+      window.location.assign(bezpecnaCestaPoPrihlaseni(next, window.location.origin))
     } catch {
       setChyba('Prihlásenie sa nepodarilo. Skúste to znova.')
       setOdosiela(false)

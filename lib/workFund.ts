@@ -1,3 +1,6 @@
+// Confirmed company schedule (2026-11-01): weekdays 07:00–18:00,
+// Saturdays 07:00–17:00, Sundays off. Subtract one 30-minute daily break.
+// These are NET planned hours, not the duration before the break.
 export const HODINY_PRACOVNY_DEN = 10.5
 export const HODINY_SOBOTA = 9.5
 

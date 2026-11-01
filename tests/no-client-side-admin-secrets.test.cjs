@@ -1,0 +1,33 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+
+const root = path.join(__dirname, '..')
+const source = file => fs.readFileSync(path.join(root, file), 'utf8')
+
+test('deprecated client-side password gate and mutable adminStore are removed', () => {
+  assert.equal(fs.existsSync(path.join(root, 'components/PasswordProtect.tsx')), false)
+  assert.equal(fs.existsSync(path.join(root, 'lib/store.ts')), false)
+  assert.doesNotMatch(source('app/page.tsx'), /adminStore|PasswordProtect/)
+})
+
+test('admin access remains session-protected, existing anonymous recorder stays field-limited', () => {
+  const proxy = source('proxy.ts')
+  const admin = source('app/api/admin/database/[table]/route.ts')
+  const recorder = source('app/api/recorder/database/[table]/route.ts')
+  const home = source('app/page.tsx')
+  const validator = source('lib/recorderValidation.ts')
+  assert.match(proxy, /verifyAdminSession/)
+  assert.match(admin, /verifyAdminSession/)
+  assert.doesNotMatch(home, /<RecorderGate>/)
+  assert.doesNotMatch(home, /PasswordProtect/)
+  assert.doesNotMatch(recorder, /hasRecorderAccess/)
+  assert.match(recorder, /recorderReadQuery/)
+  assert.match(recorder, /validateRecorderEntries/)
+  assert.match(recorder, /record_attendance_secure/)
+  assert.match(recorder, /request.headers.get\('origin'\)/)
+  assert.doesNotMatch(recorder, /export async function (DELETE|PATCH|PUT)/)
+  assert.match(validator, /zamestnanci/)
+  assert.doesNotMatch(home, /ADMIN_PASSWORD/)
+})

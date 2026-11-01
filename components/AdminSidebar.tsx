@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import RecorderLink from './RecorderLink'
 import { useState } from 'react'
 
 type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy' | 'financie'
@@ -12,12 +11,23 @@ export default function AdminSidebar({
   active: AdminSection
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [odhlasuje, setOdhlasuje] = useState(false)
+  const [chybaOdhlasenia, setChybaOdhlasenia] = useState('')
 
   async function odhlasit() {
+    if (odhlasuje) return
+    setOdhlasuje(true)
+    setChybaOdhlasenia('')
     try {
-      await fetch('/api/admin/logout', { method: 'POST' })
-    } finally {
+      const response = await fetch('/api/admin/logout', { method: 'POST' })
+      if (!response.ok) throw new Error('Logout failed')
       window.location.assign('/admin-prihlasenie')
+    } catch {
+      // Server rejection can leave the valid admin cookie in place.
+      // Do not imply that the user has been logged out.
+      setChybaOdhlasenia('Odhlásenie sa nepodarilo. Skúste to znova.')
+    } finally {
+      setOdhlasuje(false)
     }
   }
 
@@ -198,13 +208,14 @@ export default function AdminSidebar({
         </div>
 
         <div style={{ borderTop: '1px solid #ededf0', paddingTop: '14px' }}>
-          <RecorderLink />
           <div style={{ padding: '0 10px 10px', fontSize: '10px', color: '#a1a1a6', lineHeight: '1.45' }}>
             Firemný prehľad dochádzky a stavieb
           </div>
           <button
             type="button"
             onClick={odhlasit}
+            disabled={odhlasuje}
+            aria-busy={odhlasuje}
             style={{
               width: '100%',
               border: '1px solid #e5e5e7',
@@ -218,8 +229,13 @@ export default function AdminSidebar({
               fontWeight: '500',
             }}
           >
-            Odhlásiť sa
+            {odhlasuje ? 'Odhlasujem…' : 'Odhlásiť sa'}
           </button>
+          {chybaOdhlasenia && (
+            <p role="alert" style={{ fontSize: 12, color: '#b42318', lineHeight: 1.5, padding: '4px 10px' }}>
+              {chybaOdhlasenia}
+            </p>
+          )}
         </div>
       </aside>
     </>
