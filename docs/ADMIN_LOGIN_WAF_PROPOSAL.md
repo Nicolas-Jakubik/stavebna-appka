@@ -1,43 +1,38 @@
-# SD Evidencia – návrh ochrany prihlasovania cez Vercel WAF
+# SD Evidencia – ochrana admin login cez Vercel WAF (plán, nie nasadenie)
 
-**Kontrolný bod:** SD-EVIDENCIA-OPRAVY-2026-10-28
-**Stav:** NÁVRH / NIČ NEZAPNUTÉ. Tento dokument **nie je povolenie na úpravu produkčného Firewallu**.
-**Zodpovedný projekt skutočnej živej aplikácie (overené 30.10.2026):** Vercel tím `stavby-domysro`, projekt **`stavebna-appka`**, produkčná doména **`stavebna-appka.vercel.app`**, aktuálne READY deployment `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` z 22.10.2026. Projekt `sd-evidencia` (`prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`) je **oddelená diagnostika**, nie cieľ firewallu pre používanú firemnú aplikáciu. **Pred akoukoľvek konfiguráciou WAF overiť projekt v Dashboarde znova; žiadne pravidlo zatiaľ nezapínať.**
-**Zdroj:** oficiálna dokumentácia Vercel WAF (2025–2026):
-- https://vercel.com/kb/guide/limit-abuse-with-rate-limiting
-- https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting
+**Checkpoint:** SD-EVIDENCIA-OPRAVY-2026-10-28, aktualizované 1.11.2026.
+**Stav:** NÁVRH – nezapnuté; neexistuje overené produkčné rate-limit pravidlo. Toto NIE JE povolenie meniť firewall bez samostatného schválenia.
+
+## Správne mapovanie produkcie
+
+- Vercel tím: `stavby-domysro` / `team_J51ayy2Um69GWfW8qecJI3wr`
+- **Jeden reálny projekt**: pôvodne `stavebna-appka`, neskôr premenovaný na `sd-evidencia`, nemenné project ID `prj_OCqs3fyo3eQOqO4tuaI22PlUmWoh`. **Nie sú to dva nezávislé projekty.**
+- Používaná doména: `stavebna-appka.vercel.app`; pri poslednom read-only overení stále smeruje na starú stabilnú verziu `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc`. Nemeniť doménu ani pracujúci formulár.
+- Staršie tvrdenia v iných runbookoch, že `sd-evidencia` je len oddelená diagnostika a treba nastaviť WAF na iný projekt, sú **nesprávne**.
+
+## Prečo a čo chrániť
+
+Administrátorské `POST /api/admin/login` porovnáva spoločné heslo a chybný pokus umelo oneskorí o 350 ms. To **nie je** zdieľaný serverless rate limiter; automatizované pokusy treba obmedziť pred aplikáciou. Nesmie to zasiahnuť verejný formulár `/` ani `/api/recorder/*`. Viacerí chalani musia ďalej používať rovnaký odkaz bez účtov a nových hesiel.
+
+## Navrhované pravidlo, zatiaľ NEAKTÍVNE
+
+- Názov: `SD Admin Login — IP 10/min`
+- IF: Request Path equals `/api/admin/login`; Request Method equals `POST` (ak UI filter metódy ponúka).
+- THEN: Rate Limit **10 requestov / 60 sekúnd / IP**, fixed window, follow-up action Return 429 alebo Deny podľa aktuálneho UI.
+- Jedna IP môže znamenať viac administrátorov za NAT; monitorovať falošné zablokovania. IP rotácia nie je týmto riešená.
+- Vercel dokumentácia udáva na Hobby 1 pravidlo na projekt a 1 milión zahrnutých allowed requests; aktuálne kvóty/náklady treba skontrolovať pred aktiváciou.
+
+## Bezpečný postup až po odsúhlasení
+
+1. Otvoriť **existujúci** Vercel projekt `sd-evidencia` s uvedeným project ID. Vo `Firewall → Configure` skontrolovať existujúce pravidlá. Volanie `get_firewall_config(active)` vrátilo 404 `Seawall Config not found`, čo **NEDOKAZUJE** nulový počet pravidiel.
+2. Pripraviť iba logovací režim podmienky pre presné `/api/admin/login`; podľa Vercel odporúčania aspoň 10 min pozorovať normálnu prevádzku. Nedávať pravidlo na celý web, `/api` ani `/api/recorder`.
+3. Vlastník osobitne potvrdí aktiváciu obmedzenia. Následne `Review Changes → Publish` aplikuje produkčné pravidlo **okamžite**, bez code deployu.
+4. Skontrolovať legitímny admin login a neovplyvnený otvorený recorder. Pri chybe vypnúť iba nové pravidlo, nie celú ochranu projektu.
+5. Nezbierať reálne heslá, session cookies ani súkromné údaje do issue/commitu/logu.
+
+Dokumentácia (aktuálne pravidlá Vercel):
 - https://vercel.com/docs/vercel-firewall/vercel-waf/custom-rules
+- https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting
+- https://vercel.com/kb/guide/add-rate-limiting-vercel
 
-## Prečo je to potrebné
-
-`app/api/admin/login/route.ts` používa spoločné administračné heslo. Zlé heslo vytvorí oneskorenie asi 350 ms; **nejde o globálny, trvalý ani distribuovaný rate limiter**. Vercel prevádzkuje serverless inštancie a procesová pamäť nefunguje ako spoľahlivá spoločná počítadlová databáza.
-
-WAF umožňuje vynucovať limit ešte pred vstupom do Next.js API, nezávisle od ďalšej databázovej migrácie alebo hesiel.
-
-## Návrh konkrétneho pravidla (ZATIAĽ NEAKTÍVNE)
-
-- **Názov:** `SD Admin Login – IP 10/min`.
-- **If – Request Path:** `Equals` `/api/admin/login`.
-- **If – Request Method:** `Equals` `POST`, ak je filter metódy v aktuálnom UI dostupný. Inak použiť výlučne presnú cestu (nie `/api` alebo `/`).
-- **Then – Rate Limit:** fixed window, **10 požiadaviek za 60 sekúnd**, kľúč **IP Address**.
-- **When exceeded:** `Deny` podľa oficiálneho návodu; HTTP 429 je vhodná možnosť len ak ju UI umožňuje a je otestovaná.
-- **Výnimky:** Neobmedzovať `/api/recorder/*`, samotný formulár, dochádzku, PDF ani iné URL.
-- **Účinnosť:** WAF obmedzuje **všetky login POST**, nie iba nesprávne heslá. Za firemným NAT môže jedna IP reprezentovať viac administrátorov; limit treba prispôsobiť meranej návštevnosti. Rotačné IP a distribuované útoky nie sú týmto pravidlom úplne vyriešené.
-- **Náklady:** podľa oficiálnej dokumentácie je WAF Rate Limiting dostupný na všetkých Vercel plánoch; pred aktiváciou si treba overiť aktuálny cenník, dostupné kvóty a upozornenie Vercelu. Žiadne platby ani nastavenia neboli menené.
-
-## Bezpečný postup až po výslovnom schválení
-
-1. Overiť správny **existujúci** Vercel tím a projekt **`stavby-domysro/stavebna-appka`**, nie `sd-evidencia`. Preveriť existujúce pravidlá v `Firewall → Configure` a zistiť, či už login nie je chránený alebo sú limity plánu vyčerpané. Pripojené read-only volanie na `get_firewall_config(active)` vrátilo `404 Seawall Config not found`; **to nepreukazuje neprítomnosť pravidiel ani správnu konfiguráciu**.
-2. Vytvoriť **len logovací náhľad** pravidla s presnou cestou `/api/admin/login`; pozorovať približne **10 minút** bežnej prevádzky bez generovania množstva neúspešných loginov alebo skúšania skutočného hesla. Pri nejasnej návštevnosti radšej predĺžiť sledovanie.
-3. Skontrolovať, že podmienka zachytáva iba prihlásenie, nie bežné zápisy pracovníkov. Ak áno a vlastník schváli, prepnúť akciu na Rate Limit 10/60s/IP s Deny a potvrdiť `Review Changes → Publish`. Pravidlo začne ovplyvňovať živú prevádzku **okamžite**, bez code deployu; preto je to produkčná zmena, ktorá vyžaduje súhlas.
-4. Overiť v rámci povoleného interného testu, že jedna legitímna administrátorská relácia funguje a zapisovateľ môže zapisovať. Záznamy o prihlasovaní, heslá ani cookies neposielať do GitHubu či konverzácie.
-5. Ak dôjde k nesprávnemu blokovaniu, **vypnúť len toto nové pravidlo** alebo vrátiť predchádzajúcu známu konfiguráciu z Firewall audit logu. Neupravovať iné pravidlá.
-
-## Čo tento návrh **NEDOKAZUJE**
-
-- Nie je aktivovaný ani overený nijaký produkčný WAF limit.
-- Neoveruje samotný Supabase production ref ani skutočnú obnovu dát.
-- Nie je to plnohodnotná ochrana pred útočníkmi, ktorí menia IP adresy.
-- Aktuálna live aplikácia beží na `main` SHA `8a2d40d`, nie na opravnom PR #102.
-
-**STOP pred produkčným merge/deploy:** šifrovaná záloha schémy `public` a izolovaný restore pre Supabase ref `pfbgzwehfzgmsqjykvkb` boli vykonané; stále však treba potvrdiť, že ide o backend živej `stavebna-appka`, vyriešiť neodsúhlasené zmeny historických výplat, browser/mobile E2E a vyžiadať výslovný súhlas. WAF návrh nie je aktívny.
+**Release blocker:** finálne zabezpečenie admin login nie je potvrdené; rozhodnutie o odklade WAF alebo jeho zapnutí musí byť vedomé. Žiadna zmena firewallu zatiaľ nebola vykonaná.
