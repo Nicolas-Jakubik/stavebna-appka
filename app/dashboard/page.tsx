@@ -2059,7 +2059,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div style={{ ...cardStyle, marginBottom: '16px', padding: '16px 18px' }}>
+        <div className="sd-attendance-filters" style={{ ...cardStyle, marginBottom: '16px', padding: '16px 18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#1d1d1f' }}>Filtre dochádzky</div>
