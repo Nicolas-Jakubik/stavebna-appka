@@ -582,3 +582,55 @@ table {
   .sd-payroll-links a, .sd-dashboard-modern .attendance-table tbody tr { transition: none !important; }
 }
 /* No additional print rules: PDF tables and print cards retain their existing layout. */
+
+
+/* Attendance filtering: native controls with a more legible, touch-friendly hierarchy. */
+@media screen {
+  .sd-dashboard-modern .sd-attendance-filters {
+    border-radius: 21px !important;
+    border: 1px solid rgba(26, 63, 110, .10) !important;
+    box-shadow: 0 9px 28px rgba(25,60,120,.055) !important;
+    padding: 22px 23px !important;
+    background: #ffffff;
+  }
+  .sd-dashboard-modern .sd-attendance-filters > div:first-child > div:first-child > div:first-child {
+    font-size: 17px !important;
+    font-weight: 760 !important;
+    letter-spacing: -.025em;
+  }
+  .sd-dashboard-modern .sd-attendance-filters .dashboard-filter-grid { gap: 13px !important; }
+  .sd-dashboard-modern .sd-attendance-filters label {
+    color: #5d6d83 !important;
+    font-size: 11px !important;
+    font-weight: 680 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    margin-bottom: 7px !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters select,
+  .sd-dashboard-modern .sd-attendance-filters input[type="date"] {
+    min-height: 44px;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    border: 1px solid #dce5f1 !important;
+    background: #f9fbff !important;
+    color: #1c2c44 !important;
+    font-size: 13px !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters button {
+    min-height: 44px;
+    border-radius: 12px !important;
+    padding: 9px 15px !important;
+    font-size: 12px !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 690 !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters :is(input,select,button):focus-visible {
+    outline: 3px solid #005fcc !important;
+    outline-offset: 2px !important;
+  }
+}
+@media screen and (max-width:600px) {
+  .sd-dashboard-modern .sd-attendance-filters { padding: 19px 16px !important; }
+}
