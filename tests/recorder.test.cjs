@@ -34,7 +34,7 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal(tokenLib.RECORDER_TTL, 90 * 86400)
       assert.equal(tokenLib.RECORDER_LINK_TTL, 2 * 86400)
       assert.equal(tokenLib.verifyRecorderToken(tokenLib.createRecorderToken(1)), false)
-      assert.equal(tokenLib.verifyRecorderToken(token.replace('recorder-v1', 'v1')), false)
+      assert.equal(tokenLib.verifyRecorderToken(token.replace('recorder-v2', 'v1')), false)
       assert.equal(await admin.verifyAdminSession(token), false)
       assert.equal(tokenLib.verifyRecorderToken((await admin.createAdminSession()).value), false)
       const now = Math.floor(Date.now() / 1000)
