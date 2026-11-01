@@ -522,19 +522,28 @@ export default function DashboardPage() {
 
   async function ulozitUpravu(id: string) {
     if (!dashboardReady) return
+    if (!validDate(upravovanyDatum)) {
+      setChybaUpravaHodiny('Vyberte platný dátum.')
+      return
+    }
+    const nazovStavby = upravovanaZakazka.trim()
+    if (!nazovStavby || !dostupneZakazky.includes(nazovStavby)) {
+      setChybaUpravaHodiny('Vyberte existujúcu stavbu zo zoznamu.')
+      return
+    }
     const error = getTimeValidationError(upravovanePrichod, upravovaneOdchod)
     if (error) {
       setChybaUpravaHodiny(error)
       return
     }
 
-    const povodny = kontrolneZaznamy.find(z => String(z.id) === String(id)) || zaznamy.find(z => String(z.id) === String(id))
+    const povodny = zaznamy.find(z => String(z.id) === String(id)) || kontrolneZaznamy.find(z => String(z.id) === String(id))
     if (!povodny) {
       setChybaUpravaHodiny('Záznam sa nepodarilo nájsť.')
       return
     }
 
-    const upraveny = { ...povodny, prichod: upravovanePrichod, odchod: upravovaneOdchod }
+    const upraveny = { ...povodny, datum: upravovanyDatum, zakazka: nazovStavby, prichod: upravovanePrichod, odchod: upravovaneOdchod }
     if (jePresnyDuplikat(upraveny, id)) {
       setChybaUpravaHodiny('Tento zápis už existuje: rovnaký pracovník, deň, stavba, príchod aj odchod.')
       return
@@ -544,9 +553,34 @@ export default function DashboardPage() {
       return
     }
 
+    const zmenilSaDatum = povodny.datum !== upravovanyDatum
+    const zmenilaSaStavba = povodny.zakazka !== nazovStavby
+    const zmenilSaCas = povodny.prichod.slice(0,5) !== upravovanePrichod.slice(0,5) ||
+      povodny.odchod.slice(0,5) !== upravovaneOdchod.slice(0,5)
+    if (!zmenilSaDatum && !zmenilaSaStavba && !zmenilSaCas) {
+      zrusitUpravu()
+      return
+    }
+    // The correction is admin-only and may move attendance between payroll
+    // periods or sites. Preserve the worker and historical hourly rate.
+    const potvrdenie =
+      `Opraviť dochádzku pracovníka ${povodny.meno}?\n\n` +
+      `PÔVODNE: ${povodny.datum}, ${povodny.zakazka}, ${povodny.prichod}–${povodny.odchod}\n` +
+      `NOVÉ: ${upravovanyDatum}, ${nazovStavby}, ${upravovanePrichod}–${upravovaneOdchod}\n\n` +
+      'Pozor: oprava môže zmeniť súčty výplat a náklady stavieb.'
+    if (!confirm(potvrdenie)) return
+
+    const patch: Record<string, unknown> = {
+      datum: upravovanyDatum,
+      zakazka: nazovStavby,
+      prichod: upravovanePrichod,
+      odchod: upravovaneOdchod,
+    }
+    // An object of the old job must never remain attached to the new job.
+    if (zmenilaSaStavba) patch.objekt_id = null
     const { error: supabaseError } = await supabase
       .from('dochadzka')
-      .update({ prichod: upravovanePrichod, odchod: upravovaneOdchod })
+      .update(patch)
       .eq('id', id)
 
     if (supabaseError) {
@@ -558,7 +592,7 @@ export default function DashboardPage() {
       )
     } else {
       zrusitUpravu()
-      await Promise.all([nacitaj(), nacitajFiltre(), nacitajKontrolneZaznamy()])
+      await Promise.all([nacitaj(), nacitajFiltre(), nacitajKontrolneZaznamy(), nacitajNezapisanychVcera()])
     }
   }
 
