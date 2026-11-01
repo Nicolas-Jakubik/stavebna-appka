@@ -790,3 +790,34 @@ table {
   }
 }
 @media print {.sd-admin-page-hero{display:none !important}}
+
+
+/* Project detail: shared visual language without touching finance data. */
+@media screen {
+ .sd-project-detail-modern{background:#f4f7fb !important;gap:20px !important}
+ .sd-project-detail-modern .sd-project-detail-hero{
+   border:1px solid rgba(0,122,255,.12);
+   background:radial-gradient(circle at 100% 0%,#eaf4ff,transparent 55%),linear-gradient(130deg,#fff,#f7fbff);
+   border-radius:22px;padding:25px 27px;
+   box-shadow:0 10px 30px rgba(25,60,120,.055);
+   margin-bottom:18px !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-hero h1{
+   font-size:clamp(28px,3.6vw,39px) !important;
+   font-weight:780 !important;letter-spacing:-.045em !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-nav{gap:8px !important}
+ .sd-project-detail-modern .sd-project-detail-nav button{
+   min-height:44px !important;
+   border-radius:12px !important;
+   padding:10px 16px !important;
+   font-size:12px !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-nav button:focus-visible{
+   outline:3px solid #005fcc;outline-offset:3px
+ }
+}
+@media screen and (max-width:1024px){
+ .sd-project-detail-modern{padding-bottom:calc(99px + env(safe-area-inset-bottom)) !important}
+ .sd-project-detail-modern .sd-project-detail-hero{padding:22px 19px;border-radius:19px}
+}
