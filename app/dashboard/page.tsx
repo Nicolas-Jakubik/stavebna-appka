@@ -1009,7 +1009,7 @@ export default function DashboardPage() {
     ''
 
   if (!dashboardReady) {
-    return <div className="dashboard-shell" style={{minHeight:'100vh',background:'#f5f5f7',padding:24,display:'flex',gap:24}}>
+    return <div className="dashboard-shell sd-dashboard-modern" style={{minHeight:'100vh',background:'#f5f5f7',padding:24,display:'flex',gap:24}}>
       <AdminSidebar active="dashboard" />
       <main role={failed ? 'alert' : 'status'} style={{width:'100%',maxWidth:900,background:'#fff',borderRadius:14,padding:28,height:'fit-content'}}>
         <h1 style={{fontSize:22,fontWeight:700}}>Prehľad dochádzky</h1>
@@ -1022,7 +1022,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-shell" style={{
+    <div className="dashboard-shell sd-dashboard-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -1194,13 +1194,28 @@ export default function DashboardPage() {
       <AdminSidebar active="dashboard" />
 
       <div className="dashboard-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
+        <section className="sd-dashboard-hero" aria-label="Úvodný prehľad">
+          <div className="sd-dashboard-hero-heading">
+            <div>
+              <span className="sd-dashboard-eyebrow">SD EVIDENCIA · ADMINISTRÁCIA</span>
+              <h1>Prehľad</h1>
+              <p>Všetko dôležité o dochádzke a stavbách na jednom mieste.</p>
+            </div>
+            <span className="sd-dashboard-date">{formatujDatumSK(dnesText)}</span>
+          </div>
+          <div className="sd-dashboard-hero-actions">
+            <a href="#mesacny-vykon" className="sd-dashboard-hero-primary">Mesačný výkon <span aria-hidden="true">↗</span></a>
+            <a href="/zakazky" className="sd-dashboard-hero-secondary">Stavby <span aria-hidden="true">→</span></a>
+            <a href="/mzdy" className="sd-dashboard-hero-secondary">Výplaty <span aria-hidden="true">→</span></a>
+          </div>
+        </section>
         <div style={{ marginBottom: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: '#86868b', fontWeight: '600', marginBottom: '4px' }}>FIREMNÝ PREHĽAD</div>
-              <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
-                Dnešný stav
-              </h1>
+              <div style={{ fontSize: '12px', color: '#86868b', fontWeight: '600', marginBottom: '4px' }}>AKTUÁLNY STAV</div>
+              <h2 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
+                Dnes
+              </h2>
             </div>
             <div style={{ fontSize: '12px', color: '#86868b', fontWeight: '600' }}>
               {formatujDatumSK(dnesText)}
@@ -1417,7 +1432,7 @@ export default function DashboardPage() {
           <span style={{ display: 'inline-block' }}><span style={{ color: '#ff3b30', fontWeight: '600', marginRight: '4px' }}>⚠</span> Podozrivý čas</span>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+        <div id="mesacny-vykon" style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '15px', fontWeight: '750', color: '#1d1d1f' }}>Mesačný výkon</div>
@@ -1479,7 +1494,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: '24px', lineHeight: 1.05, color: '#1d1d1f', fontWeight: '700', letterSpacing: '-0.025em', marginTop: '7px' }}>
                 {fondMesiaca.toFixed(1)} h
               </div>
-              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '7px' }}>Po–Pi 11,5 h · So 10,5 h · Ne 0 h</div>
+              <div style={{ fontSize: '9px', color: '#86868b', marginTop: '7px' }}>Po–Pi 10,5 h · So 9,5 h · Ne 0 h</div>
             </div>
           </div>
         </div>
