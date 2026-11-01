@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import RecorderLink from './RecorderLink'
 import { useState } from 'react'
 
 type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy' | 'financie'
@@ -209,7 +208,6 @@ export default function AdminSidebar({
         </div>
 
         <div style={{ borderTop: '1px solid #ededf0', paddingTop: '14px' }}>
-          <RecorderLink />
           <div style={{ padding: '0 10px 10px', fontSize: '10px', color: '#a1a1a6', lineHeight: '1.45' }}>
             Firemný prehľad dochádzky a stavieb
           </div>
