@@ -64,17 +64,22 @@ test('recorder-only private link opens mobile attendance without admin privilege
   })
   expect(login.status()).toBe(200)
 
-  // The admin-only endpoint issues a one-month private recorder link.
+  // The admin-only endpoint issues a short-lived activation link. The device gets a separate rolling session.
   const issued = await request.post('/api/admin/recorder-link', { headers: { origin: base } })
   expect(issued.status()).toBe(200)
   const { link, validDays } = await issued.json()
-  expect(validDays).toBe(30)
-  expect(link.startsWith(base + '/#zapis=recorder-v1.')).toBe(true)
+  expect(validDays).toBe(2)
+  expect(link.startsWith(base + '/#zapis=recorder-link-v1.')).toBe(true)
 
   // Browser's existing device context remains unauthenticated; the API request fixture owns the admin cookie.
     await page.goto(link)
     await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
     await expect(page).toHaveURL(base + '/') // fragment was discarded after exchange
+
+    // After activation the recorder continues on the same regular address
+    // (including a fresh navigation), without opening the private link again.
+    await page.goto(base + '/')
+    await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
 
     const cookies = await context.cookies()
     const recorder = cookies.find(cookie => cookie.name === 'stavby_recorder_session')
