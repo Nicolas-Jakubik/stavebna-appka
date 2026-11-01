@@ -77,6 +77,14 @@ export default function DesignPreviewPage() {
       <header className="sdp-mobile-header"><span className="sdp-logo"><Icon name="building" size={22}/></span><strong>SD Evidencia</strong><span className="sdp-small-demo">DEMO</span></header>
       <main className="sdp-main" id="prehlad">
         <div className="sdp-banner" role="status"><span className="sdp-dot"/> DIZAJNOVÁ UKÁŽKA – všetky údaje sú fiktívne. Žiadne zápisy ani výplaty sa nemenia.</div>
+        <nav aria-label="Ukážky nových obrazoviek" style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:24}}>
+          <Link href="/design-preview/dochadzka" style={{display:"inline-flex",alignItems:"center",minHeight:44,padding:"10px 17px",borderRadius:12,color:"#fff",background:"#007aff",fontWeight:750,fontSize:12}}>
+            Pozrieť novú dochádzku
+          </Link>
+          <Link href="/design-preview/vyplaty" style={{display:"inline-flex",alignItems:"center",minHeight:44,padding:"10px 17px",borderRadius:12,color:"#1c5b9e",background:"#e9f3ff",fontWeight:750,fontSize:12}}>
+            Pozrieť nové výplaty
+          </Link>
+        </nav>
         <div className="sdp-page-top">
           <div><span className="sdp-eyebrow">FIREMNÝ PREHĽAD</span><h1>Prehľad</h1><p>Všetko dôležité o práci vašej firmy na jednom mieste.</p></div>
           <span className="sdp-period">Október 2026 <span aria-hidden="true">⌄</span></span>
