@@ -1204,8 +1204,8 @@ export default function DashboardPage() {
             <span className="sd-dashboard-date">{formatujDatumSK(dnesText)}</span>
           </div>
           <div className="sd-dashboard-hero-actions">
-            <a href="#mesacny-vykon" className="sd-dashboard-hero-primary">Mesačný výkon <span aria-hidden="true">↗</span></a>
-            <a href="/zakazky" className="sd-dashboard-hero-secondary">Stavby <span aria-hidden="true">→</span></a>
+            <a href="#sd-attendance-records" className="sd-dashboard-hero-primary">Záznamy dochádzky <span aria-hidden="true">↓</span></a>
+            <a href="#sd-attendance-actions" className="sd-dashboard-hero-secondary">Pridať zápis <span aria-hidden="true">↓</span></a>
             <a href="/mzdy" className="sd-dashboard-hero-secondary">Výplaty <span aria-hidden="true">→</span></a>
           </div>
         </section>
@@ -1222,7 +1222,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="dashboard-today-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px' }}>
+          <div className="dashboard-today-grid sd-attendance-status-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px' }}>
             <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
               <div style={{ fontSize: '10px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>V práci dnes</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '7px' }}>
@@ -1781,7 +1781,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{
+        <div id="sd-attendance-actions" className="sd-attendance-quick-actions" style={{
           ...cardStyle,
           marginBottom: '16px',
           padding: '14px 16px',
@@ -2176,7 +2176,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div style={{ ...cardStyle, padding: '0', overflow: 'hidden' }}>
+        <div id="sd-attendance-records" className="sd-attendance-records" style={{ ...cardStyle, padding: '0', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '16px 18px', borderBottom: '1px solid #eeeeef', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '16px', fontWeight: '750', color: '#1d1d1f', letterSpacing: '-0.015em' }}>Záznamy dochádzky</div>
@@ -2195,7 +2195,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: '16px', fontWeight: '750', color: '#0071e3' }}>{celkoveHodiny.toFixed(2)} h</div>
             </div>
           )}
-          <div className="dashboard-scroll-table attendance-table-wrap" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
+          <div className="dashboard-scroll-table attendance-table-wrap sd-attendance-scroll" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '72vh' }}>
             <table className="attendance-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1020px', fontSize: '12px' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, backgroundColor: '#f7f7f8', boxShadow: '0 1px 0 #e5e5e7' }}>
                 <tr style={{ textAlign: 'left' }}>
