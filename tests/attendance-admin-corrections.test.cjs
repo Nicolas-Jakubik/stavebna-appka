@@ -1,0 +1,35 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const page = fs.readFileSync(path.join(__dirname,'../app/dashboard/page.tsx'),'utf8')
+const authRoute = fs.readFileSync(path.join(__dirname,'../app/api/admin/database/[table]/route.ts'),'utf8')
+
+test('admin can correct a mistaken date or job in the existing attendance row', () => {
+  assert.match(page,/aria-label="Opraviť dátum dochádzky"/)
+  assert.match(page,/aria-label="Opraviť stavbu dochádzky"/)
+  assert.match(page,/upravovanyDatum/)
+  assert.match(page,/upravovanaZakazka/)
+  assert.match(page,/validDate\(upravovanyDatum\)/)
+  assert.match(page,/dostupneZakazky\.includes\(nazovStavby\)/)
+  assert.match(page,/\.update\(patch\)\s*\.eq\('id', id\)/)
+  assert.match(page,/datum: upravovanyDatum/)
+  assert.match(page,/zakazka: nazovStavby/)
+  assert.match(page,/zmenilaSaStavba\) patch\.objekt_id = null/)
+})
+
+test('correction checks collisions, confirms payroll impact and preserves stored wage rate', () => {
+  assert.match(page,/jePresnyDuplikat\(upraveny, id\)/)
+  assert.match(page,/maPrekryvajuciSaCas\(upraveny, id\)/)
+  assert.match(page,/oprava môže zmeniť súčty výplat a náklady stavieb/)
+  assert.match(page,/if \(!confirm\(potvrdenie\)\) return/)
+  assert.match(page,/vypocitajHodinyUpravovanehoZaznamu\(id: string, datum: string/)
+  assert.doesNotMatch(page,/patch\.sadzba_snapshot/)
+  assert.doesNotMatch(page,/patch\.meno/)
+})
+
+test('admin mutation endpoint still requires session and exact row scope', () => {
+  assert.match(authRoute,/verifyAdminSession/)
+  assert.match(authRoute,/validAdminMutationScope/)
+  assert.match(authRoute,/request.headers.get\('origin'\)/)
+})
