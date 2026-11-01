@@ -74,6 +74,9 @@ test('historical payroll warning is period-scoped and appears in print output', 
   const printed = page.locator('.pdf-vyplata')
   await expect(printed).toBeVisible()
   await expect(printed).toContainText('Upozornenie k historickej mzde:')
-  await expect(printed).toContainText('115.00 €')
-  await expect(printed).not.toContainText('138.00 €')
+  // The PDF warning now deliberately explains BOTH the stored and old profile
+  // calculation. Its PAYROLL TABLE must still contain only stored-rate totals.
+  await expect(printed).toContainText('pôvodný výpočet 138.00 €')
+  await expect(printed.locator('tbody')).toContainText('115.00 €')
+  await expect(printed.locator('tbody')).not.toContainText('138.00 €')
 })
