@@ -89,24 +89,39 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal(noRefresh.headers.get('set-cookie'),null)
       assert.equal((await session.GET(req('GET','',undefined,{cookie:''}))).status,401)
     })
-    await t.test('anonymous and forged recorder sessions cannot read or write', async () => {
-      const before = calls.length
-      for(const table of ['zamestnanci','zoznam_zakaziek','dochadzka','objekty_stavby','nepritomnosti']) {
-        assert.equal((await route.GET(req('GET','',undefined,{cookie:''}),ctx(table))).status,401)
-      }
-      assert.equal((await route.GET(req('GET','?select=meno',undefined,{cookie:`${tokenLib.RECORDER_COOKIE}=forged`}),ctx('zamestnanci'))).status,401)
-      assert.equal((await route.POST(req('POST','',[entry],{cookie:''}),ctx('dochadzka'))).status,401)
-      assert.equal((await route.POST(req('POST','',[entry],{cookie:`${tokenLib.RECORDER_COOKIE}=forged`}),ctx('dochadzka'))).status,401)
-      assert.equal(calls.length,before)
+    await t.test('existing normal URL continues without recorder sign-in, but only safe operations', async () => {
+      const noCookie = { cookie: '' }
+      // Old bookmarks must work: anonymous recorder can load the public roster.
+      assert.equal((await route.GET(
+        req('GET','?select=meno,aktivny',undefined,noCookie),ctx('zamestnanci')
+      )).status,200)
+      assert.equal((await route.GET(
+        req('GET','?select=meno,datum&datum=gte.2026-09-14&datum=lte.2026-09-19',undefined,noCookie),
+        ctx('dochadzka')
+      )).status,200)
+      assert.equal((await route.GET(
+        req('GET','?select=sadzba',undefined,noCookie),ctx('zamestnanci')
+      )).status,400)
+      assert.equal((await route.POST(
+        req('POST','',[entry],{cookie:'',origin:'https://evil.example'}),ctx('dochadzka')
+      )).status,403)
+      assert.equal((await route.POST(
+        req('POST','',[entry],noCookie),ctx('zamestnanci')
+      )).status,403)
+      assert.equal((await route.POST(
+        req('POST','',[{...entry,sadzba:1000}],noCookie),ctx('dochadzka')
+      )).status,400)
+      assert.equal(route.PATCH,undefined)
+      assert.equal(route.DELETE,undefined)
     })
-    await t.test('authorized recorder is still restricted to safe fields, dates and tables', async () => {
+    await t.test('public recorder is still restricted to safe fields, dates and tables', async () => {
       assert.equal((await route.GET(req('GET','?select=meno,aktivny'),ctx('zamestnanci'))).status,200)
       const before = calls.length
       for(const table of ['secrets','__proto__','toString','rpc/function']) assert.equal((await route.GET(req('GET',''),ctx(table))).status,400)
       for(const query of ['?select=sadzba','?select=*,zamestnanci(*)','?select=meno&or=(true)','?select=meno','?datum=gte.2020-01-01&datum=lte.2026-01-01']) assert.equal((await route.GET(req('GET',query),ctx('dochadzka'))).status,400)
       assert.equal(calls.length,before)
     })
-    await t.test('valid admin session may use the recorder API', async () => {
+    await t.test('admin session may also use the limited recorder API', async () => {
       const adminCookie = `${admin.ADMIN_COOKIE}=${(await admin.createAdminSession()).value}`
       assert.equal((await route.GET(req('GET','?select=meno',undefined,{cookie:adminCookie}),ctx('zamestnanci'))).status,200)
     })
@@ -173,6 +188,7 @@ test('recorder privileges, validation and server routes', async t => {
       assert.equal((await route.POST(req('POST','',[entry]),ctx('zamestnanci'))).status,403)
       global.fetch = async (url,init) => { calls.push({url:String(url),init}); return new Response(null,{status:204}) }
       assert.equal((await route.POST(req('POST','',[entry]),ctx('dochadzka'))).status,201)
+      assert.equal((await route.POST(req('POST','',[entry],{cookie:''}),ctx('dochadzka'))).status,201)
       assert.match(calls.at(-1).url,/\/rest\/v1\/rpc\/record_attendance_secure$/)
       assert.deepEqual(JSON.parse(calls.at(-1).init.body),{entries:[entry]})
       global.fetch = async () => Response.json({code:'23505',message:'overlap'},{status:409})
