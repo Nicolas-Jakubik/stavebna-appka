@@ -7,6 +7,7 @@ import AdminSidebar from '../../components/AdminSidebar'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { datumNaSlovensku, mesiacNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../../lib/businessDate'
 import { lenAktivniPracovnici } from '../../lib/activeWorkers'
+import { jeNeobvyklaDochadzka } from '../../lib/attendanceWarnings'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -207,14 +208,6 @@ export default function DashboardPage() {
       nazov: `${nazov} ${rok}`
     }))
   )
-
-  function jePodozrivyCas(prichod: string, odchod: string, hodiny: number) {
-    if (!prichod || !odchod) return true
-    if (prichod < '05:00') return true     
-    if (odchod > '21:00') return true      
-    if (hodiny > 14 || hodiny <= 0) return true 
-    return false
-  }
 
   function formatujDatumSK(datum: string) {
     if (!datum) return ''
@@ -914,7 +907,7 @@ export default function DashboardPage() {
     return true
   })
 
-  const jePodozrivyZaznam = (z: any) => jePodozrivyCas(z.prichod, z.odchod, vypocitajHodiny(z.prichod, z.odchod))
+  const jePodozrivyZaznam = (z: any) => jeNeobvyklaDochadzka({datum: z.datum, prichod: z.prichod, odchod: z.odchod, hodiny: vypocitajHodiny(z.prichod, z.odchod)})
 
   const dnesneZaznamy = kontrolneZaznamy.filter(z => z.datum === dnesText)
   const pocetPracovnikovDnes = new Set(dnesneZaznamy.map(z => z.meno).filter(Boolean)).size
@@ -1283,7 +1276,7 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <div style={{ minWidth: '145px', marginRight: 'auto' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#1d1d1f' }}>Vyžaduje kontrolu</div>
-              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kliknutím zobrazíš problémové zápisy.</div>
+              <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>Kliknutím zobrazíš duplicitné, prekrývajúce sa alebo neobvyklé zápisy. Čas mimo bežného rozvrhu môže byť oprávnený nadčas.</div>
             </div>
 
             <div style={{
@@ -2175,7 +2168,7 @@ export default function DashboardPage() {
                     const hodinyRiadku = upravovaneId === z.id ? parseFloat(upravovaneHodiny) || 0 : hodinyZaznamu(z)
                     const denVTyzdni = denVTyzdniNaSlovensku(z.datum)
                     const jeVikend = denVTyzdni === 0 || denVTyzdni === 6
-                    const jePodozrivy = upravovaneId !== z.id && jePodozrivyCas(z.prichod, z.odchod, hodinyRiadku)
+                    const jePodozrivy = upravovaneId !== z.id && jeNeobvyklaDochadzka({datum: z.datum, prichod: z.prichod, odchod: z.odchod, hodiny: hodinyRiadku})
                     const jeDuplicite = jePresnyDuplikat(z, z.id)
                     const jePrekryv = maPrekryvajuciSaCas(z, z.id)
                     const maViacUsekov = maViacPracovnychUsekovVDen(z, z.id)
