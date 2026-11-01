@@ -821,3 +821,121 @@ table {
  .sd-project-detail-modern{padding-bottom:calc(99px + env(safe-area-inset-bottom)) !important}
  .sd-project-detail-modern .sd-project-detail-hero{padding:22px 19px;border-radius:19px}
 }
+
+
+/* Finance dashboard visual refresh. All rules apply to screens only:
+   financial calculations, API calls, data filters and PDF output are unchanged. */
+@media screen {
+ .sd-finances-modern{background:#f4f7fb !important;gap:20px !important;color:#17243b}
+ .sd-finances-modern .sd-admin-page-hero{margin-bottom:24px}
+ .sd-finances-modern .sd-finance-stat-grid{gap:14px !important;margin-bottom:19px !important;scroll-margin-top:25px}
+ .sd-finances-modern .sd-finance-stat-grid > div{
+   min-width:0;min-height:148px;padding:23px 21px !important;
+   border:1px solid rgba(26,63,110,.10) !important;
+   border-radius:20px !important;
+   background:linear-gradient(135deg,#fff,#f8fbff) !important;
+   box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div:nth-child(3){
+   background:linear-gradient(130deg,#fff,#f2fbf8) !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div:nth-child(4){
+   background:linear-gradient(130deg,#fff,#f3f8ff) !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:first-child{
+   font-size:11px !important;letter-spacing:.02em !important;font-weight:740 !important;
+   color:#687a90 !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:nth-child(2){
+   font-size:clamp(22px,2.4vw,29px) !important;letter-spacing:-.045em !important;
+   margin-top:16px !important;line-height:1.15
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:last-child{
+   font-size:11px !important;line-height:1.5;margin-top:13px !important;
+   color:#7d8a9c !important
+ }
+ .sd-finances-modern :is(.sd-finance-attention-panel,.sd-finance-project-section){
+   border-radius:21px !important;
+   border:1px solid rgba(26,63,110,.10) !important;
+   background:#fff;
+   box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+   scroll-margin-top:25px;
+ }
+ .sd-finances-modern .sd-finance-attention-panel{padding:22px 24px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid{
+   gap:12px !important;margin-top:18px !important;
+ }
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid > div{
+   padding:17px 16px !important;border-radius:14px !important;min-height:82px
+ }
+ .sd-finances-modern .sd-finance-project-section{padding:24px !important}
+ .sd-finances-modern .sd-finance-project-section > div:first-child{
+   margin-bottom:22px !important
+ }
+ .sd-finances-modern .sd-finance-project-section > div:first-child > div:first-child > div:first-child{
+   font-size:17px !important;letter-spacing:-.025em
+ }
+ .sd-finances-modern .sd-finance-status-filters{gap:7px !important}
+ .sd-finances-modern .sd-finance-status-filters button{
+   min-height:44px !important;border-radius:12px !important;
+   padding:10px 16px !important;font-size:12px !important;
+ }
+ .sd-finances-modern .sd-finance-project-search{margin-bottom:20px !important}
+ .sd-finances-modern .sd-finance-project-search input{
+   min-height:44px !important;
+   padding:11px 14px !important;
+   border-radius:12px !important;
+   background:#f9fbff !important;
+   border:1px solid #dce5f1 !important;
+   font-size:13px !important;
+ }
+ .sd-finances-modern .sd-finance-project-grid{gap:16px !important}
+ .sd-finances-modern .sd-finance-project-card{
+   padding:22px !important;
+   border-radius:19px !important;
+   border:1px solid #e4edf8 !important;
+   background:linear-gradient(135deg,#fff,#fcfdff) !important;
+   transition:border-color .18s ease,box-shadow .18s ease;
+ }
+ .sd-finances-modern .sd-finance-project-card:hover{
+   border-color:#c1dcff !important;
+   box-shadow:0 9px 23px rgba(24,72,135,.065);
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics{
+   gap:12px !important;margin-top:20px !important;
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics > div > div:first-child{
+   font-size:10px !important;color:#718196 !important
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics > div > div:nth-child(2){
+   font-size:14px !important;margin-top:7px !important;letter-spacing:-.025em
+ }
+ .sd-finances-modern .finances-detail-link,
+ .sd-finances-modern .sd-finance-project-card a[href^="/zakazky/"]{
+   min-height:44px !important;border-radius:12px !important;padding:10px 15px !important;
+   font-size:11px !important
+ }
+ .sd-finances-modern :is(input,button,select,a):focus-visible{
+   outline:3px solid #005fcc;outline-offset:3px
+ }
+}
+@media screen and (max-width:1024px){
+ .sd-finances-modern{padding-bottom:calc(100px + env(safe-area-inset-bottom)) !important}
+ .sd-finances-modern .sd-finance-project-section{padding:20px !important}
+ .sd-finances-modern .sd-finance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media screen and (max-width:640px){
+ .sd-finances-modern .sd-finance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}
+ .sd-finances-modern .sd-finance-stat-grid > div{padding:18px 14px !important;min-height:150px}
+ .sd-finances-modern .sd-finance-stat-grid > div > div:nth-child(2){font-size:clamp(20px,5vw,25px) !important}
+ .sd-finances-modern .sd-finance-attention-panel{padding:19px 16px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid{gap:8px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid > div{padding:14px 12px !important}
+ .sd-finances-modern .sd-finance-project-section{padding:19px 15px !important}
+ .sd-finances-modern .sd-finance-project-card{padding:18px 15px !important}
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+ .sd-finances-modern .sd-finance-status-filters button{flex:1 1 90px}
+}
+@media (prefers-reduced-motion:reduce){
+ .sd-finances-modern .sd-finance-project-card{transition:none !important}
+}
