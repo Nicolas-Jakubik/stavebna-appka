@@ -75,6 +75,18 @@ test('recorder privileges, validation and server routes', async t => {
       const issuedToken = issuedCookie.match(/stavby_recorder_session=([^;]+)/)?.[1]
       assert.equal(tokenLib.verifyRecorderToken(issuedToken), true)
       assert.equal((await session.GET(req('GET'))).status,200)
+      // The ordinary bookmarked URL renews an active device when the cookie
+      // approaches expiry; a new activation link is not needed every month.
+      const oldSession = tokenLib.createRecorderToken(Math.floor(Date.now()/1000) - 61 * 86400)
+      const refresh = await session.GET(req('GET','',undefined,{
+        cookie: `${tokenLib.RECORDER_COOKIE}=${oldSession}`,
+      }))
+      assert.equal(refresh.status,200)
+      assert.match(refresh.headers.get('set-cookie') || '', /HttpOnly/i)
+      const refreshedToken = refresh.headers.get('set-cookie').match(/stavby_recorder_session=([^;]+)/)?.[1]
+      assert.equal(tokenLib.verifyRecorderToken(refreshedToken),true)
+      const noRefresh = await session.GET(req('GET'))
+      assert.equal(noRefresh.headers.get('set-cookie'),null)
       assert.equal((await session.GET(req('GET','',undefined,{cookie:''}))).status,401)
     })
     await t.test('anonymous and forged recorder sessions cannot read or write', async () => {
