@@ -4,14 +4,16 @@ const { test, expect } = require('@playwright/test')
 
 const syntheticPassword = 'ONLY-FAKE-LOCAL-E2E-PASSWORD-2026'
 
-test('unauthenticated admin and recorder database access fail closed', async ({ page, request }) => {
+test('admin is authenticated; ordinary public recorder is limited to safe fields', async ({ page, request }) => {
   const admin = await request.get('/api/admin/database/zamestnanci')
   expect(admin.status()).toBe(401)
   expect(admin.headers()['cache-control']).toContain('no-store')
 
-  const recorder = await request.get('/api/recorder/database/dochadzka')
-  expect(recorder.status()).toBe(401)
-  expect(recorder.headers()['cache-control']).toContain('no-store')
+  // The recorder is intentionally available without account activation.
+  // Salary fields remain denied even when the caller is anonymous.
+  const invalidRecorderRead = await request.get('/api/recorder/database/zamestnanci?select=sadzba')
+  expect(invalidRecorderRead.status()).toBe(400)
+  expect(invalidRecorderRead.headers()['cache-control']).toContain('no-store')
 
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/admin-prihlasenie/)
@@ -55,52 +57,33 @@ test('login screen fits mobile width without a horizontal scrollbar', async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)).toBe(true)
 })
 
-test('recorder-only private link opens mobile attendance without admin privileges', async ({ page, context, request }) => {
-  // All credentials and URLs are local to this HTTPS CI server. No real Supabase access.
+test('original ordinary URL still opens recorder with no link, cookie or password', async ({ page, context, request }) => {
   const base = 'https://localhost:3443'
-  const login = await request.post('/api/admin/login', {
+  await page.goto('/')
+  await expect(page).toHaveURL(base + '/')
+  await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
+
+  // Reloading the exact same URL must not ask for device activation.
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
+  expect((await context.cookies()).some(c =>
+    c.name === 'stavby_recorder_session' || c.name === 'stavby_admin_session'
+  )).toBe(false)
+
+  // No production DB secrets exist in this isolated CI browser.
+  // The API remains public but gives a controlled 503, not sensitive data.
+  const publicRoster = await request.get('/api/recorder/database/zamestnanci?select=meno,aktivny')
+  expect(publicRoster.status()).toBe(503)
+  const admin = await request.get('/api/admin/database/zamestnanci')
+  expect(admin.status()).toBe(401)
+
+  const forbidden = await request.post('/api/recorder/database/zamestnanci', {
     headers: { origin: base },
-    data: { password: syntheticPassword },
+    data: [{ meno: 'Synthetic only', aktivny: true }],
   })
-  expect(login.status()).toBe(200)
-
-  // The admin-only endpoint issues a short-lived activation link. The device gets a separate rolling session.
-  const issued = await request.post('/api/admin/recorder-link', { headers: { origin: base } })
-  expect(issued.status()).toBe(200)
-  const { link, validDays } = await issued.json()
-  expect(validDays).toBe(2)
-  expect(link.startsWith(base + '/#zapis=recorder-link-v1.')).toBe(true)
-
-  // Browser's existing device context remains unauthenticated; the API request fixture owns the admin cookie.
-    await page.goto(link)
-    await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
-    await expect(page).toHaveURL(base + '/') // fragment was discarded after exchange
-
-    // After activation the recorder continues on the same regular address
-    // (including a fresh navigation), without opening the private link again.
-    await page.goto(base + '/')
-    await expect(page.getByRole('button', { name: 'Skontrolovať záznam' })).toBeVisible()
-
-    const cookies = await context.cookies()
-    const recorder = cookies.find(cookie => cookie.name === 'stavby_recorder_session')
-    expect(recorder).toBeTruthy()
-    expect(recorder.httpOnly).toBe(true)
-    expect(recorder.sameSite).toBe('Strict')
-    expect(cookies.some(cookie => cookie.name === 'stavby_admin_session')).toBe(false)
-
-    const session = await context.request.get('/api/recorder/session')
-    expect(session.status()).toBe(200)
-    expect((await session.json()).authorized).toBe(true)
-
-    const admin = await context.request.get('/api/admin/database/zamestnanci')
-    expect(admin.status()).toBe(401)
-
-    // Recorder must never be allowed to mutate workers instead of attendance.
-    const forbidden = await context.request.post('/api/recorder/database/zamestnanci', {
-      headers: { origin: base },
-      data: [{ meno: 'Synthetic only', aktivny: true }],
-    })
-    expect(forbidden.status()).toBe(403)
+  expect(forbidden.status()).toBe(403)
+  const salaries = await request.get('/api/recorder/database/zamestnanci?select=meno,sadzba')
+  expect(salaries.status()).toBe(400)
 })
 
 
