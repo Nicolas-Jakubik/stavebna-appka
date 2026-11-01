@@ -188,6 +188,21 @@ export default function MzdyPage() {
   const vyzadujeKontroluSadzby = auditSadzieb.odlisneSadzby > 0 ||
     auditSadzieb.bezHistorickejSadzby > 0 || auditSadzieb.bezPorovnatelnehoProfilu > 0
 
+  // Read-only comparison against the legacy payroll calculation. Show both
+  // amounts rather than silently changing a previously closed period. This
+  // does not imply that either amount was actually paid or contractually due.
+  const porovnanieSadzby = zaznamy.reduce((sum, z) => {
+    const hodiny = hodinyZaznamu(z)
+    const aktualna = aktualneSadzby.get(z.meno)
+    const platnaAktualna = typeof aktualna === 'number' && Number.isFinite(aktualna) && aktualna >= 0
+    sum.podlaUlozenej += hodiny * sadzbaZaznamu(z)
+    if (platnaAktualna) sum.podlaAktualnej += hodiny * aktualna
+    else sum.nieJePorovnatelne++
+    return sum
+  }, { podlaUlozenej: 0, podlaAktualnej: 0, nieJePorovnatelne: 0 })
+  const moznePresnePorovnanie = porovnanieSadzby.nieJePorovnatelne === 0
+  const rozdielOprotiPovodnemu = porovnanieSadzby.podlaAktualnej - porovnanieSadzby.podlaUlozenej
+
   const zamestnanciHodiny: Record<string, number> = {}
   const zamestnanciMzdy: Record<string, number> = {}
   const sadzbyPracovnikov: Record<string, Set<number>> = {}
@@ -553,6 +568,13 @@ export default function MzdyPage() {
             {auditSadzieb.odlisneSadzby > 0 && (
               <div>Počet záznamov s hodinovou sadzbou odlišnou od dnešného profilu: {auditSadzieb.odlisneSadzby}.</div>
             )}
+            {moznePresnePorovnanie && (
+              <div>
+                Výpočet podľa sadzieb uložených pri zápise: <strong>{porovnanieSadzby.podlaUlozenej.toFixed(2)} €</strong>.
+                Pôvodný spôsob výpočtu podľa aktuálnych sadzieb: <strong>{porovnanieSadzby.podlaAktualnej.toFixed(2)} €</strong>.
+                Rozdiel (pôvodný mínus nový): <strong>{rozdielOprotiPovodnemu.toFixed(2)} €</strong>.
+              </div>
+            )}
             {auditSadzieb.bezHistorickejSadzby > 0 && (
               <div>Počet záznamov bez platnej uloženej sadzby: {auditSadzieb.bezHistorickejSadzby}. Výpočet môže používať aktuálnu sadzbu.</div>
             )}
@@ -577,6 +599,11 @@ export default function MzdyPage() {
               <strong>Upozornenie k historickej mzde:</strong> V tomto období sa niektoré uložené
               hodinové sadzby líšia od aktuálnych, chýbajú alebo ich nemožno porovnať.
               Pred použitím tohto PDF overte dohodnuté sadzby a už vyplatené sumy.
+              {moznePresnePorovnanie && (
+                <> Porovnanie za toto obdobie: uložené sadzby {porovnanieSadzby.podlaUlozenej.toFixed(2)} €;
+                pôvodný výpočet {porovnanieSadzby.podlaAktualnej.toFixed(2)} €;
+                rozdiel {rozdielOprotiPovodnemu.toFixed(2)} €.</>
+              )}
               Toto PDF nie je potvrdením úhrady.
             </div>
           )}
