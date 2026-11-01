@@ -84,6 +84,12 @@ export default function DesignPreviewPage() {
           <Link href="/design-preview/vyplaty" style={{display:"inline-flex",alignItems:"center",minHeight:44,padding:"10px 17px",borderRadius:12,color:"#1c5b9e",background:"#e9f3ff",fontWeight:750,fontSize:12}}>
             Pozrieť nové výplaty
           </Link>
+          <Link href="/design-preview/stavby" style={{display:"inline-flex",alignItems:"center",minHeight:44,padding:"10px 17px",borderRadius:12,color:"#1c5b9e",background:"#e9f3ff",fontWeight:750,fontSize:12}}>
+            Pozrieť nové stavby
+          </Link>
+          <Link href="/design-preview/pracovnici" style={{display:"inline-flex",alignItems:"center",minHeight:44,padding:"10px 17px",borderRadius:12,color:"#1c5b9e",background:"#e9f3ff",fontWeight:750,fontSize:12}}>
+            Pozrieť nových pracovníkov
+          </Link>
         </nav>
         <div className="sdp-page-top">
           <div><span className="sdp-eyebrow">FIREMNÝ PREHĽAD</span><h1>Prehľad</h1><p>Všetko dôležité o práci vašej firmy na jednom mieste.</p></div>
