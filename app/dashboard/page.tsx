@@ -555,8 +555,8 @@ export default function DashboardPage() {
 
     const zmenilSaDatum = povodny.datum !== upravovanyDatum
     const zmenilaSaStavba = povodny.zakazka !== nazovStavby
-    const zmenilSaCas = povodny.prichod.slice(0,5) !== upravovanePrichod.slice(0,5) ||
-      povodny.odchod.slice(0,5) !== upravovaneOdchod.slice(0,5)
+    const zmenilSaCas = String(povodny.prichod || '').slice(0,5) !== upravovanePrichod.slice(0,5) ||
+      String(povodny.odchod || '').slice(0,5) !== upravovaneOdchod.slice(0,5)
     if (!zmenilSaDatum && !zmenilaSaStavba && !zmenilSaCas) {
       zrusitUpravu()
       return
@@ -2239,7 +2239,19 @@ export default function DashboardPage() {
                         onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                       >
                         <td className="attendance-cell" data-label="Dátum" style={{ padding: '11px 14px', color: '#1d1d1f', fontWeight: '500' }}>
-                          {formatujDatumSK(z.datum)}
+                          {upravovaneId === z.id ? (
+                            <input
+                              type="date"
+                              aria-label="Opraviť dátum dochádzky"
+                              value={upravovanyDatum}
+                              onChange={e => {
+                                setUpravovanyDatum(e.target.value)
+                                setChybaUpravaHodiny('')
+                                setUpravovaneHodiny(vypocitajHodinyUpravovanehoZaznamu(z.id, e.target.value, upravovanePrichod, upravovaneOdchod).toFixed(2))
+                              }}
+                              style={{...inputStyle, minWidth:'138px',fontSize:'11px',padding:'4px 6px'}}
+                            />
+                          ) : formatujDatumSK(z.datum)}
                           {jeVikend && <span style={{ fontSize: '8px', backgroundColor: '#ffedd5', color: '#9a3412', padding: '2px 5px', marginLeft: '6px', letterSpacing: '0.3px', textTransform: 'uppercase', borderRadius: '8px', fontWeight: '700' }}>Víkend</span>}
                         </td>
                         <td className="attendance-cell" data-label="Osoba" style={{ padding: '11px 14px', fontWeight: '600', color: '#1d1d1f' }}>
@@ -2248,7 +2260,20 @@ export default function DashboardPage() {
                           {jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>PREKRYV</span>}
                           {maViacUsekov && !jeDuplicite && !jePrekryv && <span style={{ fontSize: '8px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 4px', marginLeft: '4px', borderRadius: '8px', fontWeight: '700' }}>VIAC</span>}
                         </td>
-                        <td className="attendance-cell" data-label="Stavba" style={{ padding: '11px 14px', color: '#6e6e73', fontSize: '11px', fontWeight: '500' }}>{z.zakazka}</td>
+                        <td className="attendance-cell" data-label="Stavba" style={{ padding: '11px 14px', color: '#6e6e73', fontSize: '11px', fontWeight: '500' }}>
+                          {upravovaneId === z.id ? (
+                            <select
+                              aria-label="Opraviť stavbu dochádzky"
+                              value={upravovanaZakazka}
+                              onChange={e => { setUpravovanaZakazka(e.target.value); setChybaUpravaHodiny('') }}
+                              style={{...inputStyle,minWidth:'135px',fontSize:'11px',padding:'4px 6px'}}
+                            >
+                              {[...new Set([z.zakazka,...dostupneZakazky])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'sk')).map(stavba =>
+                                <option key={stavba} value={stavba}>{stavba}</option>
+                              )}
+                            </select>
+                          ) : z.zakazka}
+                        </td>
                         
                         <td className="attendance-cell" data-label="Príchod" style={{ padding: '11px 14px', color: maCiasChybu ? '#ff3b30' : '#1d1d1f', fontWeight: maCiasChybu ? '600' : '500' }}>
                           {upravovaneId === z.id ? (
@@ -2325,7 +2350,7 @@ export default function DashboardPage() {
                           ) : (
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                               <button 
-                                onClick={() => zacatUpravu(z.id, z.prichod, z.odchod)}
+                                onClick={() => zacatUpravu(z.id, z.datum, z.zakazka, z.prichod, z.odchod)}
                                 style={{ color: '#0071e3', backgroundColor: '#e8f3ff', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '650', padding: '5px 8px', borderRadius: '8px', transition: 'all 0.2s' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = '#0077ed'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = '#0071e3'}
