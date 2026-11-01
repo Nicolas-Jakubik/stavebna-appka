@@ -6,11 +6,11 @@ import "./screens.css";
 
 export const metadata: Metadata = {
   title: "Ukážka obrazoviek – SD Evidencia",
-  description: "Bezpečná statická ukážka dochádzky a výplat s fiktívnymi údajmi.",
+  description: "Bezpečná statická ukážka dochádzky, výplat, stavieb a pracovníkov s fiktívnymi údajmi.",
   robots: { index: false, follow: false },
 };
 
-type Screen = "dochadzka" | "vyplaty";
+type Screen = "dochadzka" | "vyplaty" | "stavby" | "pracovnici";
 
 const records = [
   {name:"Ukážkový pracovník A", initials:"UA", date:"30.10.2026", site:"Stavba Alfa", arrival:"07:00", departure:"18:00", hours:"10,50 h", kind:"", highlight:""},
@@ -42,6 +42,8 @@ function Shell({screen,children}: {screen:Screen;children:React.ReactNode}) {
     {href:"/design-preview",label:"Prehľad",icon:"home" as const, current:false},
     {href:"/design-preview/dochadzka",label:"Dochádzka",icon:"clock" as const, current:screen==="dochadzka"},
     {href:"/design-preview/vyplaty",label:"Výplaty",icon:"wallet" as const, current:screen==="vyplaty"},
+    {href:"/design-preview/stavby",label:"Stavby",icon:"building" as const, current:screen==="stavby"},
+    {href:"/design-preview/pracovnici",label:"Pracovníci",icon:"users" as const, current:screen==="pracovnici"},
   ];
   return <div className="sdp-root sdx-root">
     <aside className="sdp-sidebar">
@@ -61,13 +63,14 @@ function Shell({screen,children}: {screen:Screen;children:React.ReactNode}) {
     <main className="sdp-main">
       <div className="sdp-banner"><span className="sdp-dot"/> VIZUÁLNA UKÁŽKA – nepoužíva heslo ani databázu. Zobrazené údaje a sumy sú fiktívne.</div>
       {children}
-      <footer className="sdp-footer">SD Evidencia · Návrh dizajnu · Žiadne skutočné zápisy ani výplaty</footer>
+      <footer className="sdp-footer">SD Evidencia · Návrh dizajnu · Žiadne skutočné záznamy ani zmeny v databáze</footer>
     </main>
     <nav className="sdp-tabbar" aria-label="Mobilná ukážková navigácia">
       <Link href="/design-preview"><SvgIcon name="home"/><span>Prehľad</span></Link>
       <Link href="/design-preview/dochadzka" aria-current={screen==="dochadzka"?"page":undefined}><SvgIcon name="clock"/><span>Dochádzka</span></Link>
       <Link href="/design-preview/vyplaty" aria-current={screen==="vyplaty"?"page":undefined}><SvgIcon name="wallet"/><span>Výplaty</span></Link>
-      <Link href="/design-preview"><SvgIcon name="building"/><span>Stavby</span></Link>
+      <Link href="/design-preview/stavby" aria-current={screen==="stavby"?"page":undefined}><SvgIcon name="building"/><span>Stavby</span></Link>
+      <Link href="/design-preview/pracovnici" aria-current={screen==="pracovnici"?"page":undefined}><SvgIcon name="users"/><span>Tím</span></Link>
     </nav>
   </div>;
 }
@@ -138,10 +141,123 @@ function PayrollScreen() {
   </Shell>;
 }
 
+
+const sampleProjects = [
+  { name: "Stavba Alfa – rodinný dom", code: "2026-001", state: "Aktívna", hours: "426,5 h", records: 39, last: "30.10.2026", style:"" },
+  { name: "Stavba Beta – rekonštrukcia", code: "2026-002", state: "Aktívna", hours: "318,0 h", records: 28, last: "29.10.2026", style:"" },
+  { name: "Stavba Gama – fasáda", code: "2026-003", state: "Aktívna", hours: "212,0 h", records: 17, last: "28.10.2026", style:"" },
+  { name: "Stavba Delta – interiér", code: "2026-004", state: "Dokončená", hours: "145,0 h", records: 13, last: "15.10.2026", style:"complete" },
+];
+
+const sampleWorkers = [
+  { name:"Pracovník A", initials:"PA", rate:"10,00 €", hours:"160,5 h", last:"30.10.2026", absences:"0", status:"Aktívny" },
+  { name:"Pracovník B", initials:"PB", rate:"11,00 €", hours:"152,0 h", last:"30.10.2026", absences:"1", status:"Aktívny" },
+  { name:"Pracovník C", initials:"PC", rate:"10,50 €", hours:"148,0 h", last:"29.10.2026", absences:"0", status:"Aktívny" },
+  { name:"Pracovník D", initials:"PD", rate:"12,00 €", hours:"141,5 h", last:"28.10.2026", absences:"2", status:"Aktívny" },
+];
+
+function ProjectsScreen() {
+  return <Shell screen="stavby">
+    <ScreenHeader eyebrow="SD EVIDENCIA / STAVBY" title="Stavby" description="Správa zákaziek, hodín a stavu realizácie v jednom prehľade."/>
+    <section className="sdx-stat-grid" aria-label="Fiktívne súhrny stavieb">
+      <Stat label="Aktívne stavby" value="3" detail="rozpracované zákazky"/>
+      <Stat label="Dokončené stavby" value="1" detail="uzavretá zákazka" tone="green"/>
+      <Stat label="Spolu evidovaných" value="4" detail="všetky projekty"/>
+      <Stat label="Hodiny na stavbách" value="1 101,5 h" detail="ukážka súčtu" tone="blue"/>
+    </section>
+    <section className="sdx-section sdx-action-panel" id="sdx-project-add">
+      <div>
+        <span className="sdx-mini-label">RÝCHLE AKCIE</span>
+        <h2>Nová stavba</h2>
+        <p>V administrácii tu môžeš pridať stavbu bez ďalších krokov.</p>
+      </div>
+      <span className="sdx-blue-button" aria-label="Ukážka tlačidla pridať stavbu">+ Pridať stavbu</span>
+    </section>
+    <section className="sdx-section" aria-labelledby="sdx-projects-list-title">
+      <div className="sdx-section-title">
+        <div><h2 id="sdx-projects-list-title">Prehľad stavieb</h2><p>Všetky zákazky a ich odpracované hodiny.</p></div>
+        <span className="sdx-count">4 stavby</span>
+      </div>
+      <div className="sdx-filter-grid sdx-project-filter-grid">
+        <div><label>Vyhľadať stavbu</label><FakeControl>Všetky názvy</FakeControl></div>
+        <div><label>Stav</label><FakeControl>Aktívne a dokončené</FakeControl></div>
+        <div><label>Zoradenie</label><FakeControl>Posledná aktivita</FakeControl></div>
+      </div>
+      <div className="sdx-table-scroll sdx-table-after-filters">
+        <table className="sdx-table">
+          <thead><tr><th>Stavba</th><th>Stav</th><th>Zápisy</th><th>Odpracované</th><th>Posledná práca</th></tr></thead>
+          <tbody>
+            {sampleProjects.map((p,i)=><tr key={p.code} className={p.style}>
+              <td data-label="Stavba"><div className="sdx-name">{p.name}</div><small className="sdx-code">{p.code}</small></td>
+              <td data-label="Stav"><span className={"sdx-chip "+(p.state==="Dokončená"?"neutral":"")}>{p.state}</span></td>
+              <td data-label="Zápisy">{p.records}</td>
+              <td data-label="Odpracované"><strong>{p.hours}</strong></td>
+              <td data-label="Posledná práca">{p.last}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <p className="sdx-disclaimer">V reálnej aplikácii zostane dostupný detail každej stavby, financie a dokumenty.</p>
+    </section>
+    <div className="sdx-next"><Link href="/design-preview/pracovnici">Pozrieť návrh pracovníkov <span aria-hidden="true">→</span></Link></div>
+  </Shell>;
+}
+
+function WorkersScreen() {
+  return <Shell screen="pracovnici">
+    <ScreenHeader eyebrow="SD EVIDENCIA / TÍM" title="Pracovníci" description="Zoznam pracovníkov, hodinové sadzby, dochádzka a neprítomnosti."/>
+    <section className="sdx-stat-grid" aria-label="Fiktívne súhrny pracovníkov">
+      <Stat label="Pracovníci" value="4" detail="v zozname tímu"/>
+      <Stat label="Priemerná sadzba" value="10,88 €" detail="za hodinu"/>
+      <Stat label="Odpracované spolu" value="602,0 h" detail="za zvolené obdobie" tone="green"/>
+      <Stat label="Neprítomnosti" value="3" detail="evidované prípady" tone="orange"/>
+    </section>
+    <section className="sdx-section sdx-action-panel">
+      <div>
+        <span className="sdx-mini-label">SPRÁVA TÍMU</span>
+        <h2>Pridať pracovníka</h2>
+        <p>V administrácii zadáš meno a hodinovú sadzbu.</p>
+      </div>
+      <span className="sdx-blue-button" aria-label="Ukážka tlačidla pridať pracovníka">+ Pridať pracovníka</span>
+    </section>
+    <section className="sdx-section">
+      <div className="sdx-section-title">
+        <div><h2>Prehľad pracovníkov</h2><p>Hodiny, sadzby a posledné zápisy na jednom mieste.</p></div>
+        <span className="sdx-count">4 pracovníci</span>
+      </div>
+      <div className="sdx-filter-grid sdx-worker-filter-grid">
+        <div><label>Vyhľadať pracovníka</label><FakeControl>Všetci pracovníci</FakeControl></div>
+        <div><label>Zoradenie</label><FakeControl>Meno A–Z</FakeControl></div>
+      </div>
+      <div className="sdx-table-scroll sdx-table-after-filters">
+        <table className="sdx-table">
+          <thead><tr><th>Pracovník</th><th>Sadzba</th><th>Hodiny</th><th>Posledná práca</th><th>Neprítomnosti</th><th>Stav</th></tr></thead>
+          <tbody>
+            {sampleWorkers.map(p=><tr key={p.initials}>
+              <td data-label="Pracovník">
+                <span className="sdx-person-cell"><span className="sdp-avatar">{p.initials}</span><strong>{p.name}</strong></span>
+              </td>
+              <td data-label="Sadzba">{p.rate}/h</td>
+              <td data-label="Hodiny"><strong>{p.hours}</strong></td>
+              <td data-label="Posledná práca">{p.last}</td>
+              <td data-label="Neprítomnosti">{p.absences}</td>
+              <td data-label="Stav"><span className="sdx-chip">{p.status}</span></td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <p className="sdx-disclaimer">V administrácii zostanú úpravy sadzieb a pracovníkov aj ich prepojenie na dochádzku a výplaty.</p>
+    </section>
+    <div className="sdx-next"><Link href="/design-preview/stavby">Pozrieť návrh stavieb <span aria-hidden="true">→</span></Link></div>
+  </Shell>;
+}
+
 export default async function PreviewScreen({params}:{params:Promise<{section:string}>}) {
   if(process.env.VERCEL_ENV === "production") notFound();
   const {section} = await params;
   if(section==="dochadzka")return <AttendanceScreen/>;
   if(section==="vyplaty")return <PayrollScreen/>;
+  if(section==="stavby")return <ProjectsScreen/>;
+  if(section==="pracovnici")return <WorkersScreen/>;
   notFound();
 }
