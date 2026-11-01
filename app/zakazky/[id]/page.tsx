@@ -62,7 +62,7 @@ export default function ZakazkaDetailPage() {
   ]
 
   return (
-    <div className="project-detail-shell" style={{
+    <div className="project-detail-shell sd-project-detail-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -119,7 +119,7 @@ export default function ZakazkaDetailPage() {
           </div>
         ) : (
           <>
-            <div className="project-detail-header" style={{
+            <div className="project-detail-header sd-project-detail-hero" style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
@@ -165,13 +165,15 @@ export default function ZakazkaDetailPage() {
               marginBottom: '16px',
               boxShadow: '0 2px 8px rgba(0,0,0,.04)',
             }}>
-              <div className="project-detail-tabs" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <div className="project-detail-tabs sd-project-detail-nav" role="tablist" aria-label="Sekcie stavby" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {tabs.map(tab => {
                   const active = activeTab === tab.key
                   return (
                     <button
                       key={tab.key}
                       type="button"
+                      role="tab"
+                      aria-selected={active}
                       onClick={() => setActiveTab(tab.key)}
                       style={{
                         border: 'none',
