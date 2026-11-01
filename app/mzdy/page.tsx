@@ -200,7 +200,7 @@ export default function MzdyPage() {
     else sum.nieJePorovnatelne++
     return sum
   }, { podlaUlozenej: 0, podlaAktualnej: 0, nieJePorovnatelne: 0 })
-  const moznePresnePorovnanie = porovnanieSadzby.nieJePorovnatelne === 0
+  const moznePresnePorovnanie = porovnanieSadzby.nieJePorovnatelne === 0 && auditSadzieb.bezPorovnatelnehoProfilu === 0
   const rozdielOprotiPovodnemu = porovnanieSadzby.podlaAktualnej - porovnanieSadzby.podlaUlozenej
 
   const zamestnanciHodiny: Record<string, number> = {}
