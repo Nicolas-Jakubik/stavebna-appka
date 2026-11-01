@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminSidebar from '../../components/AdminSidebar'
+import AdminPageHero from '../../components/AdminPageHero'
 import { supabase } from '../../lib/adminSupabase'
 import { vypocitajNakladyPracovnikov, zhrnNakladyPracovnikovPodlaZakazky } from '../../lib/laborCosts'
 import { FINANCE_CATEGORIES, vytvorMesacnyRozpadNakladov } from '../../lib/financeBreakdown'
@@ -452,7 +453,7 @@ export default function FinanciePage() {
     clientAlerts.filter(alert => alert.stav === 'splatne_coskor').length
 
   return (
-    <div className="finances-shell" style={{
+    <div className="finances-shell sd-finances-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -541,17 +542,16 @@ export default function FinanciePage() {
       <AdminSidebar active="financie" />
 
       <main style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
-            Firemná administrácia
-          </div>
-          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: 1.1, letterSpacing: '-.035em', fontWeight: '750' }}>
-            Financie
-          </h1>
-          <div style={{ marginTop: '5px', color: '#86868b', fontSize: '11px' }}>
-            Prehľad firmy na jednom mieste. Detailné faktúry, náklady a ponuky riešiš až v konkrétnej stavbe.
-          </div>
-        </div>
+        <AdminPageHero
+          eyebrow="SD EVIDENCIA · FINANCIE"
+          title="Financie"
+          description="Náklady, prijaté platby, cashflow a finančné riziká stavieb."
+          links={[
+            { href: '#sd-finance-projects', label: 'Financie stavieb', primary: true },
+            { href: '#sd-finance-summary', label: 'Firemný súhrn' },
+            { href: '/zakazky', label: 'Stavby' },
+          ]}
+        />
 
         {error && (
           <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: '14px', color: '#b42318', backgroundColor: '#fef2f2', fontSize: '11px' }}>
@@ -570,7 +570,7 @@ export default function FinanciePage() {
           </div>
         ) : (
           <>
-            <div className="finances-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
+            <div id="sd-finance-summary" className="finances-summary-grid sd-finance-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
               <div style={{ ...cardStyle, padding: '17px 18px' }}>
                 <div style={{ color: '#86868b', fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktívne stavby</div>
                 <div style={{ marginTop: '8px', fontSize: '25px', fontWeight: '750', letterSpacing: '-.035em' }}>{activeProjectsCount}</div>
@@ -597,7 +597,7 @@ export default function FinanciePage() {
             </div>
 
             {allFinanceAlertsCount > 0 && (
-              <div style={{ ...cardStyle, padding: '16px 18px', marginBottom: '14px', borderColor: urgentAlertsCount > 0 ? '#f3b4ae' : '#f0d7a3' }}>
+              <div className="sd-finance-attention-panel" style={{ ...cardStyle, padding: '16px 18px', marginBottom: '14px', borderColor: urgentAlertsCount > 0 ? '#f3b4ae' : '#f0d7a3' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '750' }}>Vyžaduje pozornosť</div>
@@ -628,13 +628,13 @@ export default function FinanciePage() {
               </div>
             )}
 
-            <section style={{ ...cardStyle, padding: '16px', overflow: 'hidden' }}>
+            <section id="sd-finance-projects" className="sd-finance-project-section" style={{ ...cardStyle, padding: '16px', overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '14px' }}>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: '750' }}>Stavby</div>
                   <div style={{ marginTop: '3px', color: '#86868b', fontSize: '10px' }}>Otvor stavbu až keď potrebuješ faktúry, položky ponuky alebo detailný rozpad.</div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <div className="sd-finance-status-filters" role="group" aria-label="Filtrovať stavby podľa stavu" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {[
                     ['vsetky', 'Všetky'],
                     ['aktivne', 'Aktívne'],
@@ -646,6 +646,7 @@ export default function FinanciePage() {
                         key={key}
                         type="button"
                         onClick={() => setStatus(key as typeof status)}
+                        aria-pressed={active}
                         style={{ minHeight: '36px', padding: '7px 11px', borderRadius: '9px', border: active ? '1px solid #0071e3' : '1px solid #d2d2d7', backgroundColor: active ? '#e8f3ff' : '#fff', color: active ? '#0066cc' : '#6e6e73', cursor: 'pointer', fontSize: '10px', fontWeight: '700' }}
                       >
                         {label}
@@ -655,7 +656,7 @@ export default function FinanciePage() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
+              <div className="sd-finance-project-search" style={{ marginBottom: '12px' }}>
                 <input
                   type="search"
                   value={search}
@@ -668,7 +669,7 @@ export default function FinanciePage() {
               {filteredRows.length === 0 ? (
                 <div style={{ padding: '28px 12px', textAlign: 'center', color: '#a1a1a6', fontSize: '11px' }}>Žiadna stavba nezodpovedá filtru.</div>
               ) : (
-                <div className="finances-project-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '12px' }}>
+                <div className="finances-project-grid sd-finance-project-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '12px' }}>
                   {filteredRows.map(row => {
                     const hasAttention =
                       row.overdueSupplierCount > 0 ||
@@ -677,7 +678,7 @@ export default function FinanciePage() {
                       (row.costs > 0 && (!row.hasBudget || !row.hasPrice))
                     const remainingLabel = row.remaining === null ? '—' : euro(row.remaining)
                     return (
-                      <article key={row.id} style={{ border: '1px solid #e5e5e7', borderRadius: '13px', padding: '14px', backgroundColor: '#fff' }}>
+                      <article className="sd-finance-project-card" key={row.id} style={{ border: '1px solid #e5e5e7', borderRadius: '13px', padding: '14px', backgroundColor: '#fff' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', gap: '7px', alignItems: 'center', flexWrap: 'wrap' }}>
