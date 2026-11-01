@@ -1,0 +1,17 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const source = fs.readFileSync(path.join(__dirname,'../app/mzdy/page.tsx'),'utf8')
+
+test('payroll retains stored historical rates and compares them with legacy profile amounts read-only', () => {
+  assert.match(source,/hodinovaSadzbaZaznamu\(z\.sadzba_snapshot, aktualneSadzby\.get\(z\.meno\)\)/)
+  assert.match(source,/const porovnanieSadzby = zaznamy\.reduce/)
+  assert.match(source,/sum\.podlaUlozenej \+= hodiny \* sadzbaZaznamu\(z\)/)
+  assert.match(source,/sum\.podlaAktualnej \+= hodiny \* aktualna/)
+  assert.match(source,/auditSadzieb\.bezPorovnatelnehoProfilu === 0/)
+  assert.match(source,/Pôvodný spôsob výpočtu podľa aktuálnych sadzieb/)
+  assert.match(source,/Porovnanie za toto obdobie: uložené sadzby/)
+  assert.doesNotMatch(source,/\.update\(\{\s*sadzba_snapshot/)
+  assert.doesNotMatch(source,/\.rpc\('.*(change|update).*rate/i)
+})
