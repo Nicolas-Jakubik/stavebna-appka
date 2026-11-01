@@ -57,7 +57,7 @@ export default function AdminPrihlaseniePage() {
         boxShadow: '0 10px 34px rgba(0,0,0,0.07)',
       }}>
         <div style={{ fontSize: '11px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Stavby Domy
+          SD Evidencia
         </div>
         <h1 style={{ margin: '6px 0 6px', fontSize: '27px', color: '#1d1d1f', letterSpacing: '-0.035em' }}>
           Administrácia
