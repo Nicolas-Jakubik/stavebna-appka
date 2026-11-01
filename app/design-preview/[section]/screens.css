@@ -74,3 +74,25 @@
   .sdx-next a{width:100%}
 }
 @media(prefers-reduced-motion:reduce){.sdx-root *{scroll-behavior:auto!important}}
+
+
+/* Phase 3: static projects and workers previews. */
+.sdx-project-filter-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
+.sdx-worker-filter-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+.sdx-table-after-filters {margin-top:21px}
+.sdx-code {display:block;margin-top:4px;font-size:10px;font-weight:550;color:#8997aa}
+.sdx-chip.neutral {color:#627086;background:#eef2f7}
+.sdx-table tr.complete{background:#fbfcff}
+.sdx-person-cell {display:inline-flex;align-items:center;gap:11px;min-width:0}
+.sdx-person-cell strong {font-size:12px;font-weight:750}
+.sdx-person-cell .sdp-avatar{height:34px;width:34px}
+@media(max-width:1050px) {
+  .sdx-root .sdp-tabbar {grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .sdx-project-filter-grid,.sdx-worker-filter-grid{grid-template-columns:1fr}
+  .sdx-root .sdp-tabbar a{font-size:9px}
+  .sdx-root .sdp-tabbar svg{height:20px;width:20px}
+  .sdx-table-after-filters{margin-top:18px}
+  .sdx-person-cell .sdp-avatar{width:30px;height:30px}
+}
