@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
+import AdminPageHero from '../../components/AdminPageHero'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { datumNaSlovensku } from '../../lib/businessDate'
 
@@ -316,7 +317,7 @@ export default function ZakazkyPage() {
   }
 
   return (
-    <div className="simple-admin-shell" style={{
+    <div className="simple-admin-shell sd-projects-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -429,19 +430,18 @@ export default function ZakazkyPage() {
       <AdminSidebar active="zakazky" />
 
       <div className="simple-admin-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
-            Firemná administrácia
-          </div>
-          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
-            Stavby
-          </h1>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
-            Správa aktívnych a dokončených stavieb.
-          </div>
-        </div>
+        <AdminPageHero
+          eyebrow="SD EVIDENCIA · STAVBY"
+          title="Stavby"
+          description="Prehľad zákaziek, odpracovaných hodín a aktuálneho stavu realizácie."
+          links={[
+            { href: '#sd-project-list', label: 'Prehľad stavieb', primary: true },
+            { href: '#sd-add-project', label: 'Nová stavba' },
+            { href: '/dashboard', label: 'Dochádzka' }
+          ]}
+        />
 
-        <div className="stavby-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        <div className="stavby-summary-grid sd-project-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
             <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Aktívne stavby</div>
             <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{aktivneZakazky.length}</div>
@@ -461,7 +461,7 @@ export default function ZakazkyPage() {
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+        <div id="sd-add-project" className="sd-project-form-card" style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
           <div style={{ padding: '15px 18px', borderBottom: '1px solid #eeeeef' }}>
             <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Pridať novú stavbu</div>
             <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Nová stavba sa automaticky vytvorí ako aktívna.</div>
@@ -493,7 +493,7 @@ export default function ZakazkyPage() {
           </form>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '16px', padding: '14px 16px' }}>
+        <div className="sd-project-filters" style={{ ...cardStyle, marginBottom: '16px', padding: '14px 16px' }}>
           <div className="stavby-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto 150px', gap: '12px', alignItems: 'center' }}>
             <div>
               <label style={labelStyle}>Vyhľadať stavbu</label>
@@ -568,8 +568,9 @@ export default function ZakazkyPage() {
           )}
         </div>
 
+        <div id="sd-project-list" className="sd-project-list-anchor" />
         {filterStav !== 'dokoncene' && (
-        <div style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px' }}>
+        <div className="sd-project-table-card" style={{ ...cardStyle, padding: '0', overflow: 'hidden', marginBottom: '16px' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
