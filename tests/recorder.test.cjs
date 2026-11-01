@@ -18,6 +18,7 @@ test('recorder privileges, validation and server routes', async t => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://database.example'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only-server-key'
   const token = tokenLib.createRecorderToken()
+  const activationToken = tokenLib.createRecorderActivationToken()
   const cookie = `${tokenLib.RECORDER_COOKIE}=${token}`
   const req = (method='GET', query='', body, extra={}) => new NextRequest(`${origin}/api/recorder/database/dochadzka${query}`, { method, headers: { cookie, origin, 'content-type':'application/json', ...extra }, body: body === undefined ? undefined : JSON.stringify(body) })
   const original = global.fetch
@@ -26,10 +27,25 @@ test('recorder privileges, validation and server routes', async t => {
   try {
     await t.test('signed link expiry, tampering and role separation', async () => {
       assert.equal(tokenLib.verifyRecorderToken(token), true)
+      assert.equal(tokenLib.verifyRecorderActivationToken(activationToken), true)
+      assert.equal(tokenLib.verifyRecorderActivationToken(token), false)
+      assert.equal(tokenLib.verifyRecorderToken(activationToken), false)
+      assert.equal(tokenLib.verifyRecorderActivationToken(tokenLib.createRecorderActivationToken(1)), false)
+      assert.equal(tokenLib.RECORDER_TTL, 90 * 86400)
+      assert.equal(tokenLib.RECORDER_LINK_TTL, 2 * 86400)
       assert.equal(tokenLib.verifyRecorderToken(tokenLib.createRecorderToken(1)), false)
       assert.equal(tokenLib.verifyRecorderToken(token.replace('recorder-v1', 'v1')), false)
       assert.equal(await admin.verifyAdminSession(token), false)
       assert.equal(tokenLib.verifyRecorderToken((await admin.createAdminSession()).value), false)
+      const now = Math.floor(Date.now() / 1000)
+      const validOld = tokenLib.createRecorderToken(now - 61 * 86400)
+      assert.equal(tokenLib.verifyRecorderToken(validOld, now), true)
+      const renewed = tokenLib.renewRecorderToken(validOld, now)
+      assert.ok(renewed)
+      assert.equal(tokenLib.verifyRecorderToken(renewed, now), true)
+      assert.equal(tokenLib.renewRecorderToken(token, now), null)
+      assert.equal(tokenLib.renewRecorderToken(tokenLib.createRecorderToken(now - 91 * 86400), now), null)
+      assert.equal(tokenLib.renewRecorderToken('forged', now), null)
       process.env.ADMIN_PASSWORD = 'rotated'
       assert.equal(tokenLib.verifyRecorderToken(token), false)
       process.env.ADMIN_PASSWORD = 'test-only-password'
@@ -39,17 +55,26 @@ test('recorder privileges, validation and server routes', async t => {
       const adminCookie = `${admin.ADMIN_COOKIE}=${(await admin.createAdminSession()).value}`
       const response = await link.POST(req('POST','',undefined,{cookie:adminCookie}))
       assert.equal(response.status,200)
-      assert.match((await response.json()).link, /\/#zapis=recorder-v1\./)
+      const issued = await response.json()
+      assert.match(issued.link, /\/#zapis=recorder-link-v1\./)
+      assert.equal(issued.validDays, 2)
       assert.equal((await link.POST(req('POST','',undefined,{cookie:adminCookie,origin:'https://evil.example'}))).status,403)
     })
     await t.test('token exchange creates an HttpOnly cookie and enforces origin', async () => {
       assert.equal((await session.POST(req('POST','',{token},{origin:'https://evil.example'}))).status,403)
       assert.equal((await session.POST(req('POST','',{token:'forged'}))).status,401)
+      assert.equal((await session.POST(req('POST','',{token}))).status,401)
+      assert.equal((await session.POST(req('POST','',{token:tokenLib.createRecorderActivationToken(1)}))).status,401)
       assert.equal((await session.POST(req('POST','',{token:'x'.repeat(2000)}))).status,413)
-      const response = await session.POST(req('POST','',{token}))
+      const response = await session.POST(req('POST','',{token:activationToken}))
       assert.equal(response.status,200)
       assert.match(response.headers.get('set-cookie'), /HttpOnly/)
       assert.match(response.headers.get('set-cookie'), /SameSite=strict/i)
+      assert.match(response.headers.get('set-cookie'), /Max-Age=7776000/)
+      const issuedCookie = response.headers.get('set-cookie')
+      const issuedToken = issuedCookie.match(/stavby_recorder_session=([^;]+)/)?.[1]
+      assert.equal(tokenLib.verifyRecorderToken(issuedToken), true)
+      assert.equal((await session.GET(req('GET'))).status,200)
       assert.equal((await session.GET(req('GET','',undefined,{cookie:''}))).status,401)
     })
     await t.test('anonymous and forged recorder sessions cannot read or write', async () => {
