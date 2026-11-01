@@ -6,11 +6,11 @@ import "./screens.css";
 
 export const metadata: Metadata = {
   title: "Ukážka obrazoviek – SD Evidencia",
-  description: "Bezpečná statická ukážka dochádzky, výplat, stavieb a pracovníkov s fiktívnymi údajmi.",
+  description: "Bezpečná statická ukážka dochádzky, výplat, stavieb, pracovníkov a financií s fiktívnymi údajmi.",
   robots: { index: false, follow: false },
 };
 
-type Screen = "dochadzka" | "vyplaty" | "stavby" | "pracovnici";
+type Screen = "dochadzka" | "vyplaty" | "stavby" | "pracovnici" | "financie";
 
 const records = [
   {name:"Ukážkový pracovník A", initials:"UA", date:"30.10.2026", site:"Stavba Alfa", arrival:"07:00", departure:"18:00", hours:"10,50 h", kind:"", highlight:""},
@@ -44,6 +44,7 @@ function Shell({screen,children}: {screen:Screen;children:React.ReactNode}) {
     {href:"/design-preview/vyplaty",label:"Výplaty",icon:"wallet" as const, current:screen==="vyplaty"},
     {href:"/design-preview/stavby",label:"Stavby",icon:"building" as const, current:screen==="stavby"},
     {href:"/design-preview/pracovnici",label:"Pracovníci",icon:"users" as const, current:screen==="pracovnici"},
+    {href:"/design-preview/financie",label:"Financie",icon:"wallet" as const, current:screen==="financie"},
   ];
   return <div className="sdp-root sdx-root">
     <aside className="sdp-sidebar">
@@ -71,6 +72,7 @@ function Shell({screen,children}: {screen:Screen;children:React.ReactNode}) {
       <Link href="/design-preview/vyplaty" aria-current={screen==="vyplaty"?"page":undefined}><SvgIcon name="wallet"/><span>Výplaty</span></Link>
       <Link href="/design-preview/stavby" aria-current={screen==="stavby"?"page":undefined}><SvgIcon name="building"/><span>Stavby</span></Link>
       <Link href="/design-preview/pracovnici" aria-current={screen==="pracovnici"?"page":undefined}><SvgIcon name="users"/><span>Tím</span></Link>
+      <Link href="/design-preview/financie" aria-current={screen==="financie"?"page":undefined}><SvgIcon name="wallet"/><span>Financie</span></Link>
     </nav>
   </div>;
 }
@@ -252,6 +254,78 @@ function WorkersScreen() {
   </Shell>;
 }
 
+
+const sampleFinanceProjects = [
+  { name:"Stavba Alfa – rodinný dom", price:30000,costs:17000,received:20000,paid:14000,budget:24000 },
+  { name:"Stavba Beta – rekonštrukcia", price:18000,costs:12600,received:8500,paid:11000,budget:16000 },
+  { name:"Stavba Gama – fasáda", price:14000,costs:14600,received:10000,paid:13000,budget:13000 },
+] as const;
+
+function eurDemo(value:number) {
+  return new Intl.NumberFormat('sk-SK', { style:'currency',currency:'EUR',maximumFractionDigits:0 }).format(value);
+}
+
+function FinanceScreen() {
+  const amounts = sampleFinanceProjects.reduce((s,p)=>({
+    price:s.price+p.price,
+    costs:s.costs+p.costs,
+    received:s.received+p.received,
+    paid:s.paid+p.paid,
+  }),{price:0,costs:0,received:0,paid:0});
+  const cashflow=amounts.received-amounts.paid;
+  return <Shell screen="financie">
+    <ScreenHeader eyebrow="SD EVIDENCIA / FINANCIE" title="Financie" description="Náklady, fakturácia a cashflow stavieb v jednoduchom prehľade."/>
+    <section className="sdx-stat-grid" aria-label="Fiktívne finančné ukazovatele">
+      <Stat label="Aktívne stavby" value={String(sampleFinanceProjects.length)} detail="s finančnými údajmi"/>
+      <Stat label="Aktuálne náklady" value={eurDemo(amounts.costs)} detail="práca, materiál a ďalšie náklady"/>
+      <Stat label="Prijaté platby" value={eurDemo(amounts.received)} detail="spolu od klientov" tone="green"/>
+      <Stat label="Cashflow firmy" value={eurDemo(cashflow)} detail="prijaté mínus uhradené" tone={cashflow<0?"orange":"blue"}/>
+    </section>
+    <section className="sdx-section sdx-finance-alert-section">
+      <div className="sdx-section-title"><div><h2>Vyžaduje pozornosť</h2><p>Riziká, ktoré sa oplatí skontrolovať.</p></div><span className="sdx-count sdx-warn-count">2 upozornenia</span></div>
+      <div className="sdx-finance-alert-grid">
+        <div><span>Faktúry po splatnosti</span><strong>1</strong><small>Fiktívny doklad</small></div>
+        <div><span>Budget prekročený</span><strong>1</strong><small>Stavba Gama</small></div>
+        <div><span>Splatné do 7 dní</span><strong>0</strong><small>Bez upozornenia</small></div>
+        <div><span>Chýba nastavenie</span><strong>0</strong><small>V poriadku</small></div>
+      </div>
+    </section>
+    <section className="sdx-section" aria-labelledby="sdx-finance-sites-title">
+      <div className="sdx-section-title">
+        <div><h2 id="sdx-finance-sites-title">Financie podľa stavieb</h2><p>Cena, náklady, zostávajúca suma a cashflow.</p></div>
+        <span className="sdx-demo-label">UKÁŽKA</span>
+      </div>
+      <div className="sdx-filter-grid sdx-worker-filter-grid">
+        <div><label>Vyhľadať stavbu</label><FakeControl>Všetky zákazky</FakeControl></div>
+        <div><label>Stav</label><FakeControl>Aktívne stavby</FakeControl></div>
+      </div>
+      <div className="sdx-finance-project-grid">
+        {sampleFinanceProjects.map(p=>{
+          const remaining = p.price-p.costs;
+          const cash=p.received-p.paid;
+          const usage=p.costs/p.budget*100;
+          return <article className="sdx-finance-card" key={p.name}>
+            <div className="sdx-finance-card-top">
+              <div><h3>{p.name}</h3><small>Aktívna stavba</small></div>
+              {usage>=100?<span className="sdx-chip warm">Pozor na rozpočet</span>:<span className="sdx-chip">V rozpočte</span>}
+            </div>
+            <div className="sdx-finance-card-metrics">
+              <div><span>Cena</span><strong>{eurDemo(p.price)}</strong></div>
+              <div><span>Náklady</span><strong>{eurDemo(p.costs)}</strong></div>
+              <div><span>Zostáva</span><strong className={remaining<0?"sdx-negative":""}>{eurDemo(remaining)}</strong></div>
+              <div><span>Cashflow</span><strong className={cash<0?"sdx-negative":"sdx-positive"}>{eurDemo(cash)}</strong></div>
+            </div>
+            <div className="sdx-finance-budget-head"><span>Čerpanie budgetu</span><strong>{usage.toFixed(0)} %</strong></div>
+            <div className="sdx-finance-budget-track"><div className={usage>=100?"over":""} style={{width:Math.min(100,usage)+"%"}}/></div>
+          </article>;
+        })}
+      </div>
+      <p className="sdx-disclaimer">Všetky čísla sú fiktívne. V reálnej administrácii sa jednotlivé stavby otvoria do detailného finančného prehľadu.</p>
+    </section>
+    <div className="sdx-next"><Link href="/design-preview/stavby">Pozrieť návrh stavieb <span aria-hidden="true">→</span></Link></div>
+  </Shell>;
+}
+
 export default async function PreviewScreen({params}:{params:Promise<{section:string}>}) {
   if(process.env.VERCEL_ENV === "production") notFound();
   const {section} = await params;
@@ -259,5 +333,6 @@ export default async function PreviewScreen({params}:{params:Promise<{section:st
   if(section==="vyplaty")return <PayrollScreen/>;
   if(section==="stavby")return <ProjectsScreen/>;
   if(section==="pracovnici")return <WorkersScreen/>;
+  if(section==="financie")return <FinanceScreen/>;
   notFound();
 }
