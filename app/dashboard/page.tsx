@@ -8,6 +8,7 @@ import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 import { datumNaSlovensku, mesiacNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../../lib/businessDate'
 import { lenAktivniPracovnici } from '../../lib/activeWorkers'
 import { jeNeobvyklaDochadzka } from '../../lib/attendanceWarnings'
+import { validDate } from '../../lib/recorderValidation'
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, znak => {
@@ -71,6 +72,8 @@ export default function DashboardPage() {
   ])
 
   const [upravovaneId, setUpravovaneId] = useState<string | null>(null)
+  const [upravovanyDatum, setUpravovanyDatum] = useState('')
+  const [upravovanaZakazka, setUpravovanaZakazka] = useState('')
   const [upravovanePrichod, setUpravovanePrichod] = useState('')
   const [upravovaneOdchod, setUpravovaneOdchod] = useState('')
   const [upravovaneHodiny, setUpravovaneHodiny] = useState('')
@@ -458,27 +461,31 @@ export default function DashboardPage() {
     nacitajKontrolneZaznamy()
   }
 
-  function vypocitajHodinyUpravovanehoZaznamu(id: string, prichod: string, odchod: string) {
+  function vypocitajHodinyUpravovanehoZaznamu(id: string, datum: string, prichod: string, odchod: string) {
     const povodny = kontrolneZaznamy.find(z => String(z.id) === String(id))
     if (!povodny) return vypocitajHodiny(prichod, odchod)
 
     const upraveneZaznamy = kontrolneZaznamy.map(z =>
-      String(z.id) === String(id) ? { ...z, prichod, odchod } : z
+      String(z.id) === String(id) ? { ...z, datum, prichod, odchod } : z
     )
     const mapa = vytvorMapuCistychHodin(upraveneZaznamy)
-    return hodinyZaznamuZMapy({ ...povodny, prichod, odchod }, mapa)
+    return hodinyZaznamuZMapy({ ...povodny, datum, prichod, odchod }, mapa)
   }
 
-  function zacatUpravu(id: string, prichod: string, odchod: string) {
+  function zacatUpravu(id: string, datum: string, zakazka: string, prichod: string, odchod: string) {
     setUpravovaneId(id)
+    setUpravovanyDatum(datum)
+    setUpravovanaZakazka(zakazka)
     setUpravovanePrichod(prichod)
     setUpravovaneOdchod(odchod)
-    setUpravovaneHodiny(vypocitajHodinyUpravovanehoZaznamu(id, prichod, odchod).toFixed(2))
+    setUpravovaneHodiny(vypocitajHodinyUpravovanehoZaznamu(id, datum, prichod, odchod).toFixed(2))
     setChybaUpravaHodiny('')
   }
 
   function zrusitUpravu() {
     setUpravovaneId(null)
+    setUpravovanyDatum('')
+    setUpravovanaZakazka('')
     setUpravovanePrichod('')
     setUpravovaneOdchod('')
     setUpravovaneHodiny('')
@@ -493,7 +500,7 @@ export default function DashboardPage() {
         setChybaUpravaHodiny(error)
         if (!error) {
           const hodiny = upravovaneId
-            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, upravovanePrichod, value)
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, upravovanyDatum, upravovanePrichod, value)
             : vypocitajHodiny(upravovanePrichod, value)
           setUpravovaneHodiny(hodiny.toFixed(2))
         }
@@ -505,7 +512,7 @@ export default function DashboardPage() {
         setChybaUpravaHodiny(error)
         if (!error) {
           const hodiny = upravovaneId
-            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, value, upravovaneOdchod)
+            ? vypocitajHodinyUpravovanehoZaznamu(upravovaneId, upravovanyDatum, value, upravovaneOdchod)
             : vypocitajHodiny(value, upravovaneOdchod)
           setUpravovaneHodiny(hodiny.toFixed(2))
         }
