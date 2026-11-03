@@ -1,4 +1,13 @@
 # FiremnáApka – bezpečný plán overenia a nasadenia (DRAFT)
+## RUNTIME CHECKPOINT 3.11.2026 – má prednosť pred staršími bodmi
+
+- Vercel Alias API potvrdilo, že `stavebna-appka.vercel.app` už smeruje na **`dpl_3MZkwjoeyTcPeazXj2R2W3F8fJ2z`** (produkcia SHA `d78ab74` = obsah opravného PR #102), aj keď PR #102 je stále Draft/unmerged. Staré tvrdenie o produkčnej verzii `main/8a2d40d` už nie je aktuálne.
+- Produkčná zmena prebehla pred týmto checkpointom; nebola spôsobená novou dizajnovou vetvou a nie je tým automaticky schválená alebo funkčne potvrdená.
+- Nový dizajn #104 zostáva Draft v Preview. Po testoch syntetickej DB a prehliadačov 3.11. sú 5/5 kontrol v CI úspešné, ale **nie je potvrdená zhoda s reálnymi uzavretými mzdami/PDF**.
+- Starý release skript má pevný guard `OLD_DEPLOY=dpl_xUK...`; po zmene produkčnej alias mapy ho **neobchádzať**, ani nezamieňať automatické testy s povolením merge/promote.
+- Potvrdiť produkčný runtime na skutočnom iPhone a PC, WAF proti hádaniu admin hesla, aktuálnu obnoviteľnú zálohu a bezpečný rollback. Žiadne skúšobné zmeny v živej databáze.
+
+
 ## NOVÉ rozhodnutie vlastníka – 1.11.2026, približne 13:15 SEČ
 - **Absolútna podmienka prevádzky:** všetci existujúci zapisovatelia musia ďalej používať **presne tú istú** verejnú URL `https://stavebna-appka.vercel.app/`, bez nového odkazu, účtu, hesla, aktivácie telefónu alebo komunikácie s každým zapisovateľom.
 - **Nový model aktivačných odkazov sa NESMIE aktivovať pre produkčných zapisovateľov.** V návrhu PR už root stránka neobsahuje `RecorderGate`; bežný formulár funguje bez cookie aj po obnove stránky. Obmedzená recorder API je anonymná rovnako ako staré produkčné rozhranie, **ale** naďalej vynucuje allowlist tabuliek/stĺpcov, rozsahy, kontrolu dát, same-origin požiadavku a iba kontrolovaný INSERT dochádzky cez RPC. Administrácia a mzdy zostávajú oddelene chránené.

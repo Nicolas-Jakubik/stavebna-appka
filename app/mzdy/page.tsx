@@ -590,7 +590,7 @@ export default function MzdyPage() {
         )}
         <div className="pdf-vyplata ukazat-iba-pri-tlaci" style={{ width: '100%' }}>
           <div style={{ borderBottom: '2px solid #1d1d1f', paddingBottom: '10px', marginBottom: '18px' }}>
-            <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Stavby Domy · výplaty</div>
+            <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>SD Evidencia · výplaty</div>
             <h1 style={{ fontSize: '22px', margin: '4px 0 0 0', color: '#1d1d1f' }}>{nazovVyplatnehoObdobia}</h1>
             <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>{nazovMesiacaBezPolovice}</div>
           </div>
