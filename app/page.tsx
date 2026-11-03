@@ -7,6 +7,7 @@ import { vypocitajTrvanieUsekuMinuty } from '../lib/workHours'
 import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 import { datumNaSlovensku, denVTyzdniNaSlovensku, posunDatumNaSlovensku } from '../lib/businessDate'
 import { lenAktivniPracovnici } from '../lib/activeWorkers'
+import RecorderEntries from '../components/RecorderEntries'
 
 export default function Home() {
   return <AttendanceForm />
@@ -24,6 +25,8 @@ function AttendanceForm() {
   const [odosiela, setOdosiela] = useState(false)
   const [referencneUdajePripravene, setReferencneUdajePripravene] = useState(false)
   const [posledneZapisy, setPosledneZapisy] = useState<any[]>([])
+  const [recorderTab, setRecorderTab] = useState<'write' | 'entries'>('write')
+  const [entriesDate, setEntriesDate] = useState(datumNaSlovensku())
   
   const [zobrazitPotvrdenie, setZobrazitPotvrdenie] = useState(false)
 
@@ -729,7 +732,12 @@ function AttendanceForm() {
                 const okraj = jeHotovy ? '#bbf7d0' : jeNeuplny ? '#fed7aa' : jeBezZapisu ? '#fecaca' : '#e5e7eb'
 
                 return (
-                  <div className="attendance-week-day" key={den.datum} style={{ padding: '10px 12px', borderRadius: '12px', backgroundColor: pozadie, border: `1px solid ${okraj}` }}>
+                  <div className="attendance-week-day" key={den.datum}
+                    role="button" tabIndex={0}
+                    aria-label={`Pozrieť zápisy: ${den.den} ${formatujDatum(den.datum)}`}
+                    onClick={() => { setEntriesDate(den.datum); setRecorderTab('entries') }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEntriesDate(den.datum); setRecorderTab('entries') } }}
+                    style={{ cursor: 'pointer', padding: '10px 12px', borderRadius: '12px', backgroundColor: pozadie, border: `1px solid ${okraj}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                       <div>
                         <div style={{ fontSize: '11px', color: '#1d1d1f', fontWeight: '650' }}>{den.den}</div>
@@ -749,6 +757,31 @@ function AttendanceForm() {
           </div>
         )}
 
+        <div role="tablist" aria-label="Zapisovanie a kontrola dochádzky" style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: 5,
+          background: '#f5f5f7', borderRadius: 14, marginBottom: 22,
+        }}>
+          <button type="button" role="tab" aria-selected={recorderTab === 'write'}
+            onClick={() => setRecorderTab('write')} style={{
+              border: 'none', padding: '12px 10px', borderRadius: 11, fontSize: 14,
+              background: recorderTab === 'write' ? '#fff' : 'transparent',
+              color: recorderTab === 'write' ? '#1d1d1f' : '#6e6e73',
+              fontWeight: recorderTab === 'write' ? 700 : 500,
+              boxShadow: recorderTab === 'write' ? '0 1px 4px #0001' : 'none',
+              cursor: 'pointer'
+            }}>✚ Zapísať</button>
+          <button type="button" role="tab" aria-selected={recorderTab === 'entries'}
+            onClick={() => { setEntriesDate(datum || datumNaSlovensku()); setRecorderTab('entries') }}
+            style={{
+              border: 'none', padding: '12px 10px', borderRadius: 11, fontSize: 14,
+              background: recorderTab === 'entries' ? '#fff' : 'transparent',
+              color: recorderTab === 'entries' ? '#1d1d1f' : '#6e6e73',
+              fontWeight: recorderTab === 'entries' ? 700 : 500,
+              boxShadow: recorderTab === 'entries' ? '0 1px 4px #0001' : 'none',
+              cursor: 'pointer'
+            }}>☷ Zápisy</button>
+        </div>
+        {recorderTab === 'write' ? (
         <form onSubmit={otvoritKontrolu} style={{ display: 'flex', flexDirection: 'column' }}>
           
           {/* Výber zamestnancov pomocou "bublín" (Chips) */}
@@ -832,6 +865,15 @@ function AttendanceForm() {
             Skontrolovať záznam
           </button>
         </form>
+        ) : (
+          <RecorderEntries
+            date={entriesDate}
+            onDateChange={setEntriesDate}
+            activeJobs={aktivneZakazky}
+            objects={objektyStavby}
+            onSaved={nacitajKontroluZapisov}
+          />
+        )}
 
         {status && (
           <div className="attendance-status" style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', fontWeight: '500', color: status.includes('✅') ? '#34c759' : '#ff3b30' }}>
@@ -840,7 +882,7 @@ function AttendanceForm() {
         )}
       </div>
 
-      {posledneZapisy.length > 0 && (
+      {recorderTab === 'write' && posledneZapisy.length > 0 && (
         <div className="attendance-recent-card" style={{ width: '100%', maxWidth: '720px', marginTop: '18px', backgroundColor: '#ffffff', padding: '22px 24px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
           <div className="attendance-recent-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <div>
