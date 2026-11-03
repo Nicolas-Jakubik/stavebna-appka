@@ -1,0 +1,46 @@
+name: Attendance edit audit - synthetic PostgreSQL
+
+on:
+  pull_request:
+    branches: [main, integration/safe-repairs-batch2-2026-10-28]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: synthetic
+          POSTGRES_USER: postgres
+          POSTGRES_DB: synthetic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d synthetic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: synthetic
+      PGDATABASE: synthetic
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Create isolated synthetic schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/fixtures/attendance-audit-schema.sql
+      - name: Apply additive attendance audit migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103203000_attendance_review_edits.sql
+      - name: Verify recorder changes, admin lock, revision checks, history and payroll snapshot
+        run: psql -v ON_ERROR_STOP=1 -f tests/fixtures/attendance-audit-check.sql
