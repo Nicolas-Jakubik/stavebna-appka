@@ -34,6 +34,7 @@ test('synthetic finances show internally consistent arithmetic', async ({ page }
   // 17,000 + 12,600 + 14,600 = 44,200 €
   await expect(page.getByText('44 200 €',{exact:false})).toBeVisible()
   await expect(page.getByText('Cashflow firmy')).toBeVisible()
-  await expect(page.getByText('500 €',{exact:false})).toBeVisible()
+  // Exact match: a substring like 500 € also occurs within 38 500 €.
+  await expect(page.getByText('500 €',{exact:true})).toBeVisible()
   await expect(page.getByText('Pozor na rozpočet')).toBeVisible()
 })
