@@ -13,8 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stavby - Domy SRO",
-  description: "Systém pre správu dochádzky a stavieb",
+  title: {
+    default: "SD Evidencia",
+    template: "%s | SD Evidencia",
+  },
+  description: "Interná evidencia pracovných hodín, stavieb a výplat.",
+  applicationName: "SD Evidencia",
 };
 
 export default function RootLayout({
@@ -24,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="sk"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

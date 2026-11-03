@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { ADMIN_COOKIE, verifyAdminSession } from '../../../../../lib/adminSession'
 import { validAdminMutationScope } from '../../../../../lib/adminMutationScope'
+import { previewDatabaseIsIsolated } from '../../../../../lib/previewDatabaseIsolation'
 
 export const dynamic = 'force-dynamic'
 const TABLES = new Set(['dochadzka', 'zamestnanci', 'zoznam_zakaziek', 'objekty_stavby', 'nepritomnosti', 'financie_stavby', 'naklady_stavby', 'platby_stavby', 'uhrady_pracovnikov', 'faktury_dodavatelov', 'faktury_klientov'])
@@ -17,6 +18,8 @@ async function handle(request: NextRequest, context: Context) {
   if (!await verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)) {
     return error(401, 'Prihláste sa do administrácie.')
   }
+
+  if (!previewDatabaseIsIsolated()) return error(503, 'Testovacia databáza nie je bezpečne oddelená.')
 
   const { table } = await context.params
   if (!TABLES.has(table)) return error(404, 'Neznáma tabuľka.')

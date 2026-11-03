@@ -35,3 +35,907 @@ table {
     min-width: 320px;
   }
 }
+
+/* SD Evidencia: shared, presentation-only admin design tokens.
+   Business logic, recording form and printable payroll remain unchanged. */
+:root {
+  --sd-accent: #007aff;
+  --sd-accent-subtle: #eaf3ff;
+  --sd-ink: #1d1d1f;
+  --sd-secondary: #666b76;
+  --sd-hairline: rgba(40, 52, 74, .09);
+  --sd-frost: rgba(255, 255, 255, .88);
+  --sd-shadow: 0 12px 36px rgba(29, 45, 75, .055);
+}
+
+.sd-admin-sidebar,
+.sd-mobile-topbar,
+.sd-mobile-tabbar {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  color: var(--sd-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sd-admin-sidebar {
+  position: sticky;
+  top: 20px;
+  flex: 0 0 244px;
+  width: 244px;
+  min-width: 244px;
+  align-self: flex-start;
+  height: calc(100dvh - 40px);
+  padding: 22px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--sd-frost);
+  border: 1px solid var(--sd-hairline);
+  border-radius: 24px;
+  box-shadow: var(--sd-shadow);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+.sd-admin-brand,
+.sd-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: inherit;
+  text-decoration: none;
+}
+.sd-admin-brand { padding: 0 9px 28px; min-height: 55px; }
+.sd-brand-mark {
+  width: 43px;
+  height: 43px;
+  border-radius: 13px;
+  background: linear-gradient(150deg, #28a0ff 0%, #007aff 80%);
+  color: white;
+  box-shadow: 0 5px 12px rgba(0, 122, 255, .18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.sd-brand-mark svg { width: 27px; height: 27px; }
+.sd-brand-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sd-brand-text strong { font-size: 16px; font-weight: 730; letter-spacing: -.45px; white-space: nowrap; }
+.sd-brand-text small { font-size: 10px; font-weight: 500; color: var(--sd-secondary); white-space: nowrap; }
+.sd-nav-heading {
+  padding: 12px 12px 9px;
+  color: #777e8b;
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: .095em;
+}
+.sd-desktop-nav { display: grid; gap: 5px; }
+.sd-nav-link {
+  min-height: 48px;
+  padding: 10px 13px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border-radius: 13px;
+  text-decoration: none;
+  color: #5b6473;
+  font-size: 13px;
+  font-weight: 590;
+  transition: background-color .18s ease, color .18s ease;
+}
+.sd-nav-link svg,
+.sd-sidebar-logout svg,
+.sd-mobile-logout svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.sd-nav-link:hover { background: rgba(0, 122, 255, .055); color: var(--sd-ink); }
+.sd-nav-link[data-active="true"] { background: var(--sd-accent-subtle); color: #0057b7; font-weight: 720; }
+.sd-sidebar-footer { border-top: 1px solid var(--sd-hairline); padding: 16px 8px 0; }
+.sd-sidebar-footer-copy { display: flex; flex-direction: column; gap: 3px; padding: 0 5px 13px; }
+.sd-sidebar-footer-copy strong { font-size: 12px; font-weight: 700; }
+.sd-sidebar-footer-copy span { font-size: 11px; color: var(--sd-secondary); }
+.sd-sidebar-logout {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--sd-hairline);
+  border-radius: 12px;
+  background: #f8f9fc;
+  color: #4f5868;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sd-sidebar-logout:hover { background: #eef2f8; }
+.sd-sidebar-logout:disabled,
+.sd-mobile-logout:disabled { cursor: wait; opacity: .55; }
+.sd-logout-error, .sd-mobile-logout-error { color: #a11e22; font-size: 12px; line-height: 1.5; }
+.sd-logout-error { margin: 10px 4px 0; }
+.sd-mobile-topbar,
+.sd-mobile-tabbar,
+.sd-mobile-logout-error { display: none; }
+
+.sd-admin-sidebar a:focus-visible,
+.sd-admin-sidebar button:focus-visible,
+.sd-mobile-topbar a:focus-visible,
+.sd-mobile-topbar button:focus-visible,
+.sd-mobile-tabbar a:focus-visible {
+  outline: 3px solid #005fcc;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1024px) {
+  .sd-admin-sidebar { display: none; }
+  .sd-mobile-topbar {
+    position: fixed;
+    z-index: 1200;
+    inset: 0 0 auto 0;
+    min-height: calc(58px + env(safe-area-inset-top));
+    padding: calc(7px + env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 7px max(14px, env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: var(--sd-frost);
+    border-bottom: 1px solid var(--sd-hairline);
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+  }
+  .sd-mobile-brand { font-size: 17px; font-weight: 750; letter-spacing: -.5px; }
+  .sd-mobile-brand .sd-brand-mark { height: 37px; width: 37px; border-radius: 11px; }
+  .sd-mobile-brand .sd-brand-mark svg { height: 24px; width: 24px; }
+  .sd-mobile-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--sd-hairline);
+    border-radius: 13px;
+    background: #f7f9fc;
+    color: #555e6f;
+    cursor: pointer;
+  }
+  .sd-mobile-logout-error {
+    display: block;
+    position: fixed;
+    z-index: 1201;
+    top: calc(58px + env(safe-area-inset-top));
+    left: 10px;
+    right: 10px;
+    padding: 10px;
+    border: 1px solid #f3b8ba;
+    border-radius: 10px;
+    background: #fff5f5;
+  }
+  .sd-mobile-tabbar {
+    position: fixed;
+    z-index: 1200;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    padding: 7px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    background: var(--sd-frost);
+    border-top: 1px solid var(--sd-hairline);
+    box-shadow: 0 -4px 25px rgba(29, 45, 75, .035);
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+  }
+  .sd-mobile-tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    min-height: 49px;
+    padding: 5px 1px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #646c7a;
+    font-size: 10px;
+    font-weight: 590;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sd-mobile-tab svg { width: 21px; height: 21px; flex: none; }
+  .sd-mobile-tab[data-active="true"] { color: #005dc7; background: rgba(0, 122, 255, .075); font-weight: 750; }
+
+  /* Admin pages previously left only 20px at the bottom for content. */
+  body :is(.dashboard-shell,.admin-page-shell,.finances-shell,.simple-admin-shell,.project-detail-shell) {
+    padding-bottom: calc(97px + env(safe-area-inset-bottom)) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-nav-link, .sd-mobile-tab { transition: none !important; }
+}
+@media print {
+  .sd-admin-sidebar, .sd-mobile-topbar, .sd-mobile-tabbar, .sd-mobile-logout-error { display: none !important; }
+}
+
+
+/* Second visual iteration: actual dashboard, not just the navigation. */
+.sd-dashboard-hero {
+  padding: clamp(22px, 3vw, 36px);
+  margin-bottom: 24px;
+  border: 1px solid rgba(45, 95, 175, .11);
+  border-radius: 25px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(0, 122, 255, .12), transparent 45%),
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 10px 32px rgba(24, 65, 130, .065);
+}
+.sd-dashboard-hero-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.sd-dashboard-eyebrow {
+  display: block;
+  color: #0065d2;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .09em;
+}
+.sd-dashboard-hero h1 {
+  margin: 8px 0 7px;
+  color: #17243d;
+  font-size: clamp(32px, 4.4vw, 43px);
+  line-height: 1.1;
+  font-weight: 780;
+  letter-spacing: -.05em;
+}
+.sd-dashboard-hero p { margin: 0; color: #697387; font-size: 14px; line-height: 1.65; }
+.sd-dashboard-date {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border-radius: 12px;
+  padding: 8px 13px;
+  border: 1px solid #e3ebf6;
+  background: rgba(255, 255, 255, .83);
+  color: #52617b;
+  font-size: 12px;
+  font-weight: 650;
+}
+.sd-dashboard-hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+.sd-dashboard-hero-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid #dfe8f4;
+  border-radius: 13px;
+  color: #27466f;
+  background: rgba(255, 255, 255, .9);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 690;
+  transition: transform .18s ease, background-color .18s ease;
+}
+.sd-dashboard-hero-actions a:hover { background: #eef5ff; transform: translateY(-1px); }
+.sd-dashboard-hero-actions .sd-dashboard-hero-primary { color: #fff; background: #007aff; border-color: #007aff; }
+.sd-dashboard-hero-actions .sd-dashboard-hero-primary:hover { background: #006add; }
+.sd-dashboard-hero-actions a:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; }
+.sd-dashboard-modern .dashboard-today-grid > div {
+  min-height: 134px;
+  border: 1px solid rgba(28, 65, 110, .09) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 7px 24px rgba(30, 58, 103, .055) !important;
+  padding: 23px 24px !important;
+}
+.sd-dashboard-modern .dashboard-today-grid > div:nth-child(1) {
+  background: linear-gradient(135deg, #fff 0%, #f3f8ff 100%) !important;
+}
+.sd-dashboard-modern .dashboard-today-grid > div:nth-child(2) {
+  background: linear-gradient(135deg, #fff 0%, #f9f6ff 100%) !important;
+}
+.sd-dashboard-modern .dashboard-today-grid > div:nth-child(3) {
+  background: linear-gradient(135deg, #fff 0%, #f7fbff 100%) !important;
+}
+.sd-dashboard-modern .dashboard-content > div > div[style*="borderRadius"] {
+  scroll-margin-top: 20px;
+}
+@media (max-width: 1024px) {
+  .sd-dashboard-hero { border-radius: 19px; padding: 23px 18px; margin-bottom: 19px; }
+  .sd-dashboard-date { margin-top: 0; }
+  .sd-dashboard-hero-actions { margin-top: 20px; }
+  .sd-dashboard-hero-actions a { flex: 1 1 125px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-dashboard-hero-actions a { transition: none !important; }
+  .sd-dashboard-hero-actions a:hover { transform: none; }
+}
+@media print {
+  .sd-dashboard-hero { display: none !important; }
+}
+
+
+/* SD Evidencia phase 2: attendance and payroll.
+   Deliberately scoped to admin screens; leaves recorder and printable PDF untouched. */
+@media screen {
+  .sd-dashboard-modern,
+  .sd-payroll-modern {
+    background: #f4f7fb !important;
+    gap: 20px !important;
+    color: #17243b;
+  }
+  .sd-dashboard-modern .dashboard-content,
+  .sd-payroll-modern .hlavny-kontajner { min-width: 0; }
+  .sd-dashboard-modern .dashboard-content > div,
+  .sd-payroll-modern .hlavny-kontajner > div { scroll-margin-top: 24px; }
+  .sd-dashboard-modern .sd-dashboard-hero,
+  .sd-payroll-modern .sd-payroll-hero { scroll-margin-top: 22px; }
+  .sd-dashboard-modern .sd-dashboard-hero {
+    border: 1px solid rgba(0, 122, 255, .12);
+    background: radial-gradient(circle at 100% 0%, #e8f3ff 0, transparent 53%),
+                linear-gradient(128deg, #ffffff 12%, #f4f9ff 100%);
+  }
+
+  .sd-attendance-quick-actions,
+  .sd-attendance-records,
+  .sd-payroll-modern :is(#sd-payroll-period, #sd-payroll-workers, [data-sd-panel="summary"], .sd-payroll-detail-card) {
+    border-radius: 21px !important;
+    border: 1px solid rgba(26, 63, 110, .10) !important;
+    background: #ffffff;
+    box-shadow: 0 9px 28px rgba(25, 60, 120, .055) !important;
+    scroll-margin-top: 28px;
+  }
+
+  .sd-attendance-quick-actions { padding: 20px 22px !important; }
+  .sd-attendance-quick-actions > div:first-child > div:first-child {
+    font-size: 16px !important;
+    letter-spacing: -.025em;
+  }
+  .sd-attendance-quick-actions .dashboard-mobile-actions { gap: 10px !important; }
+  .sd-attendance-quick-actions button {
+    min-height: 44px;
+    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+  }
+  .sd-attendance-records > div:first-child { padding: 22px 23px !important; }
+  .sd-attendance-records > div:first-child > div:first-child > div:first-child {
+    font-size: 17px !important;
+  }
+  .sd-attendance-records > div:first-child > div:last-child {
+    background: #eaf3ff !important;
+    color: #0057b7 !important;
+    font-size: 11px !important;
+    border-radius: 10px !important;
+  }
+  .sd-attendance-records .attendance-table th {
+    background: #f6f9fd;
+    border-bottom: 1px solid #e6edf6;
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    font-size: 10px !important;
+    color: #596c87 !important;
+  }
+  .sd-attendance-records .attendance-table td {
+    border-bottom: 1px solid #edf1f7;
+    font-size: 12px;
+    padding-top: 13px !important;
+    padding-bottom: 13px !important;
+  }
+  .sd-attendance-records .attendance-table tbody tr:hover {
+    box-shadow: inset 4px 0 #b7d9ff;
+  }
+  .sd-attendance-records .attendance-table button {
+    min-height: 38px;
+    font-size: 11px !important;
+  }
+  .sd-attendance-records .attendance-table th button {
+    min-height: 34px;
+    text-transform: inherit;
+  }
+  .sd-attendance-records .attendance-table :is(input,select) {
+    min-height: 40px;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+  }
+  .sd-attendance-records button:focus-visible,
+  .sd-attendance-quick-actions button:focus-visible,
+  .sd-payroll-modern button:focus-visible,
+  .sd-payroll-modern select:focus-visible {
+    outline: 3px solid #005fcc;
+    outline-offset: 2px;
+  }
+
+  .sd-payroll-hero {
+    padding: clamp(24px, 3vw, 36px);
+    border-radius: 25px;
+    background:
+      radial-gradient(circle at 100% 0%, #e6f2ff, transparent 55%),
+      linear-gradient(125deg, #fff 12%, #f6faff);
+    border: 1px solid rgba(0, 122, 255, .12);
+    box-shadow: 0 10px 32px rgba(24, 65, 130, .065);
+    margin-bottom: 24px;
+  }
+  .sd-payroll-hero-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .sd-payroll-hero h1 {
+    margin: 8px 0 8px;
+    color: #17243d;
+    font-size: clamp(32px, 4.4vw, 43px);
+    line-height: 1.1;
+    font-weight: 780;
+    letter-spacing: -.05em;
+  }
+  .sd-payroll-hero p {
+    margin: 0;
+    font-size: 14px;
+    color: #63738b;
+    line-height: 1.6;
+  }
+  .sd-payroll-period-caption {
+    border: 1px solid #dce7f7;
+    border-radius: 12px;
+    padding: 11px 14px;
+    background: rgba(255,255,255,.83);
+    font-size: 12px;
+    font-weight: 700;
+    color: #456387;
+  }
+  .sd-payroll-links { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 23px; }
+  .sd-payroll-links a {
+    min-height: 44px;
+    padding: 11px 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border-radius: 13px;
+    border: 1px solid #dce7f7;
+    background: rgba(255,255,255,.92);
+    color: #27466f;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .sd-payroll-links .sd-payroll-primary { background: #007aff; border-color: #007aff; color: #fff; }
+  .sd-payroll-links a:hover { background: #edf5ff; }
+  .sd-payroll-links .sd-payroll-primary:hover { background: #0065d5; }
+  .sd-payroll-links a:focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; }
+  .sd-payroll-modern #sd-payroll-period > div:first-child,
+  .sd-payroll-modern #sd-payroll-workers > div:first-child,
+  .sd-payroll-modern [data-sd-panel="summary"] > div:first-child {
+    padding: 20px 22px !important;
+  }
+  .sd-payroll-modern .vyplaty-grid-3 > div,
+  .sd-payroll-modern .vyplaty-grid-summary > div { padding: 22px 24px !important; }
+  .sd-payroll-modern .vyplaty-period-actions { padding: 16px 21px !important; gap: 10px !important; }
+  .sd-payroll-modern .vyplaty-period-actions button {
+    min-height: 44px;
+    padding: 10px 17px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-toolbar select,
+  .sd-payroll-modern .vyplaty-toolbar button {
+    min-height: 44px;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table th {
+    background: #f6f9fd;
+    border-bottom: 1px solid #e6edf6;
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    font-size: 10px !important;
+    color: #5b6d83 !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table td {
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    border-bottom: 1px solid #edf1f7;
+    font-size: 12px;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table tbody tr:hover { box-shadow: inset 4px 0 #b7d9ff; }
+}
+
+@media screen and (max-width: 1024px) {
+  .sd-payroll-modern,
+  .sd-dashboard-modern { padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important; }
+  .sd-payroll-hero { padding: 24px 20px; border-radius: 20px; }
+  .sd-payroll-hero p { font-size: 12px; }
+  .sd-payroll-links a { flex: 1 1 125px; }
+  .sd-dashboard-modern .attendance-table-wrap,
+  .sd-payroll-modern .vyplaty-mobile-scroll { overscroll-behavior-x: contain; }
+}
+@media screen and (max-width: 600px) {
+  .sd-payroll-modern .vyplaty-mobile-table td {
+    min-height: 44px;
+    font-size: 12px !important;
+  }
+  .sd-payroll-modern .vyplaty-mobile-table tr.vyplaty-mobile-row {
+    box-shadow: 0 4px 16px rgba(27, 55, 95, .045);
+    border-radius: 14px;
+    margin: 0 10px 10px;
+  }
+  .sd-payroll-modern .vyplaty-grid-summary > div,
+  .sd-payroll-modern .vyplaty-grid-3 > div { padding: 19px 20px !important; }
+  .sd-dashboard-modern .attendance-table td.attendance-cell {
+    grid-template-columns: 91px minmax(0,1fr);
+    min-height: 44px;
+  }
+  .sd-dashboard-modern .attendance-table td.attendance-cell::before { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-payroll-links a, .sd-dashboard-modern .attendance-table tbody tr { transition: none !important; }
+}
+/* No additional print rules: PDF tables and print cards retain their existing layout. */
+
+
+/* Attendance filtering: native controls with a more legible, touch-friendly hierarchy. */
+@media screen {
+  .sd-dashboard-modern .sd-attendance-filters {
+    border-radius: 21px !important;
+    border: 1px solid rgba(26, 63, 110, .10) !important;
+    box-shadow: 0 9px 28px rgba(25,60,120,.055) !important;
+    padding: 22px 23px !important;
+    background: #ffffff;
+  }
+  .sd-dashboard-modern .sd-attendance-filters > div:first-child > div:first-child > div:first-child {
+    font-size: 17px !important;
+    font-weight: 760 !important;
+    letter-spacing: -.025em;
+  }
+  .sd-dashboard-modern .sd-attendance-filters .dashboard-filter-grid { gap: 13px !important; }
+  .sd-dashboard-modern .sd-attendance-filters label {
+    color: #5d6d83 !important;
+    font-size: 11px !important;
+    font-weight: 680 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    margin-bottom: 7px !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters select,
+  .sd-dashboard-modern .sd-attendance-filters input[type="date"] {
+    min-height: 44px;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    border: 1px solid #dce5f1 !important;
+    background: #f9fbff !important;
+    color: #1c2c44 !important;
+    font-size: 13px !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters button {
+    min-height: 44px;
+    border-radius: 12px !important;
+    padding: 9px 15px !important;
+    font-size: 12px !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-weight: 690 !important;
+  }
+  .sd-dashboard-modern .sd-attendance-filters :is(input,select,button):focus-visible {
+    outline: 3px solid #005fcc !important;
+    outline-offset: 2px !important;
+  }
+}
+@media screen and (max-width:600px) {
+  .sd-dashboard-modern .sd-attendance-filters { padding: 19px 16px !important; }
+}
+
+
+/* Phase 3: real Stavby and Pracovníci admin pages.
+   Scope to screen only to preserve PDFs and existing business states. */
+@media screen {
+  .sd-projects-modern,.sd-workers-modern {
+    background: #f4f7fb !important;
+    color: #17243b;
+    gap: 20px !important;
+  }
+  .sd-admin-page-hero {
+    padding: clamp(23px,3vw,36px);
+    margin-bottom: 23px;
+    border: 1px solid rgba(0,122,255,.12);
+    border-radius: 25px;
+    background: radial-gradient(circle at 100% 0%,#e5f2ff 0,transparent 55%),
+      linear-gradient(128deg,#fff 12%,#f6faff 100%);
+    box-shadow: 0 10px 32px rgba(24,65,130,.063);
+  }
+  .sd-admin-page-eyebrow {
+    color: #0065d2;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .09em;
+  }
+  .sd-admin-page-heading h1 {
+    margin: 8px 0 8px;
+    color: #17243d;
+    font-size: clamp(32px,4.4vw,43px);
+    font-weight: 780;
+    line-height: 1.1;
+    letter-spacing: -.05em;
+  }
+  .sd-admin-page-heading p {margin:0;color:#63738b;font-size:14px;line-height:1.6}
+  .sd-admin-page-quicklinks {display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:23px}
+  .sd-admin-quicklink {
+    min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:13px;
+    border:1px solid #dce7f7;border-radius:13px;padding:11px 18px;
+    background:rgba(255,255,255,.92);color:#27466f;text-decoration:none;font-size:13px;font-weight:700;
+  }
+  .sd-admin-quicklink.primary{background:#007aff;border-color:#007aff;color:white}
+  .sd-admin-quicklink:hover{background:#edf5ff}
+  .sd-admin-quicklink.primary:hover{background:#0065d5}
+  .sd-admin-quicklink:focus-visible{outline:3px solid #005fcc;outline-offset:3px}
+
+  .sd-projects-modern .sd-project-stat-grid,
+  .sd-workers-modern .sd-worker-stat-grid{gap:14px !important;margin-bottom:20px !important}
+  .sd-projects-modern .sd-project-stat-grid > div,
+  .sd-workers-modern .sd-worker-stat-grid > div{
+    border:1px solid rgba(26,63,110,.10) !important;border-radius:20px !important;
+    box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+    padding:23px 24px !important;min-height:135px;
+  }
+  .sd-projects-modern .sd-project-stat-grid > div:nth-child(1),
+  .sd-workers-modern .sd-worker-stat-grid > div:nth-child(1){
+    background:linear-gradient(135deg,#fff 0%,#f2f8ff 100%) !important;
+  }
+  .sd-projects-modern .sd-project-stat-grid > div:nth-child(2),
+  .sd-workers-modern .sd-worker-stat-grid > div:nth-child(2){
+    background:linear-gradient(135deg,#fff 0%,#f8fbff 100%) !important;
+  }
+  .sd-projects-modern .sd-project-stat-grid > div:nth-child(3),
+  .sd-workers-modern .sd-worker-stat-grid > div:nth-child(3){
+    background:linear-gradient(135deg,#fff 0%,#f3f9ff 100%) !important;
+  }
+  .sd-projects-modern .sd-project-stat-grid > div > div:first-child,
+  .sd-workers-modern .sd-worker-stat-grid > div > div:first-child{
+    font-size:11px !important;letter-spacing:.02em !important;color:#67788e !important;
+  }
+  .sd-projects-modern .sd-project-stat-grid > div > div:nth-child(2),
+  .sd-workers-modern .sd-worker-stat-grid > div > div:nth-child(2){
+    font-size:34px !important;letter-spacing:-.055em !important;margin-top:12px !important;
+  }
+  .sd-projects-modern :is(.sd-project-form-card,.sd-project-filters,.sd-project-table-card),
+  .sd-workers-modern :is(.sd-worker-form-card,.sd-worker-list-card) {
+    border:1px solid rgba(26,63,110,.10) !important;
+    border-radius:21px !important;
+    background:#fff;
+    box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+    scroll-margin-top:23px;
+  }
+  .sd-project-list-anchor {scroll-margin-top:23px}
+  .sd-projects-modern .sd-project-form-card > div:first-child,
+  .sd-workers-modern .sd-worker-form-card > div:first-child {
+    padding:20px 22px !important;
+  }
+  .sd-projects-modern .sd-project-form-card form,
+  .sd-workers-modern .sd-worker-form-card form {
+    padding:22px !important;
+  }
+  .sd-projects-modern .sd-project-filters {padding:20px 22px !important}
+  .sd-workers-modern .sd-worker-list-card > div:first-child {padding:20px 22px !important}
+  .sd-workers-modern .sd-worker-list-card > div:nth-child(2) {
+    background:#f9fbfe !important;padding:19px 22px !important;
+  }
+  .sd-projects-modern :is(.sd-project-form-card,.sd-project-filters) label,
+  .sd-workers-modern :is(.sd-worker-form-card,.sd-worker-list-card) label {
+    color:#5d6d83 !important;font-size:11px !important;font-weight:680 !important;
+    letter-spacing:0 !important;text-transform:none !important;margin-bottom:8px !important;
+  }
+  .sd-projects-modern :is(.sd-project-form-card,.sd-project-filters) :is(input,select),
+  .sd-workers-modern :is(.sd-worker-form-card,.sd-worker-list-card) :is(input,select) {
+    min-height:44px !important;padding:10px 12px !important;
+    border:1px solid #dce5f1 !important;border-radius:12px !important;
+    color:#1c2c44 !important;background:#f9fbff !important;font-size:13px !important;
+  }
+  .sd-projects-modern :is(.sd-project-form-card,.sd-project-filters,.sd-project-table-card) button,
+  .sd-workers-modern :is(.sd-worker-form-card,.sd-worker-list-card) button {
+    min-height:44px;border-radius:12px !important;font-size:12px !important;
+    font-weight:690 !important;text-transform:none !important;letter-spacing:0 !important;
+  }
+  .sd-projects-modern :is(.sd-project-form-card,.sd-project-filters,.sd-project-table-card) :is(button,input,select):focus-visible,
+  .sd-workers-modern :is(.sd-worker-form-card,.sd-worker-list-card) :is(button,input,select):focus-visible {
+    outline:3px solid #005fcc !important;outline-offset:2px !important;
+  }
+  .sd-projects-modern .sd-project-table-card > div:first-child{padding:20px 22px !important}
+  .sd-projects-modern .simple-mobile-table th,
+  .sd-workers-modern .simple-mobile-table th{
+    background:#f6f9fd !important;color:#5b6d83 !important;
+    font-size:10px !important;padding-top:15px !important;padding-bottom:15px !important;
+  }
+  .sd-projects-modern .simple-mobile-table td,
+  .sd-workers-modern .simple-mobile-table td{
+    padding-top:14px !important;padding-bottom:14px !important;
+    font-size:12px;border-bottom:1px solid #edf1f7;
+  }
+  .sd-projects-modern .simple-mobile-table tbody tr:hover,
+  .sd-workers-modern .simple-mobile-table tbody tr:hover{
+    box-shadow:inset 4px 0 #b7d9ff;
+  }
+}
+
+@media screen and (max-width:1024px) {
+  .sd-admin-page-hero {padding:24px 19px;border-radius:20px}
+  .sd-admin-page-heading p{font-size:12px}
+  .sd-admin-page-quicklinks a{flex:1 1 145px}
+  .sd-projects-modern,.sd-workers-modern {
+    padding-bottom:calc(99px + env(safe-area-inset-bottom)) !important;
+  }
+}
+@media screen and (max-width:600px) {
+  .sd-projects-modern .sd-project-stat-grid > div,
+  .sd-workers-modern .sd-worker-stat-grid > div{padding:20px 18px !important;min-height:auto}
+  .sd-projects-modern .sd-project-form-card form,
+  .sd-workers-modern .sd-worker-form-card form,
+  .sd-projects-modern .sd-project-filters{padding:18px !important}
+  .sd-projects-modern .simple-mobile-table tr.simple-mobile-row,
+  .sd-workers-modern .simple-mobile-table tr.simple-mobile-row {
+    box-shadow:0 5px 18px rgba(26,60,110,.04);border-radius:15px;
+  }
+  .sd-projects-modern .simple-mobile-table td.simple-mobile-cell,
+  .sd-workers-modern .simple-mobile-table td.simple-mobile-cell {
+    min-height:44px;
+  }
+}
+@media print {.sd-admin-page-hero{display:none !important}}
+
+
+/* Project detail: shared visual language without touching finance data. */
+@media screen {
+ .sd-project-detail-modern{background:#f4f7fb !important;gap:20px !important}
+ .sd-project-detail-modern .sd-project-detail-hero{
+   border:1px solid rgba(0,122,255,.12);
+   background:radial-gradient(circle at 100% 0%,#eaf4ff,transparent 55%),linear-gradient(130deg,#fff,#f7fbff);
+   border-radius:22px;padding:25px 27px;
+   box-shadow:0 10px 30px rgba(25,60,120,.055);
+   margin-bottom:18px !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-hero h1{
+   font-size:clamp(28px,3.6vw,39px) !important;
+   font-weight:780 !important;letter-spacing:-.045em !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-nav{gap:8px !important}
+ .sd-project-detail-modern .sd-project-detail-nav button{
+   min-height:44px !important;
+   border-radius:12px !important;
+   padding:10px 16px !important;
+   font-size:12px !important;
+ }
+ .sd-project-detail-modern .sd-project-detail-nav button:focus-visible{
+   outline:3px solid #005fcc;outline-offset:3px
+ }
+}
+@media screen and (max-width:1024px){
+ .sd-project-detail-modern{padding-bottom:calc(99px + env(safe-area-inset-bottom)) !important}
+ .sd-project-detail-modern .sd-project-detail-hero{padding:22px 19px;border-radius:19px}
+}
+
+
+/* Finance dashboard visual refresh. All rules apply to screens only:
+   financial calculations, API calls, data filters and PDF output are unchanged. */
+@media screen {
+ .sd-finances-modern{background:#f4f7fb !important;gap:20px !important;color:#17243b}
+ .sd-finances-modern .sd-admin-page-hero{margin-bottom:24px}
+ .sd-finances-modern .sd-finance-stat-grid{gap:14px !important;margin-bottom:19px !important;scroll-margin-top:25px}
+ .sd-finances-modern .sd-finance-stat-grid > div{
+   min-width:0;min-height:148px;padding:23px 21px !important;
+   border:1px solid rgba(26,63,110,.10) !important;
+   border-radius:20px !important;
+   background:linear-gradient(135deg,#fff,#f8fbff) !important;
+   box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div:nth-child(3){
+   background:linear-gradient(130deg,#fff,#f2fbf8) !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div:nth-child(4){
+   background:linear-gradient(130deg,#fff,#f3f8ff) !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:first-child{
+   font-size:11px !important;letter-spacing:.02em !important;font-weight:740 !important;
+   color:#687a90 !important
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:nth-child(2){
+   font-size:clamp(22px,2.4vw,29px) !important;letter-spacing:-.045em !important;
+   margin-top:16px !important;line-height:1.15
+ }
+ .sd-finances-modern .sd-finance-stat-grid > div > div:last-child{
+   font-size:11px !important;line-height:1.5;margin-top:13px !important;
+   color:#7d8a9c !important
+ }
+ .sd-finances-modern :is(.sd-finance-attention-panel,.sd-finance-project-section){
+   border-radius:21px !important;
+   border:1px solid rgba(26,63,110,.10) !important;
+   background:#fff;
+   box-shadow:0 9px 28px rgba(25,60,120,.055) !important;
+   scroll-margin-top:25px;
+ }
+ .sd-finances-modern .sd-finance-attention-panel{padding:22px 24px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid{
+   gap:12px !important;margin-top:18px !important;
+ }
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid > div{
+   padding:17px 16px !important;border-radius:14px !important;min-height:82px
+ }
+ .sd-finances-modern .sd-finance-project-section{padding:24px !important}
+ .sd-finances-modern .sd-finance-project-section > div:first-child{
+   margin-bottom:22px !important
+ }
+ .sd-finances-modern .sd-finance-project-section > div:first-child > div:first-child > div:first-child{
+   font-size:17px !important;letter-spacing:-.025em
+ }
+ .sd-finances-modern .sd-finance-status-filters{gap:7px !important}
+ .sd-finances-modern .sd-finance-status-filters button{
+   min-height:44px !important;border-radius:12px !important;
+   padding:10px 16px !important;font-size:12px !important;
+ }
+ .sd-finances-modern .sd-finance-project-search{margin-bottom:20px !important}
+ .sd-finances-modern .sd-finance-project-search input{
+   min-height:44px !important;
+   padding:11px 14px !important;
+   border-radius:12px !important;
+   background:#f9fbff !important;
+   border:1px solid #dce5f1 !important;
+   font-size:13px !important;
+ }
+ .sd-finances-modern .sd-finance-project-grid{gap:16px !important}
+ .sd-finances-modern .sd-finance-project-card{
+   padding:22px !important;
+   border-radius:19px !important;
+   border:1px solid #e4edf8 !important;
+   background:linear-gradient(135deg,#fff,#fcfdff) !important;
+   transition:border-color .18s ease,box-shadow .18s ease;
+ }
+ .sd-finances-modern .sd-finance-project-card:hover{
+   border-color:#c1dcff !important;
+   box-shadow:0 9px 23px rgba(24,72,135,.065);
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics{
+   gap:12px !important;margin-top:20px !important;
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics > div > div:first-child{
+   font-size:10px !important;color:#718196 !important
+ }
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics > div > div:nth-child(2){
+   font-size:14px !important;margin-top:7px !important;letter-spacing:-.025em
+ }
+ .sd-finances-modern .finances-detail-link,
+ .sd-finances-modern .sd-finance-project-card a[href^="/zakazky/"]{
+   min-height:44px !important;border-radius:12px !important;padding:10px 15px !important;
+   font-size:11px !important
+ }
+ .sd-finances-modern :is(input,button,select,a):focus-visible{
+   outline:3px solid #005fcc;outline-offset:3px
+ }
+}
+@media screen and (max-width:1024px){
+ .sd-finances-modern{padding-bottom:calc(100px + env(safe-area-inset-bottom)) !important}
+ .sd-finances-modern .sd-finance-project-section{padding:20px !important}
+ .sd-finances-modern .sd-finance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media screen and (max-width:640px){
+ .sd-finances-modern .sd-finance-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}
+ .sd-finances-modern .sd-finance-stat-grid > div{padding:18px 14px !important;min-height:150px}
+ .sd-finances-modern .sd-finance-stat-grid > div > div:nth-child(2){font-size:clamp(20px,5vw,25px) !important}
+ .sd-finances-modern .sd-finance-attention-panel{padding:19px 16px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid{gap:8px !important}
+ .sd-finances-modern .sd-finance-attention-panel .finances-attention-grid > div{padding:14px 12px !important}
+ .sd-finances-modern .sd-finance-project-section{padding:19px 15px !important}
+ .sd-finances-modern .sd-finance-project-card{padding:18px 15px !important}
+ .sd-finances-modern .sd-finance-project-card .finances-project-metrics{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+ .sd-finances-modern .sd-finance-status-filters button{flex:1 1 90px}
+}
+@media (prefers-reduced-motion:reduce){
+ .sd-finances-modern .sd-finance-project-card{transition:none !important}
+}

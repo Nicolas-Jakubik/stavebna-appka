@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { recorderReadQuery, validateRecorderEntries } from '../../../../../lib/recorderValidation'
 import { serverDatabase } from '../../../../../lib/serverDatabase'
+import { previewDatabaseIsIsolated } from '../../../../../lib/previewDatabaseIsolation'
 // Compatibility requirement: the existing recorder form on the normal URL
 // needs no new link, cookie, account, or password. Access here is anonymous.
 // Only allowlisted recorder fields and checked INSERTs may be exposed; never
@@ -11,6 +12,7 @@ function fail(status: number, message: string, code = `RECORDER_${status}`) {
   return Response.json({ message, code }, { status, headers })
 }
 export async function GET(request: NextRequest, context: Context) {
+  if (!previewDatabaseIsIsolated()) return fail(503, 'Testovacia databáza nie je bezpečne oddelená.')
   const { table } = await context.params
   const query = recorderReadQuery(table, request.nextUrl.searchParams)
   if (!query) return fail(400, 'Nepovolený dotaz.')
@@ -32,6 +34,7 @@ export async function GET(request: NextRequest, context: Context) {
 }
 
 export async function POST(request: NextRequest, context: Context) {
+  if (!previewDatabaseIsIsolated()) return fail(503, 'Testovacia databáza nie je bezpečne oddelená.')
   if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
     return fail(403, 'Nepovolený pôvod požiadavky.')
   }

@@ -3,14 +3,44 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy' | 'financie'
+type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy'
 
-export default function AdminSidebar({
-  active,
-}: {
-  active: AdminSection
-}) {
-  const [mobileOpen, setMobileOpen] = useState(false)
+const links: { href: string; label: string; mobile: string; key: AdminSection }[] = [
+  { href: '/dashboard', label: 'Dochádzka', mobile: 'Hodiny', key: 'dashboard' },
+  { href: '/zakazky', label: 'Stavby', mobile: 'Stavby', key: 'zakazky' },
+  { href: '/zamestnanci', label: 'Pracovníci', mobile: 'Tím', key: 'zamestnanci' },
+  { href: '/mzdy', label: 'Výplaty', mobile: 'Výplaty', key: 'mzdy' },
+]
+
+function NavIcon({ name }: { name: AdminSection | 'logout' }) {
+  const paths = {
+    dashboard: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
+    zakazky: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h2m4 0h2M8 11h2m4 0h2M8 15h2m4 0h2M10 21v-3h4v3" /></>,
+    zamestnanci: <><circle cx="9" cy="8" r="3" /><path d="M2.5 20v-2a6.5 6.5 0 0 1 13 0v2M17 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3.5 4.8V20" /></>,
+    mzdy: <><rect x="3" y="6" width="18" height="15" rx="3" /><path d="M3 10h18M16 15h2M7 6V4h11" /></>,
+    logout: <><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 8l4 4-4 4M9 12h9" /></>,
+  }
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+      {paths[name]}
+    </svg>
+  )
+}
+
+function BrandMark() {
+  return (
+    <span className="sd-brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" focusable="false">
+        <path d="M7 19v-4a9 9 0 0 1 6-8.5V5a3 3 0 0 1 6 0v1.5A9 9 0 0 1 25 15v4" />
+        <path d="M13 6v7m6-7v7M5 20c-1.7 0-2.5 1.1-2.5 2.5S3.8 25 5.5 25h21c1.7 0 2.5-1.1 2.5-2.5S28.2 20 26.5 20H5z" />
+      </svg>
+    </span>
+  )
+}
+
+export default function AdminSidebar({ active }: { active: AdminSection }) {
   const [odhlasuje, setOdhlasuje] = useState(false)
   const [chybaOdhlasenia, setChybaOdhlasenia] = useState('')
 
@@ -23,221 +53,75 @@ export default function AdminSidebar({
       if (!response.ok) throw new Error('Logout failed')
       window.location.assign('/admin-prihlasenie')
     } catch {
-      // Server rejection can leave the valid admin cookie in place.
-      // Do not imply that the user has been logged out.
+      // A rejected server request may leave the admin session active.
       setChybaOdhlasenia('Odhlásenie sa nepodarilo. Skúste to znova.')
     } finally {
       setOdhlasuje(false)
     }
   }
 
-  const links: { href: string; label: string; key: AdminSection; short: string }[] = [
-    { href: '/dashboard', label: 'Dochádzka', key: 'dashboard', short: 'D' },
-    { href: '/zakazky', label: 'Stavby', key: 'zakazky', short: 'S' },
-    { href: '/zamestnanci', label: 'Zamestnanci', key: 'zamestnanci', short: 'Z' },
-    { href: '/mzdy', label: 'Výplaty', key: 'mzdy', short: 'V' },
-    { href: '/financie', label: 'Financie', key: 'financie', short: 'F' },
-  ]
+  const logoutButton = (isMobile: boolean) => (
+    <button type="button"
+      className={isMobile ? 'sd-mobile-logout' : 'sd-sidebar-logout'}
+      onClick={odhlasit} disabled={odhlasuje} aria-busy={odhlasuje}
+      aria-label={odhlasuje ? 'Odhlasujem' : 'Odhlásiť sa'}>
+      <NavIcon name="logout" />
+      {!isMobile && <span>{odhlasuje ? 'Odhlasujem…' : 'Odhlásiť sa'}</span>}
+    </button>
+  )
 
   return (
     <>
-      <style>{`
-        .admin-mobile-menu-button,
-        .admin-mobile-backdrop {
-          display: none;
-        }
-
-        @media (max-width: 1024px) {
-          .admin-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: 1002 !important;
-            width: min(84vw, 300px) !important;
-            min-width: 0 !important;
-            height: 100dvh !important;
-            border-radius: 0 18px 18px 0 !important;
-            padding:
-              max(20px, env(safe-area-inset-top))
-              max(14px, env(safe-area-inset-right))
-              max(20px, env(safe-area-inset-bottom))
-              max(14px, env(safe-area-inset-left)) !important;
-            transform: translateX(-105%);
-            transition: transform 180ms ease;
-            box-shadow: 12px 0 36px rgba(0,0,0,0.16) !important;
-          }
-
-          .admin-sidebar[data-mobile-open="true"] {
-            transform: translateX(0);
-          }
-
-          .admin-mobile-menu-button {
-            position: fixed;
-            top: max(12px, env(safe-area-inset-top));
-            left: max(12px, env(safe-area-inset-left));
-            z-index: 1001;
-            width: 44px;
-            height: 44px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(0,0,0,0.09);
-            border-radius: 12px;
-            background: rgba(255,255,255,0.96);
-            color: #1d1d1f;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-            font-size: 20px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-          }
-
-          .admin-mobile-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            display: block;
-            background: rgba(0,0,0,0.26);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 180ms ease;
-          }
-
-          .admin-mobile-backdrop[data-mobile-open="true"] {
-            opacity: 1;
-            pointer-events: auto;
-          }
-
-          .admin-sidebar a,
-          .admin-sidebar button {
-            min-height: 44px;
-          }
-        }
-      `}</style>
-
-      <button
-        type="button"
-        className="admin-mobile-menu-button"
-        aria-label={mobileOpen ? 'Zavrieť administráciu' : 'Otvoriť administráciu'}
-        aria-expanded={mobileOpen}
-        onClick={() => setMobileOpen(open => !open)}
-      >
-        {mobileOpen ? '×' : '☰'}
-      </button>
-
-      <div
-        className="admin-mobile-backdrop"
-        data-mobile-open={mobileOpen}
-        onClick={() => setMobileOpen(false)}
-        aria-hidden="true"
-      />
-
-      <aside
-        className="admin-sidebar"
-        data-mobile-open={mobileOpen}
-        aria-label="Administrácia"
-        style={{
-          position: 'sticky',
-          top: '24px',
-          alignSelf: 'flex-start',
-          width: '220px',
-          minWidth: '220px',
-          height: 'calc(100vh - 48px)',
-          padding: '18px 14px',
-          borderRadius: '18px',
-          backgroundColor: '#ffffff',
-          border: '1px solid rgba(0,0,0,0.07)',
-          boxShadow: '0 8px 28px rgba(0,0,0,0.05)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        }}
-      >
+      <aside className="sd-admin-sidebar" aria-label="Administrácia SD Evidencia">
         <div>
-          <div style={{ padding: '4px 8px 24px' }}>
-            <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Stavby Domy
-            </div>
-            <div style={{ fontSize: '21px', color: '#1d1d1f', fontWeight: '700', letterSpacing: '-0.035em', marginTop: '4px' }}>
-              Administrácia
-            </div>
-          </div>
-
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            {links.map(link => {
-              const isActive = active === link.key
-              return (
-                <Link
-                  key={link.key}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 12px',
-                    borderRadius: '11px',
-                    textDecoration: 'none',
-                    backgroundColor: isActive ? '#e8f3ff' : 'transparent',
-                    color: isActive ? '#0066cc' : '#4b4b4f',
-                    fontWeight: isActive ? '650' : '500',
-                    fontSize: '13px',
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: '26px',
-                      height: '26px',
-                      borderRadius: '8px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isActive ? '#0071e3' : '#f0f0f2',
-                      color: isActive ? '#ffffff' : '#86868b',
-                      fontSize: '10px',
-                      fontWeight: '700',
-                    }}
-                  >
-                    {link.short}
-                  </span>
-                  {link.label}
-                </Link>
-              )
-            })}
+          <Link href="/dashboard" className="sd-admin-brand" aria-label="SD Evidencia – dochádzka">
+            <BrandMark />
+            <span className="sd-brand-text">
+              <strong>SD Evidencia</strong>
+              <small>Firemná administrácia</small>
+            </span>
+          </Link>
+          <div className="sd-nav-heading">PRACOVNÝ PRIESTOR</div>
+          <nav className="sd-desktop-nav" aria-label="Hlavná navigácia">
+            {links.map(link => (
+              <Link key={link.key} href={link.href} className="sd-nav-link"
+                aria-current={active === link.key ? 'page' : undefined}
+                data-active={active === link.key}>
+                <NavIcon name={link.key} />
+                <span>{link.label}</span>
+              </Link>
+            ))}
           </nav>
         </div>
-
-        <div style={{ borderTop: '1px solid #ededf0', paddingTop: '14px' }}>
-          <div style={{ padding: '0 10px 10px', fontSize: '10px', color: '#a1a1a6', lineHeight: '1.45' }}>
-            Firemný prehľad dochádzky a stavieb
+        <div className="sd-sidebar-footer">
+          <div className="sd-sidebar-footer-copy">
+            <strong>Administrátor</strong>
+            <span>Evidencia práce a stavieb</span>
           </div>
-          <button
-            type="button"
-            onClick={odhlasit}
-            disabled={odhlasuje}
-            aria-busy={odhlasuje}
-            style={{
-              width: '100%',
-              border: '1px solid #e5e5e7',
-              backgroundColor: '#ffffff',
-              color: '#6e6e73',
-              cursor: 'pointer',
-              fontSize: '12px',
-              padding: '9px 12px',
-              borderRadius: '10px',
-              textAlign: 'left',
-              fontWeight: '500',
-            }}
-          >
-            {odhlasuje ? 'Odhlasujem…' : 'Odhlásiť sa'}
-          </button>
-          {chybaOdhlasenia && (
-            <p role="alert" style={{ fontSize: 12, color: '#b42318', lineHeight: 1.5, padding: '4px 10px' }}>
-              {chybaOdhlasenia}
-            </p>
-          )}
+          {logoutButton(false)}
+          {chybaOdhlasenia && <p role="alert" className="sd-logout-error">{chybaOdhlasenia}</p>}
         </div>
       </aside>
+
+      <div className="sd-mobile-topbar">
+        <Link href="/dashboard" className="sd-mobile-brand" aria-label="SD Evidencia – dochádzka">
+          <BrandMark />
+          <span>SD Evidencia</span>
+        </Link>
+        {logoutButton(true)}
+      </div>
+      {chybaOdhlasenia && <div role="alert" className="sd-mobile-logout-error">{chybaOdhlasenia}</div>}
+
+      <nav className="sd-mobile-tabbar" aria-label="Mobilná navigácia">
+        {links.map(link => (
+          <Link key={link.key} href={link.href} className="sd-mobile-tab"
+            aria-current={active === link.key ? 'page' : undefined}
+            data-active={active === link.key}>
+            <NavIcon name={link.key} />
+            <span>{link.mobile}</span>
+          </Link>
+        ))}
+      </nav>
     </>
   )
 }

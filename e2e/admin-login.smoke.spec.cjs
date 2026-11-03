@@ -103,7 +103,9 @@ test('failed admin logout never disguises an active session', async ({ page, con
   }))
 
   await logout.click()
-  await expect(page.locator('.admin-sidebar p[role="alert"]')).toContainText('Odhlásenie sa nepodarilo')
+  // The desktop sidebar and mobile top bar render separate responsive alerts.
+  // Check the visible accessibility alert, never a stale CSS class name.
+  await expect(page.getByRole('alert').filter({hasText:'Odhlásenie sa nepodarilo'})).toBeVisible()
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/)
   expect((await context.cookies()).some(c => c.name === 'stavby_admin_session')).toBe(true)
 

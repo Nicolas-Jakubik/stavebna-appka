@@ -2,7 +2,7 @@ name: Restore synthetic encrypted PostgreSQL 17 backup
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, integration/safe-repairs-batch2-2026-10-28]
 
 permissions:
   contents: read

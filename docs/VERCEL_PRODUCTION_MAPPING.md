@@ -1,5 +1,15 @@
 # SD Evidencia – mapovanie skutočnej prevádzky (aktualizácia 30.10.2026)
 
+## Aktuálny checkpoint – 3.11.2026 (prednosť pred historickým mapovaním nižšie)
+
+- **Preukázaná produkčná adresa:** Vercel Alias API 3.11.2026 potvrdilo `stavebna-appka.vercel.app` → `dpl_3MZkwjoeyTcPeazXj2R2W3F8fJ2z`, **READY Production**, zdrojový commit `d78ab74f40cf74bee1c7b7daf4ef69bbfaa23692` z integračnej vetvy pre opravy #102. Alias `updatedAt=2026-11-01T17:56:13.908Z`; tento dátum nie je automatický dôkaz schváleného vydania. PR #102 ostáva Draft/unmerged.
+- **Oddelený nový dizajn:** PR #104 je Draft nad #102, zatiaľ iba Preview. Testovací deployment `dpl_4Sf78Ehu7KQCsLAL8rt7jjfdqDV9` / SHA `a323b148` READY, 5/5 GitHub Actions dokončených úspešne.
+- **Dôležitá oprava historickej dokumentácie:** staršie tvrdenia, že alias stále smeruje na `dpl_xUKfxLsR8Fao8y1cNffhvPpgibnc` (starý `main`), už k 3.11.2026 neplatia.
+- **Zámerne neaktuálny bezpečnostný predpoklad:** `scripts/stage-safe-release.sh` stále požaduje starý deployment ID a má preto **fail closed**. Tento skript momentálne nespúšťať ani len mechanicky meniť konštantu `OLD_DEPLOY`; po novej samostatnej autorizácii treba aktualizovať release/rollback plán a overiť cieľový projekt, commit a aktuálny alias.
+- **Neoverené:** skutočné produkčné prihlásenie, bezpečný funkčný zapisovací scenár, historická správnosť firemných miezd/PDF, účinnosť WAF limitu a immutable Production → Supabase backend ref. Firewall API 3.11.2026 vrátilo `404 Seawall Config not found`; to **nie je dôkaz** o neprítomnosti akejkoľvek ochrany, len ju tento test nepotvrdil.
+- **STOP:** žiadny ďalší Production deploy, alias switch, DB migrácia, reálne testovacie zápisy ani zmena produkčných secrets bez ďalších kontrol a explicitného schválenia. Pôvodná URL zapisovateľov musí zostať nezmenená.
+
+
 **Projekt:** SD-EVIDENCIA-OPRAVY-2026-10-28  
 **Dôležité:** Živú aplikáciu, ktorú vlastník skutočne používa, **NEZAMIEŇAŤ** s diagnostickým projektom. Tento dokument je iba overovací podklad, nie povolenie na zmenu produkcie.
 

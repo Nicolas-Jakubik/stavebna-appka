@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/adminSupabase'
 import { hodinyZaznamuZMapy, vytvorMapuCistychHodin } from '../../lib/workHours'
 import AdminSidebar from '../../components/AdminSidebar'
+import AdminPageHero from '../../components/AdminPageHero'
 import { nacitajVsetkyStrany } from '../../lib/paginatedRows'
 
 export default function ZamestnanciPage() {
@@ -344,7 +345,7 @@ export default function ZamestnanciPage() {
   }
 
   return (
-    <div className="simple-admin-shell" style={{
+    <div className="simple-admin-shell sd-workers-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -467,19 +468,18 @@ export default function ZamestnanciPage() {
       <AdminSidebar active="zamestnanci" />
 
       <div className="simple-admin-content" style={{ width: '100%', flex: 1, minWidth: 0, maxWidth: '1540px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
-            Firemná administrácia
-          </div>
-          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: '1.1', letterSpacing: '-0.035em', color: '#1d1d1f', fontWeight: '700' }}>
-            Zamestnanci
-          </h1>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '5px' }}>
-            Pracovníci, sadzby, dochádzka, odpracované hodiny a neprítomnosti.
-          </div>
-        </div>
+        <AdminPageHero
+          eyebrow="SD EVIDENCIA · TÍM"
+          title="Pracovníci"
+          description="Ľudia, hodinové sadzby, dochádzka a neprítomnosti na jednom mieste."
+          links={[
+            { href: '#sd-worker-list', label: 'Prehľad pracovníkov', primary: true },
+            { href: '#sd-add-worker', label: 'Pridať pracovníka' },
+            { href: '/mzdy', label: 'Výplaty' }
+          ]}
+        />
 
-        <div className="zamestnanci-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        <div className="zamestnanci-summary-grid sd-worker-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <div style={{ ...cardStyle, padding: '18px 20px', boxShadow: '0 6px 22px rgba(0,0,0,0.045)' }}>
             <div style={{ fontSize: '9px', color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.55px', fontWeight: '700' }}>Pracovníci</div>
             <div style={{ fontSize: '30px', lineHeight: 1, color: '#0071e3', fontWeight: '750', letterSpacing: '-0.04em', marginTop: '8px' }}>{zamestnanci.length}</div>
@@ -499,7 +499,7 @@ export default function ZamestnanciPage() {
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
+        <div id="sd-add-worker" className="sd-worker-form-card" style={{ ...cardStyle, marginBottom: '24px', padding: '0', overflow: 'hidden' }}>
           <div style={{ padding: '15px 18px', borderBottom: '1px solid #eeeeef' }}>
             <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Pridať pracovníka</div>
             <div style={{ fontSize: '10px', color: '#86868b', marginTop: '3px' }}>Zadaj meno a základnú hodinovú sadzbu pracovníka.</div>
@@ -544,7 +544,7 @@ export default function ZamestnanciPage() {
           </form>
         </div>
 
-        <div className="simple-admin-card" style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+        <div id="sd-worker-list" className="simple-admin-card sd-worker-list-card" style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #eeeeef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '750', color: '#1d1d1f' }}>Prehľad pracovníkov</div>

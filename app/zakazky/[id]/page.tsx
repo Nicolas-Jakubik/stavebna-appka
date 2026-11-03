@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import AdminSidebar from '../../../components/AdminSidebar'
-import ProjectFinanceDashboard from '../../../components/ProjectFinanceDashboard'
 import { supabase } from '../../../lib/adminSupabase'
 
 type Project = {
@@ -14,7 +13,7 @@ type Project = {
   datum_pridania?: string | null
 }
 
-type Tab = 'prehlad' | 'hodiny' | 'financie' | 'dokumenty'
+type Tab = 'prehlad' | 'hodiny' | 'dokumenty'
 
 export default function ZakazkaDetailPage() {
   const params = useParams<{ id: string }>()
@@ -22,7 +21,7 @@ export default function ZakazkaDetailPage() {
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<Tab>('financie')
+  const [activeTab, setActiveTab] = useState<Tab>('prehlad')
 
   useEffect(() => {
     let cancelled = false
@@ -57,12 +56,11 @@ export default function ZakazkaDetailPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'prehlad', label: 'Prehľad' },
     { key: 'hodiny', label: 'Hodiny' },
-    { key: 'financie', label: 'Financie' },
     { key: 'dokumenty', label: 'Dokumenty' },
   ]
 
   return (
-    <div className="project-detail-shell" style={{
+    <div className="project-detail-shell sd-project-detail-modern" style={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f7',
       padding: '24px',
@@ -119,7 +117,7 @@ export default function ZakazkaDetailPage() {
           </div>
         ) : (
           <>
-            <div className="project-detail-header" style={{
+            <div className="project-detail-header sd-project-detail-hero" style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
@@ -153,7 +151,7 @@ export default function ZakazkaDetailPage() {
                 </div>
               </div>
               <div style={{ color: '#86868b', fontSize: '10px', textAlign: 'right', maxWidth: '360px', lineHeight: 1.45 }}>
-                Finančné údaje sú oddelené od dochádzky a viazané na ID tejto stavby.
+                Evidencia stavby a odkazy na pracovné hodiny.
               </div>
             </div>
 
@@ -165,13 +163,14 @@ export default function ZakazkaDetailPage() {
               marginBottom: '16px',
               boxShadow: '0 2px 8px rgba(0,0,0,.04)',
             }}>
-              <div className="project-detail-tabs" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <div className="project-detail-tabs sd-project-detail-nav" role="group" aria-label="Sekcie stavby" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {tabs.map(tab => {
                   const active = activeTab === tab.key
                   return (
                     <button
                       key={tab.key}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => setActiveTab(tab.key)}
                       style={{
                         border: 'none',
@@ -191,8 +190,6 @@ export default function ZakazkaDetailPage() {
                 })}
               </div>
             </div>
-
-            {activeTab === 'financie' && <ProjectFinanceDashboard projectId={projectId} projectName={project.nazov} />}
 
             {activeTab === 'prehlad' && (
               <div style={{ backgroundColor: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '14px', padding: '24px' }}>
