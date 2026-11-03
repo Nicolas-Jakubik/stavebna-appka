@@ -8,6 +8,7 @@ import { fakturyAkoNaklady, stavDodavatelskejFaktury, zhrnDodavatelskeFaktury } 
 import { stavKlientskejFaktury, zhrnKlientskeFaktury } from '../lib/clientInvoices'
 import { vypocitajZiskovost } from '../lib/profitability'
 import { vytvorUpozorneniaFaktur } from '../lib/financeAlerts'
+import { nacitajVsetkyStrany } from '../lib/paginatedRows'
 
 type OfferItem = {
   sekcia: string
@@ -314,6 +315,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([])
   const [clientInvoices, setClientInvoices] = useState<ClientInvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [message, setMessage] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [financeOpen, setFinanceOpen] = useState(false)
@@ -380,6 +382,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   async function loadFinance() {
     setLoading(true)
+    setLoadError(false)
     setMessage('')
 
     const [
@@ -416,9 +419,13 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
         .eq('zakazka_id', projectId)
         .order('datum', { ascending: false })
         .order('id', { ascending: false }),
-      supabase
-        .from('dochadzka')
-        .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot'),
+      nacitajVsetkyStrany<AttendanceRow>(async (start, end) => {
+        const { data, error } = await supabase.from('dochadzka')
+          .select('id,meno,datum,zakazka,prichod,odchod,objekt_id,sadzba_snapshot')
+          .order('id', { ascending: true })
+          .range(start, end)
+        return { data: data as AttendanceRow[] | null, error }
+      }),
       supabase
         .from('zamestnanci')
         .select('meno,sadzba'),
@@ -444,6 +451,7 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
     if (financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError) {
       console.error('Chyba načítania financií:', financeError || objectError || expenseError || paymentError || attendanceError || employeeError || workerPaymentError || supplierInvoiceError || clientInvoiceError)
+      setLoadError(true)
       setMessage('Finančné údaje sa nepodarilo načítať kompletne.')
     }
 
@@ -1448,6 +1456,12 @@ export default function ProjectFinanceDashboard({ projectId, projectName }: { pr
 
   if (loading) {
     return <div style={{ ...cardStyle, padding: '28px', color: '#86868b', fontSize: '12px' }}>Načítavam finančný prehľad…</div>
+  }
+
+  if (loadError) {
+    return <div role="alert" style={{ ...cardStyle, padding: '28px', color: '#b42318', fontSize: '13px' }}>
+      Finančný prehľad nie je kompletný, preto sú súčty skryté. Obnovte stránku alebo skúste neskôr.
+    </div>
   }
 
   return (
