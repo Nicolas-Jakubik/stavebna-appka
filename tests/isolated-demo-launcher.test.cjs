@@ -56,6 +56,7 @@ test('local UI preview scrubs all database, Supabase, admin and session secrets'
   assert.ok(spawned, 'Next.js should be launched after validation')
   assert.equal(spawned.command, process.execPath)
   assert.equal(spawned.argv[0], '/fake/node_modules/next/dist/bin/next')
+  assert.deepEqual(Array.from(spawned.argv.slice(1, 4)), ['dev', '--hostname', '127.0.0.1'])
   assert.equal(spawned.options.shell, false)
   const safe = spawned.options.env
   assert.equal(safe.VERCEL_ENV, 'preview')

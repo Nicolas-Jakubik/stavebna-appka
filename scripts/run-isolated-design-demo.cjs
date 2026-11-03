@@ -52,7 +52,7 @@ const nextBin = require.resolve('next/dist/bin/next')
 console.log('[SD Evidencia] Spúšťam izolovanú, nezapisovateľnú ukážku.')
 console.log(`[SD Evidencia] Otvor http://localhost:${port}/design-preview`)
 console.log('Na tejto adrese neupravuj firemné údaje; zobrazujú sa iba fiktívne návrhy.')
-const child = spawn(process.execPath, [nextBin, 'dev', '--port', String(port)], {
+const child = spawn(process.execPath, [nextBin, 'dev', '--hostname', '127.0.0.1', '--port', String(port)], {
   cwd: root, env, stdio: 'inherit', shell: false,
 })
 child.on('error', error => {
