@@ -3,14 +3,13 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy' | 'financie'
+type AdminSection = 'dashboard' | 'zakazky' | 'zamestnanci' | 'mzdy'
 
 const links: { href: string; label: string; mobile: string; key: AdminSection }[] = [
   { href: '/dashboard', label: 'Dochádzka', mobile: 'Hodiny', key: 'dashboard' },
   { href: '/zakazky', label: 'Stavby', mobile: 'Stavby', key: 'zakazky' },
   { href: '/zamestnanci', label: 'Pracovníci', mobile: 'Tím', key: 'zamestnanci' },
   { href: '/mzdy', label: 'Výplaty', mobile: 'Výplaty', key: 'mzdy' },
-  { href: '/financie', label: 'Financie', mobile: 'Financie', key: 'financie' },
 ]
 
 function NavIcon({ name }: { name: AdminSection | 'logout' }) {
@@ -19,7 +18,6 @@ function NavIcon({ name }: { name: AdminSection | 'logout' }) {
     zakazky: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h2m4 0h2M8 11h2m4 0h2M8 15h2m4 0h2M10 21v-3h4v3" /></>,
     zamestnanci: <><circle cx="9" cy="8" r="3" /><path d="M2.5 20v-2a6.5 6.5 0 0 1 13 0v2M17 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3.5 4.8V20" /></>,
     mzdy: <><rect x="3" y="6" width="18" height="15" rx="3" /><path d="M3 10h18M16 15h2M7 6V4h11" /></>,
-    financie: <><path d="M4 20V11m5 9V5m5 15v-8m5 8V8" strokeLinecap="round" /><path d="M2 21h20" /></>,
     logout: <><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 8l4 4-4 4M9 12h9" /></>,
   }
   return (
