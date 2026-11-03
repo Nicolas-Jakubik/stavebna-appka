@@ -59,11 +59,11 @@ SELECT public.sd_edit_attendance(101,2,'Administrátor','07:00','17:30','Stavba 
 UPDATE public.dochadzka SET sadzba_snapshot=14.25 WHERE id=101;
 DO $$
 DECLARE x public.dochadzka%rowtype;
+DECLARE audit_count integer;
 BEGIN
- SELECT * INTO x FROM public.dochadzka WHERE id=101;
- SELECT count(*) INTO STRICT x.edit_revision FROM public.dochadzka_zmeny WHERE dochadzka_id=101;
+ SELECT count(*) INTO audit_count FROM public.dochadzka_zmeny WHERE dochadzka_id=101;
  -- Exactly three attendance corrections: recorder, direct admin and admin RPC.
- IF x.edit_revision<>3 THEN RAISE EXCEPTION 'audit event count is not 3'; END IF;
+ IF audit_count<>3 THEN RAISE EXCEPTION 'audit event count is not 3'; END IF;
  SELECT * INTO x FROM public.dochadzka WHERE id=101;
  IF x.edit_revision<>3 OR NOT x.edit_locked OR x.sadzba_snapshot<>14.25 THEN
    RAISE EXCEPTION 'payroll rate-only mutation changed lock or revision';
