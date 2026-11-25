@@ -28,6 +28,10 @@ export default function DashboardPage() {
   const [filterMeno, setFilterMeno] = useState('')
   const [filterPolovica, setFilterPolovica] = useState<'cely' | 'prva' | 'druha'>('cely')
   const [filterDennehoPrehladu, setFilterDennehoPrehladu] = useState<'cely' | 'prva' | 'druha'>('cely')
+  const aktualnyMesiac = datumDoLocalString(new Date()).slice(0, 7)
+  const [exportOdMesiaca, setExportOdMesiaca] = useState(aktualnyMesiac)
+  const [exportDoMesiaca, setExportDoMesiaca] = useState(aktualnyMesiac)
+  const [exportujeViacMesiacov, setExportujeViacMesiacov] = useState(false)
   const [filterProblem, setFilterProblem] = useState('vsetko')
   const [triedenie, setTriedenie] = useState<'datum' | 'meno' | 'zakazka' | 'hodiny'>('datum')
   const [smerTriedenia, setSmerTriedenia] = useState<'asc' | 'desc'>('desc')
@@ -618,7 +622,7 @@ export default function DashboardPage() {
   let najaktivnejsi = '-'; let maxHod = 0
   Object.entries(zamestnanciHodiny).forEach(([meno, h]) => { if (h > maxHod) { maxHod = h; najaktivnejsi = meno } })
 
-  const nazovVybranehoMesiaca = zoznamMesiacov.find(m => m.hodnota === filterMesiac)?.nazov || filterMesiac
+  const nazovVybranehoMesiaca = nazovMesiaca(filterMesiac)
   const zobrazitMesacnyPrehlad = !filterDen && !filterZakazka
   const menaPrehladu = filterMeno ? [filterMeno] : dostupneMena
   const mesacnyPrehlad = menaPrehladu.map(meno => {
@@ -633,63 +637,82 @@ export default function DashboardPage() {
     return { meno, prva, druha, spolu, rozdiel: spolu - fondMesiaca }
   })
 
-  const [rokPrehladuText, mesiacPrehladuText] = filterMesiac.split('-')
-  const rokPrehladu = Number(rokPrehladuText)
-  const mesiacPrehladu = Number(mesiacPrehladuText)
-  const pocetDniPrehladu = new Date(Date.UTC(rokPrehladu, mesiacPrehladu, 0)).getUTCDate()
-  const nazvyDni = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So']
+  function nazovMesiaca(mesiac: string) {
+    const [rokText, mesiacText] = mesiac.split('-')
+    const rok = Number(rokText)
+    const cisloMesiaca = Number(mesiacText)
+    if (!rok || !cisloMesiaca) return mesiac
+    return new Intl.DateTimeFormat('sk-SK', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(rok, cisloMesiaca - 1, 1)))
+  }
 
-  const dennyPrehladPracovnikov = Array.from({ length: pocetDniPrehladu }, (_, index) => {
-    const den = index + 1
-    const datum = `${filterMesiac}-${String(den).padStart(2, '0')}`
-    const mena = Array.from(
-      new Set(
-        kontrolneZaznamy
-          .filter(z => z.datum === datum && z.meno)
-          .map(z => z.meno)
+  function vytvorDennyPrehladMesiaca(mesiac: string) {
+    const [rokText, mesiacText] = mesiac.split('-')
+    const rok = Number(rokText)
+    const cisloMesiaca = Number(mesiacText)
+    if (!rok || !cisloMesiaca) return []
+
+    const pocetDni = new Date(Date.UTC(rok, cisloMesiaca, 0)).getUTCDate()
+    const nazvyDni = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So']
+    const dnes = datumDoLocalString(new Date())
+
+    return Array.from({ length: pocetDni }, (_, index) => {
+      const den = index + 1
+      const datum = `${mesiac}-${String(den).padStart(2, '0')}`
+      const mena = Array.from(
+        new Set(
+          kontrolneZaznamy
+            .filter(z => z.datum === datum && z.meno)
+            .map(z => z.meno)
+        )
+      ).sort((a, b) => String(a).localeCompare(String(b), 'sk')) as string[]
+
+      const nepritomnostiDna = nepritomnosti
+        .filter(n => n.datum === datum)
+        .sort((a, b) => String(a.meno).localeCompare(String(b.meno), 'sk'))
+
+      const menaNepritomnych = new Set(
+        nepritomnostiDna.map(n => n.meno).filter(Boolean)
       )
-    ).sort((a, b) => String(a).localeCompare(String(b), 'sk')) as string[]
+      const menaVPraci = new Set(mena)
+      const denVTyzdniIndex = new Date(Date.UTC(rok, cisloMesiaca - 1, den)).getUTCDay()
+      const jeNedela = denVTyzdniIndex === 0
+      const jeBuduciDen = datum > dnes
+      const nezapisani = jeBuduciDen || jeNedela
+        ? []
+        : dostupneMena
+            .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
+            .sort((a, b) => String(a).localeCompare(String(b), 'sk'))
 
-    const nepritomnostiDna = nepritomnosti
-      .filter(n => n.datum === datum)
-      .sort((a, b) => String(a.meno).localeCompare(String(b.meno), 'sk'))
+      const skupinyMapa = new Map<string, any[]>()
+      nepritomnostiDna.forEach(n => {
+        const aktualne = skupinyMapa.get(n.dovod) || []
+        aktualne.push(n)
+        skupinyMapa.set(n.dovod, aktualne)
+      })
+      const skupinyNepritomnosti = Array.from(skupinyMapa.entries()).map(([dovod, polozky]) => ({
+        dovod,
+        polozky
+      }))
 
-    const menaNepritomnych = new Set(
-      nepritomnostiDna.map(n => n.meno).filter(Boolean)
-    )
-    const menaVPraci = new Set(mena)
-    const denVTyzdniIndex = new Date(Date.UTC(rokPrehladu, mesiacPrehladu - 1, den)).getUTCDay()
-    const jeNedela = denVTyzdniIndex === 0
-    const jeBuduciDen = datum > datumDoLocalString(new Date())
-    const nezapisani = jeBuduciDen || jeNedela
-      ? []
-      : dostupneMena
-          .filter(meno => !menaVPraci.has(meno) && !menaNepritomnych.has(meno))
-          .sort((a, b) => String(a).localeCompare(String(b), 'sk'))
-
-    const skupinyMapa = new Map<string, any[]>()
-    nepritomnostiDna.forEach(n => {
-      const aktualne = skupinyMapa.get(n.dovod) || []
-      aktualne.push(n)
-      skupinyMapa.set(n.dovod, aktualne)
+      return {
+        datum,
+        den,
+        denVTyzdni: nazvyDni[denVTyzdniIndex],
+        pocet: mena.length,
+        mena,
+        pocetNepritomnych: menaNepritomnych.size,
+        skupinyNepritomnosti,
+        pocetNezapisanych: nezapisani.length,
+        nezapisani
+      }
     })
-    const skupinyNepritomnosti = Array.from(skupinyMapa.entries()).map(([dovod, polozky]) => ({
-      dovod,
-      polozky
-    }))
+  }
 
-    return {
-      datum,
-      den,
-      denVTyzdni: nazvyDni[denVTyzdniIndex],
-      pocet: mena.length,
-      mena,
-      pocetNepritomnych: menaNepritomnych.size,
-      skupinyNepritomnosti,
-      pocetNezapisanych: nezapisani.length,
-      nezapisani
-    }
-  })
+  const dennyPrehladPracovnikov = vytvorDennyPrehladMesiaca(filterMesiac)
 
   const dennyPrehladNaZobrazenie = dennyPrehladPracovnikov.filter(den => {
     if (filterDennehoPrehladu === 'prva') return den.den <= 15
@@ -848,6 +871,215 @@ export default function DashboardPage() {
 </body>
 </html>`)
     okno.document.close()
+  }
+
+  function zoznamMesiacovVObdobi(od: string, doMesiaca: string) {
+    const [odRok, odMesiac] = od.split('-').map(Number)
+    const [doRok, doMesiac] = doMesiaca.split('-').map(Number)
+    if (!odRok || !odMesiac || !doRok || !doMesiac) return []
+
+    const startIndex = odRok * 12 + (odMesiac - 1)
+    const endIndex = doRok * 12 + (doMesiac - 1)
+    if (endIndex < startIndex) return []
+
+    const mesiace: string[] = []
+    for (let index = startIndex; index <= endIndex; index += 1) {
+      const rok = Math.floor(index / 12)
+      const mesiac = (index % 12) + 1
+      mesiace.push(`${rok}-${String(mesiac).padStart(2, '0')}`)
+    }
+    return mesiace
+  }
+
+  function riadkyPrePdf(prehlad: ReturnType<typeof vytvorDennyPrehladMesiaca>) {
+    return prehlad.map(den => {
+      const nepritomni = den.skupinyNepritomnosti.length > 0
+        ? den.skupinyNepritomnosti
+            .map((skupina: any) => {
+              const mena = skupina.polozky.map((polozka: any) => escapeHtml(polozka.meno)).join(', ')
+              return `<strong>${escapeHtml(skupina.dovod)}:</strong> ${mena}`
+            })
+            .join('<br>')
+        : '—'
+
+      const nezapisani = den.nezapisani.length > 0
+        ? den.nezapisani.map((meno: string) => escapeHtml(meno)).join(', ')
+        : '—'
+
+      const pracovnici = den.mena.length > 0
+        ? den.mena.map((meno: string) => escapeHtml(meno)).join(', ')
+        : 'Nikto'
+
+      const trieda =
+        den.denVTyzdni === 'Ne' ? 'nedela' :
+        den.denVTyzdni === 'So' ? 'sobota' :
+        ''
+
+      return `
+        <tr class="${trieda}">
+          <td class="datum"><strong>${escapeHtml(formatujDatumSK(den.datum))}</strong><br><span>${escapeHtml(den.denVTyzdni)}</span></td>
+          <td class="pocet">${den.pocet}</td>
+          <td>${pracovnici}</td>
+          <td>${nepritomni}</td>
+          <td>${nezapisani}</td>
+        </tr>
+      `
+    }).join('')
+  }
+
+  function exportovatViacMesiacovPdf() {
+    const mesiace = zoznamMesiacovVObdobi(exportOdMesiaca, exportDoMesiaca)
+    if (mesiace.length === 0) {
+      alert('Mesiac „Od“ musí byť rovnaký alebo skorší ako mesiac „Do“.')
+      return
+    }
+    if (mesiace.length > 24) {
+      alert('Naraz môžeš vytlačiť maximálne 24 mesiacov.')
+      return
+    }
+
+    const okno = window.open('', '_blank', 'width=1280,height=900')
+    if (!okno) {
+      alert('Pre export PDF povoľ v prehliadači vyskakovacie okná pre túto stránku.')
+      return
+    }
+
+    setExportujeViacMesiacov(true)
+
+    const sekcie = mesiace.map((mesiac, index) => {
+      const prehlad = vytvorDennyPrehladMesiaca(mesiac)
+      return `
+        <section class="mesiac ${index > 0 ? 'nova-strana' : ''}">
+          <div class="mesiac-hlavicka">
+            <h2>${escapeHtml(nazovMesiaca(mesiac))}</h2>
+            <span>${prehlad.reduce((sum, den) => sum + den.pocet, 0)} denných účastí</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Deň</th>
+                <th>V práci</th>
+                <th>Pracovníci</th>
+                <th>Neprítomní</th>
+                <th>Nezapísaní</th>
+              </tr>
+            </thead>
+            <tbody>${riadkyPrePdf(prehlad)}</tbody>
+          </table>
+        </section>
+      `
+    }).join('')
+
+    const vygenerovane = new Intl.DateTimeFormat('sk-SK', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date())
+
+    const nazovSuboru = `dochadzka-${exportOdMesiaca}-az-${exportDoMesiaca}.pdf`
+
+    okno.document.open()
+    okno.document.write(`<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(nazovSuboru)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 9mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #1d1d1f;
+      font-family: Arial, "Helvetica Neue", sans-serif;
+      font-size: 8.5pt;
+      line-height: 1.3;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .dokument-hlavicka {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+    h1 { margin: 0; font-size: 17pt; line-height: 1.1; }
+    .podnadpis { margin-top: 4px; color: #6e6e73; font-size: 9pt; }
+    .meta { color: #86868b; font-size: 8pt; text-align: right; white-space: nowrap; }
+    .mesiac { break-inside: auto; }
+    .nova-strana { break-before: page; page-break-before: always; }
+    .mesiac-hlavicka {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: baseline;
+      margin: 0 0 7px;
+    }
+    .mesiac-hlavicka h2 { margin: 0; font-size: 13pt; text-transform: capitalize; }
+    .mesiac-hlavicka span { color: #86868b; font-size: 8pt; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    thead { display: table-header-group; }
+    th {
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      padding: 5px 6px;
+      color: #515154;
+      font-size: 7.2pt;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      text-align: left;
+    }
+    td {
+      border: 1px solid #dedee2;
+      padding: 5px 6px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    tr.sobota td { background: #fff7ed; }
+    tr.nedela td { background: #fef2f2; }
+    th:nth-child(1), td:nth-child(1) { width: 12%; }
+    th:nth-child(2), td:nth-child(2) { width: 7%; text-align: center; }
+    th:nth-child(3), td:nth-child(3) { width: 29%; }
+    th:nth-child(4), td:nth-child(4) { width: 26%; }
+    th:nth-child(5), td:nth-child(5) { width: 26%; }
+    .datum span { color: #86868b; font-size: 7.5pt; }
+    .pocet { font-size: 10pt; font-weight: 700; }
+    .poznamka {
+      margin-top: 8px;
+      color: #86868b;
+      font-size: 7.5pt;
+    }
+  </style>
+</head>
+<body>
+  <div class="dokument-hlavicka">
+    <div>
+      <h1>Dochádzka pracovníkov</h1>
+      <div class="podnadpis">${escapeHtml(nazovMesiaca(exportOdMesiaca))} – ${escapeHtml(nazovMesiaca(exportDoMesiaca))}</div>
+    </div>
+    <div class="meta">Vygenerované: ${escapeHtml(vygenerovane)}</div>
+  </div>
+  ${sekcie}
+  <div class="poznamka">Každý pracovník sa za deň počíta iba raz. Sobota je zvýraznená oranžovo, nedeľa červeno.</div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 250);
+    });
+    window.addEventListener('afterprint', function () {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'multi-month-attendance-print-finished' }, window.location.origin);
+      }
+    });
+  </script>
+</body>
+</html>`)
+    okno.document.close()
+
+    const reset = () => setExportujeViacMesiacov(false)
+    window.setTimeout(reset, 2000)
   }
 
   const dnesText = datumDoLocalString(new Date())
@@ -1482,6 +1714,48 @@ export default function DashboardPage() {
                     </button>
                   )
                 })}
+              </div>
+            </div>
+
+            <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#f8f8fa', border: '1px solid #e5e5e7' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ minWidth: '150px', flex: '0 1 180px' }}>
+                  <label style={{ ...labelStyle, marginBottom: '3px' }}>Tlačiť od mesiaca</label>
+                  <input
+                    type="month"
+                    value={exportOdMesiaca}
+                    max={aktualnyMesiac}
+                    onChange={event => setExportOdMesiaca(event.target.value)}
+                    style={{ ...inputStyle, minHeight: '36px', backgroundColor: '#fff' }}
+                  />
+                </div>
+                <div style={{ minWidth: '150px', flex: '0 1 180px' }}>
+                  <label style={{ ...labelStyle, marginBottom: '3px' }}>Do mesiaca</label>
+                  <input
+                    type="month"
+                    value={exportDoMesiaca}
+                    max={aktualnyMesiac}
+                    onChange={event => setExportDoMesiaca(event.target.value)}
+                    style={{ ...inputStyle, minHeight: '36px', backgroundColor: '#fff' }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={exportovatViacMesiacovPdf}
+                  disabled={exportujeViacMesiacov}
+                  style={{
+                    ...buttonPrimaryStyle,
+                    minHeight: '36px',
+                    padding: '7px 14px',
+                    fontSize: '9px',
+                    opacity: exportujeViacMesiacov ? 0.6 : 1,
+                  } as any}
+                >
+                  {exportujeViacMesiacov ? 'Pripravujem…' : 'Tlačiť viac mesiacov'}
+                </button>
+              </div>
+              <div style={{ marginTop: '6px', color: '#86868b', fontSize: '9px' }}>
+                Vytvorí jeden dokument. Každý mesiac začne na novej strane. Maximum je 24 mesiacov naraz.
               </div>
             </div>
 
